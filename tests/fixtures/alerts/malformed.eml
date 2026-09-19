@@ -1,0 +1,17 @@
+From: The Daily Byte <newsletter@thedailybyte.example>
+To: karthik.mandli2006@gmail.com
+Subject: This week in tech
+Date: Sun, 12 Jul 2026 08:00:00 +0000
+MIME-Version: 1.0
+Content-Type: text/html; charset=utf-8
+Content-Transfer-Encoding: 7bit
+
+<html><body>
+<h1>This week in tech</h1>
+<p>Our favorite reads this week:</p>
+<ul>
+  <li><a href="https://news.example.com/article/ai-trends-2027">AI trends to watch</a></li>
+  <li><a href="https://news.example.com/article/rust-vs-go">Rust vs Go</a></li>
+</ul>
+<a href="https://news.example.com/unsubscribe">Unsubscribe</a>
+</body></html>

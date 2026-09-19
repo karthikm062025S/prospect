@@ -1,0 +1,22 @@
+{
+  "apiVersion": "1",
+  "jobs": [
+    {
+      "id": "22222222-2222-2222-2222-222222222222",
+      "title": "Some Other Role",
+      "jobUrl": "https://jobs.ashbyhq.com/snowflake/22222222-2222-2222-2222-222222222222",
+      "descriptionHtml": "<p>WRONG POSTING</p>",
+      "descriptionPlain": "WRONG POSTING",
+      "isListed": true
+    },
+    {
+      "id": "3d0a7c6e-4c1f-4b6e-9d1a-0f2b3c4d5e6f",
+      "title": "Software Engineer Intern (Summer 2027)",
+      "jobUrl": "https://jobs.ashbyhq.com/snowflake/3d0a7c6e-4c1f-4b6e-9d1a-0f2b3c4d5e6f",
+      "applyUrl": "https://jobs.ashbyhq.com/snowflake/3d0a7c6e-4c1f-4b6e-9d1a-0f2b3c4d5e6f/application",
+      "descriptionHtml": "<h1>Snowflake Intern</h1><p style=\"font-weight:bold\">Build the <strong>Data Cloud</strong>.</p><ol><li>SQL</li><li>Rust</li></ol><img src=\"x\" onerror=\"alert(1)\"><p>Apply via <a href=\"//evil.example/phish\">this link</a>.</p>",
+      "descriptionPlain": "Snowflake Intern. Build the Data Cloud. SQL, Rust.",
+      "isListed": true
+    }
+  ]
+}

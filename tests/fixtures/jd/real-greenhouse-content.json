@@ -1,0 +1,47 @@
+{
+  "absolute_url": "https://job-boards.greenhouse.io/sezzle/jobs/7906408003",
+  "data_compliance": [
+    {
+      "type": "gdpr",
+      "requires_consent": false,
+      "requires_processing_consent": false,
+      "requires_retention_consent": false,
+      "retention_period": null,
+      "demographic_data_consent_applies": false
+    }
+  ],
+  "internal_job_id": 5061889003,
+  "location": {
+    "name": "Peru"
+  },
+  "metadata": null,
+  "id": 7906408003,
+  "updated_at": "2026-08-19T16:08:49-04:00",
+  "requisition_id": "RF-2024-21",
+  "title": "Software Engineer Intern ",
+  "company_name": "Sezzle",
+  "first_published": "2026-08-19T16:08:49-04:00",
+  "language": "en",
+  "application_deadline": null,
+  "content": "&lt;h3&gt;&lt;strong&gt;Software Engineer Intern&lt;/strong&gt;&lt;/h3&gt;\n&lt;p&gt;&lt;strong&gt;Job Title:&lt;/strong&gt; Software Engineer Intern&lt;br&gt;&lt;strong&gt;Location:&lt;/strong&gt; Remote / Peru&lt;/p&gt;\n&lt;p&gt;&lt;strong&gt;About Sezzle:&lt;/strong&gt;&lt;/p&gt;\n&lt;p&gt;Sezzle is a cutting-edge fintech company dedicated to financially empowering the next generation. Through our payment platform, we provide interest-free installment plans to consumers, driving sales for thousands of eCommerce merchants. Our mission is to bridge the gap between consumers&#39; needs and modern payment solutions.&lt;/p&gt;\n&lt;p&gt;&lt;strong&gt;About the Role:&lt;/strong&gt;&lt;/p&gt;\n&lt;p&gt;We are seeking a passionate Software Engineer Intern to join our innovative technology team. This is a great opportunity to gain hands-on experience and work within a highly skilled group of developers to build and maintain features for Sezzle’s platform. As a Software Engineer Intern, you’ll contribute to real-world projects, participate in code reviews, and gain exposure to Sezzle’s technology stack.&lt;/p&gt;\n&lt;p&gt;&lt;strong&gt;What You&#39;ll Do:&lt;/strong&gt;&lt;/p&gt;\n&lt;ul&gt;\n&lt;li&gt;Assist in developing and maintaining backend and frontend services.&lt;/li&gt;\n&lt;li&gt;Write clean, scalable code and participate in code reviews.&lt;/li&gt;\n&lt;li&gt;Collaborate with the engineering team to implement new features and resolve bugs.&lt;/li&gt;\n&lt;li&gt;Work on performance tuning, debugging, and scaling of Sezzle&#39;s platform.&lt;/li&gt;\n&lt;li&gt;Document software functionalities and contribute to the knowledge base.&lt;/li&gt;\n&lt;/ul&gt;\n&lt;p&gt;&lt;strong&gt;Sezzle’s Technology Stack:&lt;/strong&gt;&lt;/p&gt;\n&lt;ul&gt;\n&lt;li&gt;&lt;strong&gt;Languages: &lt;/strong&gt;Golang, Typescript, Python&lt;/li&gt;\n&lt;li&gt;&lt;strong&gt;Frontend: &lt;/strong&gt;Typescript - React and React Native&lt;/li&gt;\n&lt;li&gt;&lt;strong&gt;Backend: &lt;/strong&gt;Golang&lt;/li&gt;\n&lt;li&gt;&lt;strong&gt;Database: &lt;/strong&gt;MySQL, Postgres, Elasticsearch&lt;/li&gt;\n&lt;li&gt;&lt;strong&gt;DevOps &amp;amp; Cloud: &lt;/strong&gt;AWS, Kubernetes&lt;/li&gt;\n&lt;li&gt;&lt;strong&gt;Version Control: &lt;/strong&gt;Git&lt;/li&gt;\n&lt;li&gt;&lt;strong&gt;CI/CD: &lt;/strong&gt;Gitlab&lt;/li&gt;\n&lt;li&gt;&lt;strong&gt;Testing: &lt;/strong&gt;Developer-driven, focus on automated unit, integration, and end-to-end tests&lt;/li&gt;\n&lt;li&gt;&lt;strong&gt;Sezzle&lt;/strong&gt; is focused on using open source, and we build what we can before buying!&lt;/li&gt;\n&lt;/ul&gt;\n&lt;p&gt;&lt;strong&gt;What We Look For:&lt;/strong&gt;&lt;/p&gt;\n&lt;ul&gt;\n&lt;li&gt;Experience with Golang, Python, or any backend language.&lt;/li&gt;\n&lt;li&gt;Familiarity with Javascript/Typescript, and React or similar framework.&lt;/li&gt;\n&lt;li&gt;Basic understanding of databases and SQL.&lt;/li&gt;\n&lt;li&gt;Eagerness to learn and adapt to new technologies quickly.&lt;/li&gt;\n&lt;li&gt;Problem-solving mindset and attention to detail.&lt;/li&gt;\n&lt;li&gt;Demonstrated experience working with Claude or equivalent large language model tools is required; candidates must be comfortable leveraging AI to enhance productivity, research, and communication.&lt;/li&gt;\n&lt;/ul&gt;\n&lt;p&gt;&lt;strong&gt;About You:&lt;/strong&gt;&lt;/p&gt;\n&lt;ul&gt;\n&lt;li&gt;You are curious, eager to learn, and not afraid to ask questions.&lt;/li&gt;\n&lt;li&gt;You are passionate about technology and eager to develop your skills.&lt;/li&gt;\n&lt;li&gt;You enjoy working collaboratively and contributing to a fast-paced team.&lt;/li&gt;\n&lt;li&gt;You have a strong desire to solve complex problems.&lt;/li&gt;\n&lt;/ul&gt;\n&lt;p&gt;&lt;strong&gt;What Makes Working at Sezzle Awesome:&lt;/strong&gt;&lt;/p&gt;\n&lt;p&gt;At Sezzle, you’ll be part of a dynamic team, work on real-world fintech solutions, and get mentorship from experienced engineers. We offer flexible working conditions, making it an ideal internship for motivated students or graduates who want to kickstart their tech careers.&lt;/p&gt;\n&lt;p&gt;&lt;strong&gt;Compensation&lt;/strong&gt;: The salary for the Software Engineer Intern is 800 USD monthly gross.&amp;nbsp;&lt;/p&gt;\n&lt;p&gt;#Li-remote #Full-time&lt;/p&gt;",
+  "departments": [
+    {
+      "id": 4007834003,
+      "name": "DV-Development",
+      "child_ids": [],
+      "parent_id": null
+    }
+  ],
+  "offices": [
+    {
+      "id": 4044515003,
+      "name": "Bogota, Colombia",
+      "location": "Bogotá, Bogotá, Colombia",
+      "child_ids": [],
+      "parent_id": null
+    }
+  ],
+  "ai_disclaimer": "<p>We use Greenhouse’s AI-powered Talent Matching and external tools to compare your application against our job requirements.</p>",
+  "include_ai_disclaimer": true,
+  "ai_opt_out_request_url": "http://app3.greenhouse.io/ai_opt_out_request/job_post/7906408003/ai_opt_out"
+}

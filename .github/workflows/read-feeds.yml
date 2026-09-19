@@ -1,0 +1,90 @@
+name: read-feeds
+
+# Deterministic public-list feed ingestion (ADDITIVE to scan.yml + read-alerts.yml —
+# both untouched). Fetches the public GitHub internship-list READMEs (SimplifyJobs,
+# vanshb03, speedyapply), parses the role rows in code (zero LLM tokens), applies a
+# small recency window, and POSTs the fresh delta to the same /api/watcher webhook
+# (dedup + applied-lock server-side). Catches curated community-list drops that the
+# ATS scanner + alert-email ingest don't have yet. Runs HOURLY.
+#
+# Requires repo secret WATCHER_SECRET. Optional repo variable SCOUT_WEBHOOK
+# overrides the prod URL.
+
+on:
+  schedule:
+    # hourly, off-minute :23 (offset from scan.yml's :17 and read-alerts.yml's :41)
+    - cron: "23 * * * *"
+  workflow_dispatch:
+    inputs:
+      since_days:
+        description: "recency window in days"
+        default: "2"
+
+permissions:
+  contents: read
+  issues: write # notify step opens/updates a daily "new drops" issue
+
+jobs:
+  read-feeds:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: install deps
+        run: npm ci
+
+      # Cross-run idempotency: restore the seen-set of role keys already POSTed +
+      # notified, so an hourly re-find of the same role isn't re-emailed to Karthik.
+      # Rolling-cache pattern: the run-id key never hits (so this run always saves a
+      # fresh cache in the post-step), and restore-keys pulls the most recent prior
+      # seen-set. If the cache is evicted the set resets → each role re-notifies once
+      # (webhook dedup still blocks a duplicate row) — read-feeds.mjs degrades gracefully.
+      - name: restore feed seen-set
+        uses: actions/cache@v4
+        with:
+          path: scripts/.feed-seen.json
+          key: feed-seen-${{ github.run_id }}
+          restore-keys: feed-seen-
+
+      - name: read public list feeds
+        env:
+          WATCHER_SECRET: ${{ secrets.WATCHER_SECRET }}
+          SCOUT_WEBHOOK: ${{ vars.SCOUT_WEBHOOK }}
+          SINCE_DAYS: ${{ github.event.inputs.since_days || '2' }}
+        run: node scripts/read-feeds.mjs --since-days "$SINCE_DAYS"
+
+      # Notify layer: read-feeds.mjs wrote scripts/last-feeds.json (this run's
+      # survivors). If any, @mention Karthik on a per-day issue so GitHub emails
+      # him — same channel the scanner + alerts use. Target roles are flagged
+      # (TAILOR) so the mandatory km-resume -> km-resume-review rule is visible.
+      - name: notify on new feed drops
+        # always() so a partial batch (reader exits 1 on server-side row errors,
+        # AFTER writing last-feeds.json) still notifies its successful inserts —
+        # otherwise they're skipped now and become non-notifiable updates on retry.
+        # File-guarded below, so an early reader failure is a safe no-op.
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          file=scripts/last-feeds.json
+          if [ ! -s "$file" ]; then echo "no feeds file"; exit 0; fi
+          count=$(node -e "console.log(JSON.parse(require('fs').readFileSync('$file','utf8')).length)")
+          if [ "$count" -eq 0 ]; then echo "no fresh feed drops"; exit 0; fi
+          day=$(TZ=America/New_York date +%F)
+          title="Scout feeds: new drops — $day"
+          body=$(node -e "
+            const d=JSON.parse(require('fs').readFileSync('scripts/last-feeds.json','utf8'));
+            const lines=d.map(r=>'- **'+r.company+'** — '+r.title+' ['+r.role_type+']'+(r.target?' (TAILOR)':'')+(r.link?' — '+r.link:'')).join('\n');
+            console.log('@karthikm062025S — '+d.length+' feed-sourced role(s):\n\n'+lines+'\n\n(TAILOR) = giant/unicorn, resume MUST be tailored (km-resume -> km-resume-review).\n\n→ https://scoutfeed.vercel.app');
+          ")
+          num=$(gh issue list --repo "$GITHUB_REPOSITORY" --state open --json number,title --jq ".[] | select(.title==\"$title\") | .number" | head -1)
+          if [ -n "$num" ]; then
+            gh issue comment "$num" --repo "$GITHUB_REPOSITORY" --body "$body"
+            echo "commented on #$num"
+          else
+            gh issue create --repo "$GITHUB_REPOSITORY" --title "$title" --body "$body"
+            echo "created issue"
+          fi

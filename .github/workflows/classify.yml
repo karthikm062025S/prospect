@@ -1,0 +1,63 @@
+name: classify
+
+# Task 2 residue sweep (ADDITIVE to scan.yml, read-alerts.yml, read-feeds.yml,
+# all untouched). Every 3 h, curls POST /api/classify on the deployed app in a
+# loop: each call re-runs the season and family rules over up to 20 stored job
+# descriptions and asks the model only where the rules cannot decide (MISSION
+# Task 2 D5-D8). Stops when the route reports `remaining` 0 or after 10 calls.
+# The first run over the backlog IS the backfill; the same code path serves both.
+#
+# Requires repo secret WATCHER_SECRET. Optional repo variable SCOUT_CLASSIFY_URL
+# overrides the prod URL. Dispatch with dry_run=1 to see proposals without a write
+# (the SCOUT_CLASSIFY_ENABLED switch gates dry runs too; the D9 eval script
+# calls the route directly and does not need the switch).
+
+on:
+  schedule:
+    # every 3 h, off-minute :37 (offset from scan.yml's :17, read-feeds.yml's :23, read-alerts.yml's :41)
+    - cron: "37 */3 * * *"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "1 = propose only, write nothing"
+        default: "0"
+
+permissions:
+  contents: read
+
+jobs:
+  classify:
+    # Kill switch: the sweep never writes to production before the D9 gate is
+    # read. Karthik flips repo variable SCOUT_CLASSIFY_ENABLED to 1 after PASS.
+    if: ${{ vars.SCOUT_CLASSIFY_ENABLED == '1' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: sweep the residue
+        env:
+          WATCHER_SECRET: ${{ secrets.WATCHER_SECRET }}
+          URL: ${{ vars.SCOUT_CLASSIFY_URL || 'https://scoutfeed.vercel.app/api/classify' }}
+          DRY_RUN: ${{ github.event.inputs.dry_run || '0' }}
+        run: |
+          set -eu
+          for i in $(seq 1 10); do
+            body=$(mktemp)
+            code=$(curl -sS -o "$body" -w '%{http_code}' -X POST \
+              -H "X-Watcher-Secret: $WATCHER_SECRET" \
+              "$URL?limit=20&dry_run=$DRY_RUN")
+            if [ "$code" != "200" ]; then
+              echo "call $i: http $code"
+              cat "$body"
+              exit 1
+            fi
+            summary=$(node -e "
+              const r=JSON.parse(require('fs').readFileSync(process.argv[1],'utf8'));
+              console.log('call '+process.argv[2]+': processed '+r.processed+', rules_only '+r.rules_only+', llm_called '+r.llm_called+', llm_written '+r.llm_written+', llm_low_confidence '+r.llm_low_confidence+', remaining '+r.remaining);
+            " "$body" "$i")
+            echo "$summary"
+            remaining=${summary##* }
+            # a dry run writes nothing, so a second call would repeat the same rows
+            if [ "$remaining" = "0" ] || [ "$DRY_RUN" = "1" ]; then
+              break
+            fi
+          done

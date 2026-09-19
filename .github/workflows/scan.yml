@@ -1,0 +1,110 @@
+name: scan
+
+# Deterministic ATS scanner (Scout v2.3 P0). Fetches the 999 verified ATS
+# endpoints, filters to fresh US SWE/AI/Data/Quant intern candidates, and POSTs
+# survivors to the /api/watcher webhook (dedup + applied-lock server-side).
+# Runs with zero LLM tokens — this replaces the LLM-scans-in-cloud design that
+# the environment egress policy broke.
+#
+# Requires repo secret WATCHER_SECRET (Settings → Secrets and variables →
+# Actions). Optional repo variable SCOUT_WEBHOOK overrides the prod URL.
+
+on:
+  schedule:
+    - cron: "17 */3 * * *"  # every 3h, off-minute to avoid the hot :00 slot
+  workflow_dispatch:
+    inputs:
+      since_days:
+        description: "recency window in days"
+        default: "3"
+
+permissions:
+  contents: read
+  issues: write   # notify step opens/updates a daily "new drops" issue
+
+# Serialize runs so a manual dispatch overlapping the cron can't race the baseline
+# cache or double-open the canary issue.
+concurrency:
+  group: scan
+  cancel-in-progress: false
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      # Persist the canary's per-endpoint baseline across runs (rolling cache:
+      # unique key always saves, restore-keys pulls the most recent prior copy).
+      - name: restore endpoint baseline
+        uses: actions/cache@v4
+        with:
+          path: scripts/endpoint-baseline.json
+          # run_attempt in the key so a rerun saves its updated baseline (an exact
+          # immutable-cache hit would otherwise discard the rerun's fix).
+          key: scout-baseline-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            scout-baseline-
+      - name: run scanner
+        env:
+          WATCHER_SECRET: ${{ secrets.WATCHER_SECRET }}
+          SCOUT_WEBHOOK: ${{ vars.SCOUT_WEBHOOK }}
+          SINCE_DAYS: ${{ github.event.inputs.since_days || '3' }}
+        run: node scripts/scan.mjs --since-days "$SINCE_DAYS" --concurrency 16
+
+      # Notify layer: the scanner wrote scripts/last-drops.json (roles posted
+      # within the last day). If any, mention Karthik on a per-day issue so
+      # GitHub emails him — zero extra creds, always-on, ToS-clean.
+      # ponytail: GitHub issue notifications, not a custom email pipeline. Swap
+      # for an SMTP/Gmail digest if a richer inbox format is wanted.
+      - name: notify on new drops
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          file=scripts/last-drops.json
+          if [ ! -s "$file" ]; then echo "no drops file"; exit 0; fi
+          count=$(node -e "console.log(JSON.parse(require('fs').readFileSync('$file','utf8')).length)")
+          if [ "$count" -eq 0 ]; then echo "no fresh drops"; exit 0; fi
+          day=$(TZ=America/New_York date +%F)
+          title="Scout: new drops — $day"
+          body=$(node -e "
+            const d=JSON.parse(require('fs').readFileSync('scripts/last-drops.json','utf8'));
+            const lines=d.map(r=>'- **'+r.company+'** — '+r.title+' ['+r.role_type+'] '+(r.posted_at||'')+(r.link?' — '+r.link:'')).join('\n');
+            console.log('@karthikm062025S — '+d.length+' fresh role(s) found:\n\n'+lines+'\n\n→ https://scoutfeed.vercel.app');
+          ")
+          num=$(gh issue list --repo "$GITHUB_REPOSITORY" --state open --limit 200 --json number,title --jq ".[] | select(.title==\"$title\") | .number" | head -1)
+          if [ -n "$num" ]; then
+            gh issue comment "$num" --repo "$GITHUB_REPOSITORY" --body "$body"
+            echo "commented on #$num"
+          else
+            gh issue create --repo "$GITHUB_REPOSITORY" --title "$title" --body "$body"
+            echo "created issue"
+          fi
+
+      # Canary: the scanner wrote scripts/canary.json listing endpoints that
+      # reliably had postings but silently returned 0 this run (broken token /
+      # schema drift — a blind spot a 404-only check misses). Fire ONCE per
+      # episode: open a standing issue; stay quiet while it's still open so a
+      # persistent regression doesn't comment every 3h. Karthik closes it when fixed.
+      - name: notify on canary regressions
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          file=scripts/canary.json
+          if [ ! -s "$file" ]; then echo "no canary file"; exit 0; fi
+          count=$(node -e "console.log(JSON.parse(require('fs').readFileSync('$file','utf8')).length)")
+          if [ "$count" -eq 0 ]; then echo "no regressions"; exit 0; fi
+          title="Scout canary: endpoints silently returning 0"
+          num=$(gh issue list --repo "$GITHUB_REPOSITORY" --state open --limit 200 --json number,title --jq ".[] | select(.title==\"$title\") | .number" | head -1)
+          if [ -n "$num" ]; then echo "canary issue #$num already open — staying quiet"; exit 0; fi
+          body=$(node -e "
+            const d=JSON.parse(require('fs').readFileSync('scripts/canary.json','utf8'));
+            const lines=d.map(r=>'- \`'+r.company+'\` ['+r.ats+'] baseline '+r.baseline+' → 0').join('\n');
+            console.log('@karthikm062025S — '+d.length+' endpoint(s) that reliably had postings now return 0 (likely a broken token / schema drift — a silent blind spot):\n\n'+lines+'\n\nInvestigate + re-validate, then close this issue.');
+          ")
+          gh issue create --repo "$GITHUB_REPOSITORY" --title "$title" --body "$body"
+          echo "opened canary issue"

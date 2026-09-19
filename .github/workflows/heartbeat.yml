@@ -1,0 +1,59 @@
+name: heartbeat
+
+# Dead-man's-switch (ADDITIVE — scan.yml, read-feeds.yml, read-alerts.yml all
+# untouched by this file). GitHub Actions cron schedules can silently drift or
+# get skipped under platform load, so a healthy-looking workflow file is not
+# proof the ATS scanner actually ran. This job checks scan.yml's most recent
+# SUCCESSFUL run and alerts if it has gone stale — proof the cron ran, not
+# just that it exists.
+#
+# No repo secrets required beyond the default GITHUB_TOKEN.
+
+on:
+  schedule:
+    - cron: "7 */6 * * *"  # every 6h, off-minute to avoid the hot :00 slot
+  workflow_dispatch:
+
+permissions:
+  actions: read   # gh run list needs read access to workflow run history
+  issues: write   # opens/comments the silent-scanner alert issue
+
+jobs:
+  heartbeat:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: check scan.yml freshness
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          last=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow scan.yml --status success --limit 1 --json createdAt --jq '.[0].createdAt')
+
+          if [ -z "$last" ] || [ "$last" = "null" ]; then
+            stale=true
+          else
+            now_s=$(date -u +%s)
+            last_s=$(date -u -d "$last" +%s)
+            age_s=$((now_s - last_s))
+            if [ "$age_s" -gt $((26 * 3600)) ]; then
+              stale=true
+            else
+              stale=false
+            fi
+          fi
+
+          if [ "$stale" != "true" ]; then
+            echo "scanner healthy"
+            exit 0
+          fi
+
+          title="Scout heartbeat: scanner silent"
+          body="@karthikm062025S — the ATS scanner (scan.yml) has not succeeded in more than 26 hours (last success: ${last:-none found}). The crons need checking — this could be GitHub Actions cron drift/skips."
+          num=$(gh issue list --repo "$GITHUB_REPOSITORY" --state open --json number,title --jq ".[] | select(.title==\"$title\") | .number" | head -1)
+          if [ -n "$num" ]; then
+            gh issue comment "$num" --repo "$GITHUB_REPOSITORY" --body "$body"
+            echo "commented on #$num"
+          else
+            gh issue create --repo "$GITHUB_REPOSITORY" --title "$title" --body "$body"
+            echo "created issue"
+          fi

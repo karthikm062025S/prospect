@@ -1,0 +1,59 @@
+name: gate-sweep
+
+# Task 3 sponsorship / citizenship / clearance sweep (ADDITIVE to scan.yml,
+# read-alerts.yml, read-feeds.yml, classify.yml, all untouched). Every 3 h,
+# curls POST /api/gate-sweep on the deployed app in a loop: each call runs the
+# rules in lib/gate-rules.ts over up to 50 stored job descriptions not yet
+# checked and stamps `gate_checked_at` on each (MISSION Task 3 T4). Stops when
+# the route reports `remaining` 0 or after 10 calls. Rules only, $0, so there is
+# no kill switch: the first run over the backlog IS the backfill.
+#
+# Requires repo secret WATCHER_SECRET. Optional repo variable SCOUT_GATE_SWEEP_URL
+# overrides the prod URL. Dispatch with dry_run=1 to see proposals without a write.
+
+on:
+  schedule:
+    # every 3 h, off-minute :53 (offset from scan.yml's :17, read-feeds.yml's :23, classify.yml's :37, read-alerts.yml's :41)
+    - cron: "53 */3 * * *"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "1 = propose only, write nothing"
+        default: "0"
+
+permissions:
+  contents: read
+
+jobs:
+  gate-sweep:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: sweep the residue
+        env:
+          WATCHER_SECRET: ${{ secrets.WATCHER_SECRET }}
+          URL: ${{ vars.SCOUT_GATE_SWEEP_URL || 'https://scoutfeed.vercel.app/api/gate-sweep' }}
+          DRY_RUN: ${{ github.event.inputs.dry_run || '0' }}
+        run: |
+          set -eu
+          for i in $(seq 1 10); do
+            body=$(mktemp)
+            code=$(curl -sS -o "$body" -w '%{http_code}' -X POST \
+              -H "X-Watcher-Secret: $WATCHER_SECRET" \
+              "$URL?limit=50&dry_run=$DRY_RUN")
+            if [ "$code" != "200" ]; then
+              echo "call $i: http $code"
+              cat "$body"
+              exit 1
+            fi
+            summary=$(node -e "
+              const r=JSON.parse(require('fs').readFileSync(process.argv[1],'utf8'));
+              console.log('call '+process.argv[2]+': processed '+r.processed+', flagged '+r.flagged+', remaining '+r.remaining);
+            " "$body" "$i")
+            echo "$summary"
+            remaining=${summary##* }
+            # a dry run writes nothing, so a second call would repeat the same rows
+            if [ "$remaining" = "0" ] || [ "$DRY_RUN" = "1" ]; then
+              break
+            fi
+          done

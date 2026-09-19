@@ -1,0 +1,23 @@
+[
+  {
+    "id": "11111111-1111-1111-1111-111111111111",
+    "text": "Some Other Role",
+    "hostedUrl": "https://jobs.lever.co/palantir/11111111-1111-1111-1111-111111111111",
+    "description": "<p>WRONG POSTING</p>",
+    "descriptionPlain": "WRONG POSTING",
+    "lists": [{ "text": "Wrong list", "content": "<li>WRONG POSTING</li>" }],
+    "additional": "<p>WRONG POSTING</p>"
+  },
+  {
+    "id": "d7fb089c-db8a-4877-a5f3-73a09e67f54b",
+    "text": "Software Engineer Intern",
+    "hostedUrl": "https://jobs.lever.co/palantir/d7fb089c-db8a-4877-a5f3-73a09e67f54b",
+    "description": "<div><h3>Palantir Internship</h3><p>You will build <b>real</b> things with <i>real</i> data.</p><p><a href=\"https://palantir.com/careers\" style=\"color:red\">Learn more</a> or <a href=\"javascript:alert(1)\">click here</a>.</p></div>",
+    "descriptionPlain": "Palantir Internship. You will build real things with real data.",
+    "lists": [
+      { "text": "What we look for", "content": "<li>Curiosity</li><li>Ownership</li>" },
+      { "text": "Nice to have <script>alert(1)</script>", "content": "<li>Rust</li>" }
+    ],
+    "additional": "<div>Palantir is an equal opportunity employer.</div>"
+  }
+]

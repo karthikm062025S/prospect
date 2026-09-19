@@ -1,0 +1,530 @@
+@import "tailwindcss";
+
+/* Scout v2 — warm-cream LIGHT (identity theme) + Balanced Grove DARK, switched
+   on [data-theme] (04-uiux-brief.md §1). @theme values point at the runtime
+   custom properties below so `bg-bg`/`text-text`/etc. stay theme-reactive. */
+@theme {
+  --color-bg: var(--bg);
+  --color-raised: var(--raised);
+  --color-text: var(--text);
+  --color-text-dim: var(--text-dim);
+  --color-hairline: var(--hairline);
+  --color-sage: var(--sage);
+  --color-danger: var(--danger);
+  /* v7 L7 (landing). ONE new accent — the Harloom "Dusk Atelier" accent-glow
+     ember-apricot (design/system/HARLOOM-DESIGN-SYSTEM.md). Used only for the
+     circular arrow CTA, the pinned-reveal progress rule, the handwritten
+     sign-off and the ink-band focus ring. `ink` is the landing's dark band; it
+     is the SAME value in both themes on purpose (the band is an identity
+     surface, not a themed one), so `ink-text` is its only legible foreground. */
+  --color-accent: var(--accent);
+  --color-text-unrevealed: var(--text-unrevealed);
+  --color-text-unrevealed-ink: var(--text-unrevealed-ink);
+  --color-ink: var(--ink);
+  --color-ink-text: var(--ink-text);
+
+  /* v5 D31: type scale up one notch. `text-sm` (Tailwind default 0.875rem/14px)
+     is the app's body-copy utility (see `body` className in app/layout.tsx),
+     so bumping this one token moves body/row-title copy app-wide to 15px in
+     one place. `text-xs` (12px micro labels) and arbitrary `text-[11px]` mono
+     micro-labels are untouched on purpose (D31: "micro mono labels stay 11px"). */
+  --text-sm: 0.9375rem; /* 15px @ 16px root */
+  --text-sm--line-height: calc(1.375rem / 0.9375rem);
+
+  /* v7 D20 type scale — the landing's ONLY font sizes. Every step is an alias
+     of the documented --step-* ladder below, so `text-step-3` in a component
+     and `--step-3` in CSS are the same number. Negative steps are named
+     xs/2xs because a Tailwind utility cannot carry a second minus sign. */
+  --text-step-2xs: var(--step--2);
+  --text-step-2xs--line-height: var(--leading-body);
+  --text-step-xs: var(--step--1);
+  --text-step-xs--line-height: var(--leading-body);
+  --text-step-0: var(--step-0);
+  --text-step-0--line-height: var(--leading-body);
+  --text-step-1: var(--step-1);
+  --text-step-1--line-height: var(--leading-body);
+  --text-step-2: var(--step-2);
+  --text-step-2--line-height: var(--leading-title);
+  --text-step-3: var(--step-3);
+  --text-step-3--line-height: var(--leading-title);
+  --text-step-4: var(--step-4);
+  --text-step-4--line-height: var(--leading-display);
+  --text-step-5: var(--step-5);
+  --text-step-5--line-height: var(--leading-display);
+  --text-step-6: var(--step-6);
+  --text-step-6--line-height: var(--leading-display);
+  --text-step-hero: var(--step-hero);
+  --text-step-hero--line-height: var(--leading-hero);
+
+  /* Line heights (D20 item 1): 1.0 hero, 1.05 display, 1.15 titles, 1.5 body. */
+  --leading-hero: 1;
+  --leading-display: 1.05;
+  --leading-title: 1.15;
+  --leading-body: 1.5;
+
+  /* Letter-spacing: display -0.02em, uppercase labels +0.08em. */
+  --tracking-display: -0.02em;
+  --tracking-label: 0.08em;
+
+  /* Spacing on the 8px grid. `section` is the vertical band rhythm (72px
+     below 1024, 128px at and above it — the media query is on :root, these
+     names just read it) and `gutter` is the horizontal one. */
+  --spacing-gutter: var(--gutter);
+  --spacing-section: var(--section-y);
+
+  /* Radii (D20 item 1). */
+  --radius-pill: 999px;
+  --radius-sheet: 28px;
+  --radius-card: 16px;
+  --radius-panel: 18px;
+
+  /* Container. */
+  --container-page: 1280px;
+}
+
+@theme inline {
+  --font-sans: var(--font-satoshi);
+  /* v7 L7 mono verdict: Departure Mono does NOT replace IBM Plex Mono for data
+     values. Measured on the real Home table at localhost:3001 (dark, 100% zoom,
+     1522px): swapping --font-plex-mono to Departure widened every mono run
+     (advance at 13px = 8.27px vs Plex's 6.50px, +27%), which wrapped the
+     one-line velocity strip onto two lines and clipped the "RECENTLY ADDED"
+     sort control. Departure's x-height ratio is actually BETTER (0.538 vs 0.462
+     at 13px) and it is legible on both themes — it fails on width, not on
+     legibility. So Plex stays the data face and Departure takes --font-label
+     (uppercase labels / nav / eyebrows only), per D12's fallback. */
+  --font-mono: var(--font-plex-mono);
+  --font-label: var(--font-departure);
+  --font-display: var(--font-instrument-serif);
+}
+
+/* ---------------------------------------------------------------------------
+   v7 D20 — the documented type/space ladder. Theme-independent: these are
+   geometry, not colour, so they sit in one block above both palettes.
+   Type scale (px): every landing font size is one of these ten and nothing
+   else. --step-hero is the only fluid one; 8vw puts the H1 at 112px on a
+   1440 viewport and clamps to 56px on a 390 phone.
+   --------------------------------------------------------------------------- */
+:root {
+  --step--2: 12px; /* micro mono labels, eyebrows, credit lines */
+  --step--1: 14px; /* meta rows, footer links */
+  --step-0: 16px; /* body */
+  --step-1: 18px; /* lead body, card titles */
+  --step-2: 22px; /* hero sub, feed row titles */
+  --step-3: clamp(24px, 22.51px + 0.38vw, 28px); /* card / step headings */
+  --step-4: clamp(32px, 29.03px + 0.76vw, 40px); /* art-band display line */
+  --step-5: clamp(40px, 34.06px + 1.52vw, 56px); /* section H2, coverage numbers */
+  --step-6: clamp(56px, 47.09px + 2.29vw, 80px); /* pinned statements */
+  --step-hero: clamp(48px, min(8vw, 11dvh), 128px); /* H1 + outro wordmark; the dvh term keeps a 3-line H1 under the nav on short viewports */
+
+  /* 8px grid. 72px band padding below 1024, 128px at and above it. */
+  --section-y: 72px;
+  --gutter: 24px;
+  --container: 1280px;
+}
+
+@media (min-width: 640px) {
+  :root {
+    --gutter: 48px;
+  }
+}
+
+@media (min-width: 1024px) {
+  :root {
+    --section-y: 128px;
+  }
+}
+
+/* Light = default (system prefers-color-scheme: light, and the no-JS floor). */
+:root {
+  color-scheme: light;
+  /* v7 D20: the light ground moves to the measured integratedbio off-white
+     (#F7F7F5) and the ink to its near-black green (#222F30), per the design direction note's
+     "not pure white but some kind of off-white". --raised becomes pure white,
+     so --text-dim has to clear 4.5:1 on BOTH grounds, not just on the page. */
+  --bg: #f7f7f5;
+  --raised: #ffffff;
+  --text: #222f30;
+  --text-dim: #62706f; /* 4.81:1 on --bg, 5.16:1 on --raised (scripts/contrast-pairs.mjs) */
+  --hairline: rgb(34 47 48 / 0.12);
+  --sage: #2d5a43;
+  --danger: #a8391f; /* darkened from doc4's alert coral #e07a5f: 2.73:1 on cream fails AA as text, see §1 computed table */
+  --accent: #e69a6f; /* 7.77:1 on --ink (text-safe there); 2.11:1 on --bg, so on the page it is FILL/decoration only, never text */
+  --ink: #222f30;
+  --ink-text: #e8e4df; /* 12.4:1 on --ink */
+  /* Pre-reveal colour for scroll-revealed text, and NOTHING else.
+     Fold 1 item 5: the reference's own value (rgb(201,203,190)) measured
+     1.53:1 here, so pre-reveal statements really were near-invisible on the
+     sheet. Darkened inside the same muted-sage family to 3.12:1 on --bg and
+     3.26:1 on --raised, which keeps a 4.1x step up to --text at 12.90:1. */
+  --text-unrevealed: #85907d;
+  /* The same state on an INK surface (the hero, the art bands). --ink is
+     theme-invariant, so this token is too: a mid sage would sink into the
+     scrim, so the ink surfaces keep the light reference value. */
+  --text-unrevealed-ink: #c9cbbe;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    /* v8 D13: dark = the landing's ink family, not slate. The landing's dark
+       bands are --ink, so the app's ground is the same hue family and the text
+       is the landing's warm off-white. Ratios measured by
+       `node scripts/contrast-pairs.mjs`. */
+    --bg: #1a2325;
+    --raised: #232e30;
+    --text: #e8e4df; /* 12.66:1 on --bg, 11.03:1 on --raised */
+    --text-dim: rgb(232 228 223 / 0.66); /* 6.28:1 on --bg, 5.71:1 on --raised */
+    --hairline: rgb(232 228 223 / 0.12);
+    --sage: #8fbaa5; /* 7.43:1 on --bg, 6.47:1 on --raised */
+    --danger: #e89a82; /* 7.15:1 on --bg, 6.23:1 on --raised */
+    --accent: #e69a6f; /* 7.03:1 on --bg, 7.66:1 on --ink (same value as light) */
+    /* A step DARKER than --bg so the landing's ink bands still read as bands
+       now that the page ground shares their hue family. */
+    --ink: #141b1c;
+    --ink-text: #e8e4df; /* 13.79:1 on --ink */
+    --text-unrevealed: rgb(232 228 223 / 0.45); /* 3.69:1 on --bg, 3.48:1 on --raised (decorative pre-reveal, 3:1 floor) */
+    --text-unrevealed-ink: #c9cbbe; /* 10.61:1 on --ink */
+  }
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+  /* v8 D13: dark = the landing's ink family, not slate. The landing's dark
+     bands are --ink, so the app's ground is the same hue family and the text
+     is the landing's warm off-white. Ratios measured by
+     `node scripts/contrast-pairs.mjs`. */
+  --bg: #1a2325;
+  --raised: #232e30;
+  --text: #e8e4df; /* 12.66:1 on --bg, 11.03:1 on --raised */
+  --text-dim: rgb(232 228 223 / 0.66); /* 6.28:1 on --bg, 5.71:1 on --raised */
+  --hairline: rgb(232 228 223 / 0.12);
+  --sage: #8fbaa5; /* 7.43:1 on --bg, 6.47:1 on --raised */
+  --danger: #e89a82; /* 7.15:1 on --bg, 6.23:1 on --raised */
+  --accent: #e69a6f; /* 7.03:1 on --bg, 7.66:1 on --ink (same value as light) */
+  /* A step DARKER than --bg so the landing's ink bands still read as bands
+     now that the page ground shares their hue family. */
+  --ink: #141b1c;
+  --ink-text: #e8e4df; /* 13.79:1 on --ink */
+  --text-unrevealed: rgb(232 228 223 / 0.45); /* 3.69:1 on --bg, 3.48:1 on --raised (decorative pre-reveal, 3:1 floor) */
+  --text-unrevealed-ink: #c9cbbe; /* 10.61:1 on --ink */
+}
+
+body {
+  background-color: var(--color-bg);
+  color: var(--color-text);
+}
+
+/* Native <dialog> — plain Tailwind only, no component library. */
+dialog {
+  color: inherit;
+}
+dialog::backdrop {
+  background: rgb(0 0 0 / 0.55);
+}
+
+/* v5 D32: native fluid-motion default — every interactive element gets a
+   quick, consistent hover/focus transition with no new deps. Governed by
+   the same reduced-motion guard below (its `*` selector + !important already
+   zeroes these transition-durations too). */
+button,
+a,
+[role="button"] {
+  transition:
+    background-color 120ms,
+    color 120ms,
+    border-color 120ms,
+    opacity 120ms;
+}
+
+/* v7 L7: anchor scrolling on the landing is native CSS (no Lenis, no GSAP) —
+   the whole in-page nav + back-to-top rides on this one line. */
+html {
+  scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+  /* The global rule above only zeroes the duration, which would land a drift
+     on its END frame; kill the animation name instead so the layer rests at
+     its first frame. `!important` because the .scout-drift-* definitions are
+     appended later in this file and would otherwise win on source order. */
+  .scout-drift-kenburns {
+    animation: none !important;
+  }
+}
+
+/* v7 S3 D26.1: the CSS keyframe marquee (.scout-marquee / .scout-marquee-track)
+   is gone. Its one consumer, components/landing/boards-strip.tsx, now drives
+   the strip from scroll velocity, which a predetermined CSS animation cannot
+   do. See components/motion/scroll-velocity-marquee.tsx.
+
+   v7 S3 D26.2: the hero art drift. Continuous, never an entrance, never on
+   text — the wrapper (components/motion/ken-burns.tsx) holds the poster layer
+   only. 28s each way, so a full cycle is 56s and no single frame reads as
+   movement. The reduced-motion block above stops it. */
+@keyframes scout-drift-kenburns {
+  from {
+    transform: scale(1);
+  }
+  to {
+    transform: scale(1.06);
+  }
+}
+.scout-drift-kenburns {
+  animation: scout-drift-kenburns 28s ease-in-out infinite alternate;
+  will-change: transform;
+  transform-origin: 50% 40%;
+}
+
+/* v7 S4 UI-EYES: the two drift rows are full-bleed, so at every viewport a name
+   is sliced in half against the window edge (measured at 2560: row 2 ended on
+   "DAT" of Datadog). A 72px alpha ramp on each side ends the row in a fade
+   instead of a cut. Mask only, no layout or colour change, so it holds in both
+   themes and over any ground. The settled/reduced-motion branch renders a
+   wrapped static row and never gets this class. */
+.scout-drift-edge-fade {
+  /* v9: the fade scales with the viewport; 72px each side ate 37% of a 390px strip. */
+  --fade: clamp(20px, 6vw, 72px);
+  -webkit-mask-image: linear-gradient(
+    to right,
+    transparent 0,
+    #000 var(--fade),
+    #000 calc(100% - var(--fade)),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to right,
+    transparent 0,
+    #000 var(--fade),
+    #000 calc(100% - var(--fade)),
+    transparent 100%
+  );
+}
+
+/* Slice 4 / spike 2 (02-trd.md §13): tab swaps use the sliding indicator,
+   not the root crossfade — suppress it so the panel swap is instant.
+   Named-element morphs (later slices) are untouched. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+}
+
+/* v5 D32: named-element (row→pane) view-transition morph timing. */
+::view-transition-group(*) {
+  animation-duration: 240ms;
+  animation-timing-function: cubic-bezier(0, 0, 0.2, 1);
+}
+
+/* v8 D13: theme-aware initials avatars. components/company-avatar.tsx sets only
+   --avatar-hue on the element; each theme derives its own pair here, so the disc
+   is authored per theme instead of being a light disc dimmed by a filter. */
+[data-avatar-initials] {
+  --avatar-bg: oklch(0.92 0.05 var(--avatar-hue));
+  --avatar-fg: oklch(0.38 0.09 var(--avatar-hue));
+  background: var(--avatar-bg);
+  color: var(--avatar-fg);
+}
+[data-theme="dark"] [data-avatar-initials] {
+  --avatar-bg: oklch(0.32 0.06 var(--avatar-hue));
+  --avatar-fg: oklch(0.85 0.08 var(--avatar-hue));
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) [data-avatar-initials] {
+    --avatar-bg: oklch(0.32 0.06 var(--avatar-hue));
+    --avatar-fg: oklch(0.85 0.08 var(--avatar-hue));
+  }
+}
+
+/* v5: components/auto-textarea.tsx — native auto-grow (a class, not an inline style, so SSR/CSR markup match). */
+.auto-grow { field-sizing: content; resize: none; }
+
+/* ---------------------------------------------------------------------------
+   v7 D20 landing surfaces. Every measured one-off value lives here as a class
+   so no component carries an ad-hoc px number.
+   --------------------------------------------------------------------------- */
+
+/* Art posters: one file per theme, picked by CSS so the browser paints the
+   right one on the first frame (the same [data-theme] / prefers-color-scheme
+   pair the colour tokens use). */
+.art-dark {
+  display: none;
+}
+[data-theme="dark"] .art-light {
+  display: none;
+}
+[data-theme="dark"] .art-dark {
+  display: block;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .art-light {
+    display: none;
+  }
+  :root:not([data-theme="light"]) .art-dark {
+    display: block;
+  }
+}
+
+/* Scrims. The scrim ink is hardcoded #222F30 in both themes (the art posters,
+   not --ink, which is darker in dark mode since v8), so one alpha ladder holds for
+   both. The alphas are the measured minimum that keeps --ink-text at or above
+   4.5:1 over the LIGHTEST step of either poster palette, plus margin; run
+   `node scripts/contrast-pairs.mjs` for the numbers. */
+.scout-hero-scrim {
+  /* Two stacked veils, so the top-right of the frame stays open art while the
+     bottom-left text column is fully covered. Composite alpha at any point is
+     1 - (1 - a_vertical)(1 - a_horizontal); scripts/contrast-pairs.mjs models
+     exactly these stops and samples the real poster pixels through them. */
+  background:
+    linear-gradient(
+      100deg,
+      rgb(34 47 48 / 0.4) 0%,
+      rgb(34 47 48 / 0.3) 60%,
+      rgb(34 47 48 / 0) 100%
+    ),
+    linear-gradient(
+      to top,
+      rgb(34 47 48 / 0.76) 0%,
+      rgb(34 47 48 / 0.68) 55%,
+      rgb(34 47 48 / 0.06) 100%
+    );
+}
+/* Below 640px the hero copy runs the full width and the 9:16 crop is taller,
+   so the horizontal veil (which fades to 0 on the right) cannot carry it. One
+   heavier bottom-up veil instead; measured, see contrast-pairs.mjs. */
+@media (max-width: 639px) {
+  .scout-hero-scrim {
+    background: linear-gradient(
+      to top,
+      rgb(34 47 48 / 0.86) 0%,
+      rgb(34 47 48 / 0.82) 55%,
+      rgb(34 47 48 / 0.24) 100%
+    );
+  }
+}
+
+/* Band with bottom-anchored copy: the top of the frame stays open. */
+.scout-scrim {
+  background: linear-gradient(
+    to top,
+    rgb(34 47 48 / 0.8) 0%,
+    rgb(34 47 48 / 0.74) 46%,
+    rgb(34 47 48 / 0.3) 80%,
+    rgb(34 47 48 / 0.14) 100%
+  );
+}
+/* Band with vertically centred copy (the coverage numbers on the star chart):
+   the copy sits where a bottom-up gradient is weakest, so this one
+   stays even throughout. Measured against that poster's own pixels, see
+   scripts/contrast-pairs.mjs. */
+.scout-scrim-even {
+  background: linear-gradient(
+    to top,
+    rgb(34 47 48 / 0.82) 0%,
+    rgb(34 47 48 / 0.72) 35%,
+    rgb(34 47 48 / 0.72) 75%,
+    rgb(34 47 48 / 0.66) 100%
+  );
+}
+
+/* Eyebrow pill (D20 4.1): 1px currentColor at 0.5 alpha, 7px 12px padding. */
+.scout-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  padding: 7px 12px;
+  border: 1px solid color-mix(in srgb, currentColor 50%, transparent);
+  border-radius: var(--radius-pill);
+  font-family: var(--font-label);
+  font-size: var(--step--2);
+  line-height: 1;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+}
+
+/* The sheet: --bg surface with a 28px top radius that rises over the fixed
+   hero art, plus a 1px hairline on that top edge. */
+.scout-sheet {
+  border-top-left-radius: var(--radius-sheet);
+  border-top-right-radius: var(--radius-sheet);
+  box-shadow: inset 0 1px 0 0 var(--hairline);
+}
+
+/* Static grain for the sheet below 1024px and under reduced motion, where the
+   PaperTexture shader never mounts. One inline feTurbulence, 0.055 alpha. */
+.scout-sheet::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  opacity: 0.055;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23g)'/%3E%3C/svg%3E");
+}
+@media (min-width: 1024px) {
+  .scout-sheet::before {
+    display: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .scout-sheet::before {
+    display: block;
+  }
+}
+
+/* Nav capsule (D20 item 4.0): 30px top offset, 54px tall, 16px radius —
+   the measured integratedbio /company header values. */
+.scout-nav {
+  top: 30px;
+}
+.scout-nav-capsule {
+  height: 54px;
+  border-radius: 16px;
+}
+
+/* Feature card: ONE hover state, a 2px rise plus a layered shadow (feel.md —
+   elevation is a shadow, not a border colour change; named properties only,
+   never `transition: all`). The reduced-motion block above zeroes the
+   duration, and the shadow still lands, so the state is never motion-only. */
+.scout-card {
+  transition-property: transform, box-shadow;
+  transition-duration: 160ms;
+  transition-timing-function: cubic-bezier(0.23, 1, 0.32, 1);
+}
+.scout-card:hover,
+.scout-card:focus-within {
+  transform: translateY(-2px);
+  box-shadow:
+    0 1px 2px rgb(34 47 48 / 0.06),
+    0 6px 16px rgb(34 47 48 / 0.08);
+}
+[data-theme="dark"] .scout-card:hover,
+[data-theme="dark"] .scout-card:focus-within {
+  box-shadow: 0 0 0 1px rgb(232 228 223 / 0.16);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .scout-card:hover,
+  :root:not([data-theme="light"]) .scout-card:focus-within {
+    box-shadow: 0 0 0 1px rgb(232 228 223 / 0.16);
+  }
+}
+
+/* v9 automatic text reveal (components/motion/text-reveal.tsx): every unit
+   starts in --reveal-from and transitions to --reveal-to on its own delay once
+   the line carries data-revealed. Reduced motion never mounts this path. */
+.scout-reveal > span > span {
+  color: var(--reveal-from);
+  transition: color 0.55s cubic-bezier(0.23, 1, 0.32, 1);
+}
+.scout-reveal[data-revealed] > span > span {
+  color: var(--reveal-to);
+}

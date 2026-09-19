@@ -1,0 +1,30 @@
+node_modules
+.next
+.env.local
+next-env.d.ts
+*.tsbuildinfo
+
+.vercel
+.env*
+!.env.example
+
+# scanner notify output (regenerated each run, consumed within the same job)
+scripts/last-drops.json
+scripts/last-feeds.json
+scripts/endpoints.discovered.json
+# canary state: baseline persists across runs via actions/cache, not git; canary.json is per-run
+scripts/endpoint-baseline.json
+scripts/canary.json
+# feed-reader dedup state: read+written across runs, must stay on disk
+scripts/.feed-seen.json
+
+# planning docs stay local (km-prd)
+PRD-*.md
+ALERT-SETUP-CHECKLIST.md
+
+# per-lane worktrees + local Claude Code state, never tracked
+.claude/
+# G1 L4: DB snapshots hold real personal history (names, resume filenames,
+# outreach contacts). They stay on disk as the rollback artifact; git never
+# carries them. Regenerate with `node scripts/db-baseline.mjs`.
+db/baseline-*/*.json
