@@ -36,6 +36,7 @@ const MESSAGES: Record<string, { text: string; tone: "danger" | "sage"; mode: Mo
     tone: "danger",
     mode: "signup",
   },
+  "error=auth": { text: "That link did not work. Try again.", tone: "danger", mode: "signin" },
   "notice=confirm": { text: "Check your email to confirm your account.", tone: "sage", mode: "signin" },
   "notice=reset": { text: "If that email exists, a reset link is on its way.", tone: "sage", mode: "signin" },
 };
@@ -210,7 +211,7 @@ function SignInDialogInner() {
     >
       <div className="flex items-start justify-between gap-4">
         <h2 id="sign-in-title" className="font-display text-step-3 leading-title text-text">
-          Welcome to Scout
+          Welcome to Prospect
         </h2>
         <button
           type="button"
@@ -337,7 +338,7 @@ function SignInDialogInner() {
         <Link href="/privacy" className="underline underline-offset-4 hover:text-text">
           Privacy
         </Link>
-        . Scout uses only the cookies needed to keep you signed in.
+        . Prospect uses only the cookies needed to keep you signed in.
       </p>
     </dialog>
   );

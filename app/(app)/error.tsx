@@ -6,10 +6,11 @@ import { ArrowCounterClockwiseIcon } from "@/components/icons";
 
 // List-level error state for the (app) routes (doc 3 §2/§3: inline, one
 // recovery action). Without this, a failed server fetch fell through to
-// Next's default crash page. D15 pre-deployment checklist: no error message
-// or stack text is rendered — error.digest (an opaque correlation id, not the
-// message) is the only thing logged, and only to the console for now (a real
-// server-side log sink is future work).
+// Next's default crash page. "Failures are loud and named" (CONTEXT.md):
+// error.message (server text like "DB_QUERY_FAILED (roles): ...", never a
+// stack trace) renders under the heading, and error.digest (an opaque
+// correlation id) is logged to the console for now (a real server-side log
+// sink is future work).
 export default function AppError({
   error,
   reset,
@@ -29,6 +30,9 @@ export default function AppError({
       <p className="text-sm text-text" role="alert">
         Something went wrong loading this view.
       </p>
+      {error.message ? (
+        <p className="font-mono text-[11px] text-text-dim">{error.message}</p>
+      ) : null}
       <div className="flex gap-3">
         <button
           type="button"

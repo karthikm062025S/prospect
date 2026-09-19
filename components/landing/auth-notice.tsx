@@ -18,7 +18,7 @@ function AuthNoticeInner() {
       role="status"
       className="mt-4 inline-flex min-h-11 items-center gap-3 rounded-pill border border-ink-text/40 bg-ink/40 px-4 text-step-xs text-ink-text"
     >
-      Google sign-in did not finish. Try again.
+      That link did not work. Try again.
       <button
         type="button"
         onClick={() => router.replace("/welcome", { scroll: false })}

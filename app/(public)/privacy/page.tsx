@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-export const metadata: Metadata = { title: "Privacy · Scout" };
+export const metadata: Metadata = { title: "Privacy · Prospect" };
 
 export default function PrivacyPage() {
   return (
@@ -14,7 +14,7 @@ export default function PrivacyPage() {
           Privacy
         </h1>
         <p className="text-text-dim">
-          Scout is operated by its maker, working solo. This page explains, in plain language,
+          Prospect is operated by its maker, working solo. This page explains, in plain language,
           what the app stores and why. It isn&apos;t legal advice.
         </p>
       </div>
@@ -74,7 +74,7 @@ export default function PrivacyPage() {
 
       <section className="flex flex-col gap-3">
         <h2 className="font-label text-[11px] uppercase tracking-label text-text">Children</h2>
-        <p className="text-text-dim">Scout isn&apos;t for anyone under 16.</p>
+        <p className="text-text-dim">Prospect isn&apos;t for anyone under 16.</p>
       </section>
 
       <section className="flex flex-col gap-3">
@@ -88,7 +88,7 @@ export default function PrivacyPage() {
         href="/welcome"
         className="min-h-11 self-start font-sans text-sm text-text-dim underline-offset-4 hover:text-text hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage"
       >
-        ← Back to Scout
+        ← Back to Prospect
       </Link>
     </main>
   );

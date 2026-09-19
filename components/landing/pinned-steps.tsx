@@ -24,9 +24,9 @@ import { useSettled } from "@/components/motion/settled";
 // D19.3: the user's story, not a feature list. 01 the pain, 02 what changes,
 // 03 the outcome.
 const STEPS = [
-  "You found out about the posting a day late.",
-  "Scout checks about 1,000 boards every few hours.",
-  "You apply early and track it all in one private place.",
+  "You found out about the right role too late to prepare for it.",
+  "Prospect ranks the live feed for you and turns the gaps into a roadmap.",
+  "You apply to roles that fit, with a plan to close what's missing.",
 ] as const;
 
 const SPAN = 1 / STEPS.length;
