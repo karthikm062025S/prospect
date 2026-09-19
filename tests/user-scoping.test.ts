@@ -47,6 +47,13 @@ const ALLOWLIST: Array<{ file: string; table: string; match: RegExp; reason: str
     reason:
       "agent_runs is an audit row keyed by its own server-generated uuid, returned by startAgentRun to the same request; the id is never user-supplied. Debt: pass user_id through finishAgentRun once the Profile and Roadmap agents share one signature",
   },
+  {
+    file: "app/api/match/route.ts",
+    table: "profiles",
+    match: /^"select user_id from profiles"$/,
+    reason:
+      "the X-Watcher-Secret + ?all=1 branch is the Databricks Orchestrator's hourly re-score job (build/MISSION.md D14/L2c brief), not a user request -- it has no single owner to scope to by design and must enumerate every profile exactly once per run, the same service-tier shape as the feedback-server.ts global-count entries above",
+  },
 ];
 
 function sourceFiles(dir: string): string[] {
