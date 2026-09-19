@@ -143,15 +143,12 @@ for table_name, select_clause in SOURCE_TABLES.items():
     prior_silver_count = existing_row_count(silver_name)
 
     if len(rows) == 0:
-        if prior_silver_count > 0:
-            raise RuntimeError(
-                f"SYNC_EMPTY_SOURCE: Lakebase table '{table_name}' returned 0 rows but "
-                f"{silver_name} already holds {prior_silver_count} — refusing to overwrite "
-                "with an empty snapshot. This is an error, not a truncate."
-            )
-        print(f"{table_name}: 0 rows in Lakebase — nothing to sync yet, {bronze_name}/{silver_name} untouched")
-        summary[table_name] = {"bronze": 0, "silver": prior_silver_count}
-        continue
+        # Fail-loud (CONTEXT 13:25): an empty app table at sync time is a misconfiguration
+        # (the baseline import or the watcher did not run), never a normal state.
+        raise RuntimeError(
+            f"SYNC_EMPTY_SOURCE: Lakebase table '{table_name}' returned 0 rows "
+            f"({silver_name} holds {prior_silver_count}). Refusing to sync an empty snapshot."
+        )
 
     for row in rows:
         row["_synced_at"] = synced_at
