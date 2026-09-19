@@ -1,0 +1,70 @@
+{
+  "version": 2,
+  "config": {
+    "sample_questions": [
+      { "id": "10000000000000000000000000000001", "question": ["How many postings landed in the last 7 days, and from which sources?"] },
+      { "id": "10000000000000000000000000000002", "question": ["Which companies have the most open postings right now?"] },
+      { "id": "10000000000000000000000000000003", "question": ["Of the O*NET tasks with a measured exposure score, how many are human-led, AI-assisted and automatable?"] },
+      { "id": "10000000000000000000000000000004", "question": ["Which archetypes cover software engineering roles, and what are their aliases?"] },
+      { "id": "10000000000000000000000000000005", "question": ["Which VT courses teach machine learning, and what are their prerequisites?"] },
+      { "id": "10000000000000000000000000000006", "question": ["How many open postings are there per role type and season?"] }
+    ]
+  },
+  "data_sources": {
+    "tables": [
+      { "identifier": "scout.core.archetypes" },
+      { "identifier": "scout.core.onet_tasks" },
+      { "identifier": "scout.core.silver_companies" },
+      { "identifier": "scout.core.silver_roles" },
+      { "identifier": "scout.core.task_exposure" },
+      { "identifier": "scout.core.vt_checksheets" },
+      { "identifier": "scout.core.vt_courses" },
+      { "identifier": "scout.core.vt_majors" }
+    ]
+  },
+  "instructions": {
+    "example_question_sqls": [
+      {
+        "id": "20000000000000000000000000000001",
+        "question": ["How many postings landed in the last 7 days, by source?"],
+        "sql": ["SELECT silver_roles.source, COUNT(*) AS postings FROM scout.core.silver_roles WHERE silver_roles.created_at >= current_timestamp() - INTERVAL 7 DAYS GROUP BY silver_roles.source ORDER BY postings DESC"]
+      },
+      {
+        "id": "20000000000000000000000000000002",
+        "question": ["Of the tasks with a measured exposure score, how many are human-led, AI-assisted and automatable?"],
+        "sql": ["SELECT CASE WHEN task_exposure.automation_share <= 0.33 THEN 'Human-led' WHEN task_exposure.automation_share >= 0.66 THEN 'Automatable' ELSE 'AI-assisted' END AS label, COUNT(*) AS tasks FROM scout.core.task_exposure GROUP BY 1 ORDER BY tasks DESC"]
+      },
+      {
+        "id": "20000000000000000000000000000003",
+        "question": ["Which companies have the most open postings?"],
+        "sql": ["SELECT silver_companies.name, COUNT(*) AS open_postings FROM scout.core.silver_roles JOIN scout.core.silver_companies ON silver_roles.company_id = silver_companies.id WHERE silver_roles.lifecycle = 'open' GROUP BY silver_companies.name ORDER BY open_postings DESC LIMIT 20"]
+      }
+    ],
+    "join_specs": [
+      {
+        "id": "30000000000000000000000000000001",
+        "left": { "identifier": "scout.core.silver_roles", "alias": "silver_roles" },
+        "right": { "identifier": "scout.core.silver_companies", "alias": "silver_companies" },
+        "sql": ["`silver_roles`.`company_id` = `silver_companies`.`id`", "--rt=FROM_RELATIONSHIP_TYPE_MANY_TO_ONE--"]
+      },
+      {
+        "id": "30000000000000000000000000000002",
+        "left": { "identifier": "scout.core.task_exposure", "alias": "task_exposure" },
+        "right": { "identifier": "scout.core.onet_tasks", "alias": "onet_tasks" },
+        "sql": ["`task_exposure`.`task_id` = `onet_tasks`.`task_id`", "--rt=FROM_RELATIONSHIP_TYPE_ONE_TO_ONE--"]
+      }
+    ],
+    "text_instructions": [
+      {
+        "id": "40000000000000000000000000000001",
+        "content": [
+          "silver_roles is the hourly Delta mirror of the app's live job postings (one row per posting). A posting is open when lifecycle = 'open'. 'Landed', 'dropped' or 'new' means created_at (the timestamp the app first saw it); 'this week' means created_at >= current_timestamp() - INTERVAL 7 DAYS. role_type is the function (SWE, AI, Data, Product, Sales, Finance, Operations, Other); season is the target term (summer_2027, fall_2027, coop, unspecified). level is not populated yet: answer level questions with 'not classified yet', never infer it from the title.",
+          "Company names live in silver_companies (join silver_roles.company_id = silver_companies.id). tier is the company's dream-tier bucket.",
+          "task_exposure holds the published automation_share per O*NET task (source column names the dataset). Labels: automation_share <= 0.33 is Human-led, >= 0.66 is Automatable, in between is AI-assisted. Only tasks present in task_exposure are measured; onet_tasks rows with no task_exposure row are 'not measured' and must be reported as such, never as human-led. Never say a job is safe or doomed.",
+          "archetypes is the open-vocabulary registry of role archetypes (name, ~50-word definition, aliases). There is no posting-to-archetype link table in this schema yet, so questions about postings per archetype cannot be answered; say so.",
+          "vt_courses, vt_majors and vt_checksheets are Virginia Tech's 2026-2027 catalog. Course codes look like 'CS 4824'; search title and description with ILIKE for topics. vt_checksheets maps a major to the course codes its checksheet requires."
+        ]
+      }
+    ]
+  }
+}

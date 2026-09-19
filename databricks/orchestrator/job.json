@@ -1,0 +1,25 @@
+{
+  "name": "scout-orchestrator",
+  "max_concurrent_runs": 1,
+  "timeout_seconds": 900,
+  "tasks": [
+    {
+      "task_key": "orchestrate",
+      "notebook_task": {
+        "notebook_path": "/Workspace/Users/<user>/scout/orchestrator/orchestrate",
+        "source": "WORKSPACE",
+        "base_parameters": {
+          "catalog": "scout",
+          "schema": "core",
+          "match_url": "https://scout-vthacks.vercel.app/api/match?all=1",
+          "job_run_id": "{{job.run_id}}"
+        }
+      }
+    }
+  ],
+  "schedule": {
+    "quartz_cron_expression": "0 20 * * * ?",
+    "timezone_id": "America/New_York",
+    "pause_status": "UNPAUSED"
+  }
+}
