@@ -35,11 +35,15 @@ export async function logApplication(
   // Escape LIKE metacharacters so "S&P_Global" style names match literally
   // (exact, case-insensitive match — never a substring search).
   const likeSafeName = name.replace(/[\\%_]/g, "\\$&");
-  const [existing] = await q<{ id: string; watch_status: string; is_watched: boolean }>(
-    "select id, watch_status, is_watched from companies where name ilike $1 limit 1",
+  // limit 2: a second match means the name is ambiguous (the old .maybeSingle()
+  // threw on duplicates; companies_name_ci_uidx makes this unreachable in practice).
+  const matches = await q<{ id: string; watch_status: string; is_watched: boolean }>(
+    "select id, watch_status, is_watched from companies where name ilike $1 limit 2",
     [likeSafeName],
     "companies",
   );
+  if (matches.length > 1) throw new Error(`DB_AMBIGUOUS (companies): ${matches.length} companies match name ${name}`);
+  const [existing] = matches;
 
   let companyId: string;
   if (existing) {
@@ -57,7 +61,7 @@ export async function logApplication(
   }
 
   // An omitted date_applied takes the column default (today).
-  const [application] = await q<Application>(
+  const inserted = await q<Application>(
     `insert into applications (user_id, company_id, role, date_applied, resume_file, visa_flag, jd_link, notes, status_changed_at)
      values ($1, $2, $3, coalesce($4::date, current_date), $5, $6, $7, $8, $9)
      returning *`,
@@ -74,5 +78,6 @@ export async function logApplication(
     ],
     "applications",
   );
-  return application;
+  if (inserted.length !== 1) throw new Error(`DB_EXPECTED_ONE (applications): got ${inserted.length}`);
+  return inserted[0];
 }

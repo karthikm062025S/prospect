@@ -46,6 +46,13 @@ test("logApplication without an explicit clock still stamps a current ISO timest
   assert.match(app.date_applied, /^\d{4}-\d{2}-\d{2}$/);
 });
 
+test("companies_name_ci_uidx rejects two company rows that differ only by case", async () => {
+  await insertRow(db.q, "companies", { id: COMPANY, name: "Meta" });
+  await assert.rejects(insertRow(db.q, "companies", { name: "META" }), /DB_QUERY_FAILED \(companies\).*companies_name_ci_uidx/);
+  const [{ n }] = await db.q<{ n: number }>("select count(*)::int as n from companies");
+  assert.equal(n, 1);
+});
+
 test("logApplication matches the company name exactly (case-insensitive), never as a substring", async () => {
   await insertRow(db.q, "companies", { id: COMPANY, name: "Meta" });
   await logApplication(db.q, UID, { company: "meta", role: "Intern" });

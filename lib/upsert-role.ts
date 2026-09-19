@@ -316,12 +316,13 @@ export function isSettableLifecycle(
 // keys upsertRole assigns, never from the payload.
 async function insertRoleRow(q: QueryFn, row: Record<string, unknown>): Promise<Record<string, unknown>> {
   const keys = Object.keys(row);
-  const [inserted] = await q<Record<string, unknown>>(
+  const inserted = await q<Record<string, unknown>>(
     `insert into roles (${keys.join(", ")}) values (${keys.map((_, i) => `$${i + 1}`).join(", ")}) returning *`,
     keys.map((key) => row[key]),
     "roles",
   );
-  return inserted;
+  if (inserted.length !== 1) throw new Error(`DB_EXPECTED_ONE (roles): got ${inserted.length}`);
+  return inserted[0];
 }
 
 async function updateRoleRow(q: QueryFn, id: string, patch: Record<string, unknown>): Promise<Record<string, unknown>> {
@@ -331,7 +332,7 @@ async function updateRoleRow(q: QueryFn, id: string, patch: Record<string, unkno
     [id, ...keys.map((key) => patch[key])],
     "roles",
   );
-  if (rows.length !== 1) throw new Error(`role update failed: role ${id} not found`);
+  if (rows.length !== 1) throw new Error(`DB_EXPECTED_ONE (roles): got ${rows.length} for role ${id}`);
   return rows[0];
 }
 
@@ -351,11 +352,15 @@ export async function upsertRole(
 
   // Escape LIKE metacharacters so "S&P_Global" style names match literally.
   const likeSafeName = company.replace(/[\\%_]/g, "\\$&");
-  const [existingCompany] = await q<{ id: string }>(
-    "select id from companies where name ilike $1 limit 1",
+  // limit 2: a second match means the name is ambiguous (the old .maybeSingle()
+  // threw on duplicates; companies_name_ci_uidx makes this unreachable in practice).
+  const companyMatches = await q<{ id: string }>(
+    "select id from companies where name ilike $1 limit 2",
     [likeSafeName],
     "companies",
   );
+  if (companyMatches.length > 1) throw new Error(`DB_AMBIGUOUS (companies): ${companyMatches.length} companies match name ${company}`);
+  const [existingCompany] = companyMatches;
 
   let companyId: string;
   if (existingCompany) {

@@ -58,17 +58,19 @@ export async function importBaseline(q, dir = baselineDir(), log = () => {}) {
           inserted += await insertBatch(q, table, columns, batch);
           await q(`release savepoint b`);
         } catch {
-          // Find the offending row so the failure names it, then abort everything.
+          // Retry row by row so a failure names the offending row (and aborts
+          // everything); rows that succeed on retry still count as inserted.
           await q(`rollback to savepoint b`);
           for (const row of batch) {
             await q(`savepoint r`);
             try {
-              await insertBatch(q, table, columns, [row]);
+              inserted += await insertBatch(q, table, columns, [row]);
               await q(`release savepoint r`);
             } catch (err) {
               throw new Error(`${table} row ${row.id} rejected: ${err.message}`);
             }
           }
+          await q(`release savepoint b`);
         }
       }
       report[table] = { inserted, skipped: rows.length - inserted, total: rows.length };
