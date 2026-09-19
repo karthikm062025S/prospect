@@ -40,6 +40,13 @@ const ALLOWLIST: Array<{ file: string; table: string; match: RegExp; reason: str
     match: /count\(\*\)::int as n from feedback where created_at >= \$1["`]$/,
     reason: "the global daily ceiling (200/day across every sender) is a count over all rows by design",
   },
+  {
+    file: "lib/student-profile.ts",
+    table: "agent_runs",
+    match: /update agent_runs set status = \$2, error = \$3, counts = \$4, finished_at = now\(\) where id = \$1/,
+    reason:
+      "agent_runs is an audit row keyed by its own server-generated uuid, returned by startAgentRun to the same request; the id is never user-supplied. Debt: pass user_id through finishAgentRun once the Profile and Roadmap agents share one signature",
+  },
 ];
 
 function sourceFiles(dir: string): string[] {
