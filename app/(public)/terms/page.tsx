@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-export const metadata: Metadata = { title: "Terms · Scout" };
+export const metadata: Metadata = { title: "Terms · Prospect" };
 
 export default function TermsPage() {
   return (
@@ -12,7 +12,7 @@ export default function TermsPage() {
         </p>
         <h1 className="font-display text-step-4 leading-display tracking-display text-text">Terms</h1>
         <p className="text-text-dim">
-          Scout is operated by its maker, working solo. This page explains, in plain language,
+          Prospect is operated by its maker, working solo. This page explains, in plain language,
           the terms of using it. It isn&apos;t legal advice.
         </p>
       </div>
@@ -20,7 +20,7 @@ export default function TermsPage() {
       <section className="flex flex-col gap-3">
         <h2 className="font-label text-[11px] uppercase tracking-label text-text">This is an MVP</h2>
         <p className="text-text-dim">
-          Scout is provided as-is, still early, and can change or break. There&apos;s no guarantee
+          Prospect is provided as-is, still early, and can change or break. There&apos;s no guarantee
           that every posting in the feed is current or accurate. Always verify a listing on the
           employer&apos;s own site before relying on it.
         </p>
@@ -63,7 +63,7 @@ export default function TermsPage() {
         href="/welcome"
         className="min-h-11 self-start font-sans text-sm text-text-dim underline-offset-4 hover:text-text hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage"
       >
-        ← Back to Scout
+        ← Back to Prospect
       </Link>
     </main>
   );

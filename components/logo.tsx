@@ -41,12 +41,12 @@ export function Logo({
   return (
     <Link
       href={href}
-      aria-label="Scout home"
+      aria-label="Prospect home"
       className={`flex min-h-11 shrink-0 items-center gap-2 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage ${className}`}
     >
       <LogoMark size={size} />
       <span className="font-display leading-none tracking-tight" style={{ fontSize: `${size * 0.75}px` }}>
-        Scout
+        Prospect
       </span>
     </Link>
   );

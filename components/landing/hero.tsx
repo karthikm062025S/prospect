@@ -34,9 +34,9 @@ const PIN_VH = 50;
 // covered, including in the settled state, where there is no pin at all.
 const SHEET_OVERLAP_VH = 24;
 
-const HEADLINE = "Apply early. Stop refreshing career pages.";
+const HEADLINE = "Find what fits. Build the plan to get there.";
 const SUB =
-  "You hear about a posting days after it went up, and by then you are behind. Scout watches about 1,000 employer job boards and shows you what is new.";
+  "Upload a resume and an unofficial transcript. Four agents rank the live opportunity feed for your goal and turn what is missing into a semester roadmap of real Virginia Tech courses, clubs and certifications.";
 
 export function Hero({
   liveLine,
@@ -80,9 +80,9 @@ export function Hero({
           <div className="mx-auto w-full max-w-page">
             <Rise delay={0.05} immediate>
               <p className="scout-eyebrow max-w-full whitespace-nowrap text-ink-text">
-                <span className="min-[480px]:hidden">Free to browse</span>
+                <span className="min-[480px]:hidden">Strike gold.</span>
                 <span className="hidden min-[480px]:inline">
-                  Internship postings, free to browse
+                  Strike gold. Every role, every major.
                 </span>
               </p>
             </Rise>

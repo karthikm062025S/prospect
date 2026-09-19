@@ -152,7 +152,7 @@ function Row({ row, delay, className = "" }: { row: FeedRow; delay: number; clas
 //
 // Now the click opens a small non-modal prompt anchored to the row that says
 // WHY first (the same SIGN_IN_REASON sentence the hero and the closing CTA
-// carry, D19/D27), with the Google button inside it. Nothing navigates until
+// carry, D19/D27), with the sign-in button inside it. Nothing navigates until
 // the visitor presses that button.
 //
 // Not a modal on purpose (viral doc rule 1: explain at the moment of the ask,
@@ -167,7 +167,7 @@ function SaveWithSignIn({ label }: { label: string }) {
   const panelId = `${id}-signin`;
   const titleId = `${id}-signin-title`;
 
-  // Focus the PANEL, not the Google button inside it: a keyboard or screen
+  // Focus the PANEL, not the sign-in button inside it: a keyboard or screen
   // reader user has to reach the reason before the control that acts on it.
   useEffect(() => {
     if (!open) return undefined;

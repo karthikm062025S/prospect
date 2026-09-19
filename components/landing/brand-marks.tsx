@@ -1,7 +1,7 @@
 // Simple Icons (Creative Commons Zero 1.0), copied verbatim from
 // C:\My_WorkSpace\design\icons\simple-icons\ at the pinned version 16.29.0.
 // The icon files are public domain; the marks themselves remain trademarks of
-// their owners and appear here only to identify a board Scout watches.
+// their owners and appear here only to identify a board Prospect watches.
 //
 // HARD RULE (D20 item 4.8): a company is only shown if its exact name is in
 // scripts/endpoints.json. tests/boards-strip.test.ts asserts it, so this list

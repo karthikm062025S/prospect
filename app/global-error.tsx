@@ -7,8 +7,10 @@ import Link from "next/link";
 // to render its own <html>/<body> — it fully REPLACES app/layout.tsx when it
 // fires, so it cannot assume the theme tokens (app/globals.css custom
 // properties, set by the root layout's inline theme script) are in effect.
-// Inline styles only, deliberately minimal, no error text or stack shown.
+// Inline styles only, deliberately minimal. "Failures are loud and named"
+// (CONTEXT.md): error.message renders as server text, never a stack trace.
 export default function GlobalError({
+  error,
   reset,
 }: {
   error: Error & { digest?: string };
@@ -37,8 +39,22 @@ export default function GlobalError({
       >
         <h1 style={{ fontSize: "1.125rem", fontWeight: 700, margin: 0 }}>Something went wrong</h1>
         <p style={{ fontSize: "0.875rem", color: "#6b6b74", margin: 0, maxWidth: "32ch" }}>
-          Scout hit an unexpected error. Reloading usually fixes it.
+          Prospect hit an unexpected error. Reloading usually fixes it.
         </p>
+        {error.message ? (
+          <p
+            style={{
+              fontFamily: "ui-monospace, monospace",
+              fontSize: "0.75rem",
+              color: "#6b6b74",
+              margin: 0,
+              maxWidth: "40ch",
+              wordBreak: "break-word",
+            }}
+          >
+            {error.message}
+          </p>
+        ) : null}
         <div style={{ display: "flex", gap: "0.75rem", marginTop: "0.5rem" }}>
           <button
             type="button"

@@ -22,7 +22,7 @@ import Link from "next/link";
 // (Karthik, session 4). Browsing needs no account; signing in buys exactly one
 // thing, a private list. Rendered under the hero CTA and the closing CTA.
 export const SIGN_IN_REASON =
-  "You sign in only to save, hide and track postings. That list stays private to you.";
+  "You sign in to build your profile. Your resume, transcript, goal and applications stay private to you.";
 
 export const SIGN_IN_EVENT = "scout:signin";
 

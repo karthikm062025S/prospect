@@ -45,13 +45,13 @@ const SITE_URL = process.env.VERCEL_PROJECT_PRODUCTION_URL
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
-  title: "Scout: apply early, without refreshing career pages",
+  title: "Prospect: the career journey for every Virginia Tech student",
   description:
-    "Scout watches about 1,000 employer job boards and shows you what is new, for your term and your kind of role. Browse without an account. Track what you applied to, privately.",
+    "Upload a resume and transcript. Four agents rank the live opportunity feed for you and build a semester roadmap of real VT courses, clubs and certifications.",
   openGraph: {
-    title: "Scout: apply early, without refreshing career pages",
+    title: "Prospect: the career journey for every Virginia Tech student",
     description:
-      "See what went live on about 1,000 employer job boards, filtered to your term and your kind of role. No account needed to look.",
+      "The live opportunity feed, ranked for you, and the semester roadmap that closes the gaps. Built on the Databricks Data Intelligence Platform.",
     images: ["/og.png"],
   },
 };
@@ -66,18 +66,18 @@ const INNER = "mx-auto w-full max-w-page";
 const FEATURES = [
   {
     Icon: FunnelIcon,
-    title: "You only see roles you would actually apply to",
-    body: "You get Summer 2027 through Summer 2028 and co-op in one list, narrowed to software, AI/ML, data, quant, product, security, hardware or design.",
+    title: "You only see roles ranked for you",
+    body: "The live feed covers internships, co-ops, new-grad, full-time and research roles in every major, ranked best to least for your goal.",
   },
   {
     Icon: LockKeyIcon,
-    title: "Nobody sees what you applied to",
-    body: "Your applications, your outreach and your notes stay yours. Everyone shares the same feed; nobody shares your tracking.",
+    title: "Your profile stays private",
+    body: "Your resume, transcript, goal and applications are yours. Everyone sees the same live feed; nobody sees your profile.",
   },
   {
     Icon: ArticleIcon,
-    title: "You read the posting without opening a tab",
-    body: "The job description opens inside Scout with the site chrome stripped out, and the employer's page is one click away when you are ready to apply.",
+    title: "Every recommendation explains itself",
+    body: "Each posting carries Human Edge labels, and each roadmap step says why it matters and which roles it moves you toward.",
   },
 ] as const;
 
@@ -86,20 +86,20 @@ const STEPS = [
   {
     n: "01",
     Icon: MagnifyingGlassIcon,
-    title: "Browse",
-    body: "Filter the feed by term and role, then open the employer's page, with no account and nothing to set up.",
+    title: "Upload",
+    body: "Add a resume, an unofficial transcript, your role types, target term and a one-sentence goal.",
   },
   {
     n: "02",
     Icon: SignInIcon,
-    title: "Sign in when you find one",
-    body: "Google or email, about ten seconds, and Scout asks you for nothing else.",
+    title: "Sign in to save your profile",
+    body: "Email and password, about ten seconds, and Prospect asks you for nothing else.",
   },
   {
     n: "03",
     Icon: BookmarkSimpleIcon,
-    title: "Track it",
-    body: "Mark it applied, keep your notes and a timeline.",
+    title: "Get your feed and your roadmap",
+    body: "See the live feed ranked for you and the semester roadmap that closes the gaps.",
   },
 ] as const;
 
@@ -205,7 +205,7 @@ export default async function WelcomePage({
               runway's height rather than in space above the statements. */}
           <section id="story" aria-labelledby="story-heading" className="relative px-gutter pb-section">
             <h2 id="story-heading" className="sr-only">
-              What Scout changes
+              What Prospect changes
             </h2>
             <div className={INNER}>
               <PinnedSteps />
@@ -225,7 +225,7 @@ export default async function WelcomePage({
           />
         </ArtBand>
 
-        {/* ---------------- 5. How to use Scout ---------------- */}
+        {/* ---------------- 5. How to use Prospect ---------------- */}
         <section id="how-to" aria-labelledby="how-to-heading" className={`bg-bg ${BAND}`}>
           <div className={INNER}>
             <Rise>
@@ -234,7 +234,7 @@ export default async function WelcomePage({
             <TextReveal
               as="h2"
               id="how-to-heading"
-              text="How to use Scout, in three steps."
+              text="How to use Prospect, in three steps."
               granularity="word"
               className={H2}
             />
@@ -270,7 +270,7 @@ export default async function WelcomePage({
           <TextReveal
             as="h2"
             id="coverage-heading"
-            text="What Scout is watching right now."
+            text="What Prospect is watching right now."
             granularity="word"
             tone="ink-text"
             className="font-display mt-4 max-w-[18ch] text-balance text-step-3 leading-display tracking-display text-ink-text lg:text-step-4"
@@ -327,7 +327,7 @@ export default async function WelcomePage({
                 <p className={EYEBROW}>Boards we watch</p>
               </Rise>
               <h2 id="boards-heading" className="sr-only">
-                Boards Scout watches
+                Boards Prospect watches
               </h2>
               <Rise delay={0.06}>
                 <BoardsList />
@@ -337,7 +337,7 @@ export default async function WelcomePage({
           <BoardsStrip />
         </section>
 
-        {/* ---------------- 9. Why Scout ---------------- */}
+        {/* ---------------- 9. Why Prospect ---------------- */}
         <section id="why" aria-labelledby="why-heading" className={`bg-raised ${BAND}`}>
           <div className={INNER}>
             {/* v7 S4 UI-EYES: the 68ch measure used to sit on the same element as
@@ -350,22 +350,21 @@ export default async function WelcomePage({
                 <p className={EYEBROW}>Why this exists</p>
               </Rise>
               <h2 id="why-heading" className="sr-only">
-                Why Scout exists
+                Why Prospect exists
               </h2>
               {/* D14: the same word-by-word reveal every other section opens
                   with, so #why is no longer the one band that just fades. */}
               <div className="mt-6 space-y-4">
                 <TextReveal
                   as="p"
-                  text="I was refreshing the same career pages every morning, opening thirty tabs, and still finding out about a posting a day after it went up. The spreadsheet I kept to fix that lied to me within a week, because I only remembered to update it when something had already gone wrong."
+                  text="Career guidance at a large university is scattered across separate postings, course catalogs and club pages, with no single view of how they connect to one goal. A ranked feed with no plan behind it, or a plan built without knowing what is actually open right now, both fall short on their own."
                   granularity="word"
                   className="text-pretty text-step-1 leading-body"
                 />
                 <Rise delay={0.06}>
                   <p className="text-pretty text-step-1 leading-body text-text-dim">
-                    Scout is the tool one student built for that grind, and it is open to everyone
-                    now as an MVP. Some of it is rough and some of it is missing. It gets better
-                    only through what you tell me.
+                    Prospect puts the ranked feed and the roadmap that closes the gaps on one
+                    screen, so the plan always matches what is live.
                   </p>
                 </Rise>
               </div>
@@ -376,13 +375,13 @@ export default async function WelcomePage({
         {/* ---------------- The one handwritten line, on the wave ---------- */}
         <ArtBand work={RISING_WAVES} labelledBy="sign-off-heading">
           <h2 id="sign-off-heading" className="sr-only">
-            Built by a student
+            Sign off
           </h2>
           <Rise>
             {/* PERF: HandLine is this same <p>; it only defers WHEN the
                 150 KB Playwrite face is requested. See hand-line.tsx. */}
             <HandLine className="max-w-[14ch] text-balance text-step-5 leading-display tracking-display text-ink-text lg:text-step-6">
-              Built by a student who got tired of refreshing career pages.
+              Strike gold, then build the plan to get there.
             </HandLine>
           </Rise>
         </ArtBand>
@@ -393,7 +392,7 @@ export default async function WelcomePage({
             <TextReveal
               as="h2"
               id="close-heading"
-              text="Find it first. Track it privately."
+              text="Find your fit. Build your plan."
               granularity="word"
               className={`${H2} !mt-0`}
             />
@@ -480,10 +479,10 @@ export default async function WelcomePage({
               aria-hidden="true"
               className="font-display select-none text-step-hero leading-hero tracking-display text-text-unrevealed"
             >
-              Scout
+              Prospect
             </p>
             <p className="mt-6 font-sans text-step-2xs tabular-nums text-text-dim">
-              © 2026 Scout. An MVP. Verify every posting on the employer&rsquo;s site.
+              © 2026 Prospect. Built at VTHacks 14. Verify every posting on the employer&rsquo;s site.
             </p>
           </Rise>
         </div>

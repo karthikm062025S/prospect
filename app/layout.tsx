@@ -53,17 +53,20 @@ export const metadata: Metadata = {
       ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
       : "http://localhost:3000",
   ),
-  title: "Scout",
-  description: "Internship postings minutes after they go live, tracked privately.",
+  title: "Prospect",
+  description:
+    "The career journey for every Virginia Tech student: a live opportunity feed ranked for you and a semester roadmap to close the gaps.",
   openGraph: {
-    title: "Scout",
-    description: "Internship postings minutes after they go live, tracked privately.",
-    images: [{ url: "/og.png", width: 1200, height: 630, alt: "Scout" }],
+    title: "Prospect",
+    description:
+      "The career journey for every Virginia Tech student: a live opportunity feed ranked for you and a semester roadmap to close the gaps.",
+    images: [{ url: "/og.png", width: 1200, height: 630, alt: "Prospect" }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Scout",
-    description: "Internship postings minutes after they go live, tracked privately.",
+    title: "Prospect",
+    description:
+      "The career journey for every Virginia Tech student: a live opportunity feed ranked for you and a semester roadmap to close the gaps.",
     images: ["/og.png"],
   },
 };

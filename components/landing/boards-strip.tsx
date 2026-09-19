@@ -58,7 +58,7 @@ export function BoardsStrip() {
 export function BoardsList() {
   return (
     <p className="sr-only">
-      Boards Scout watches include {ALL_BOARDS.join(", ")}, and about a
+      Boards Prospect watches include {ALL_BOARDS.join(", ")}, and about a
       thousand more.
     </p>
   );
