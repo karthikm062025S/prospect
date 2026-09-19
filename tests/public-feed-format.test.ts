@@ -61,7 +61,7 @@ for (const file of PUBLIC_READS) {
 
   test(`${file} still scopes the public read to open roles`, () => {
     const src = readFileSync(new URL(`../${file}`, import.meta.url), "utf8");
-    assert.match(src, /\.eq\("lifecycle", "open"\)/);
+    assert.match(src, /lifecycle = 'open'/);
   });
 }
 

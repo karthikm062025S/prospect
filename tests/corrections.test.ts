@@ -1,4 +1,4 @@
-import { test } from "node:test";
+import { test, before, beforeEach, after } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
@@ -12,14 +12,33 @@ import {
 } from "../lib/corrections.ts";
 import { SEASON_ORDER, type Season } from "../lib/season.ts";
 import { FAMILY_ORDER, type Family } from "../lib/family.ts";
-import { fakeSupabase, type Row } from "./helpers/fake-supabase.ts";
+import { makeTestDb, insertRow, truncateAll, uuid, type TestDb } from "./helpers/test-db.ts";
 
 const ROOT = resolve(import.meta.dirname, "..");
 const VALID_ROLE_ID = "11111111-1111-1111-1111-111111111111";
 const OTHER_ROLE_ID = "22222222-2222-2222-2222-222222222222";
-const UID = "user-a";
-const OTHER_UID = "user-b";
+const UID = uuid(1);
+const OTHER_UID = uuid(2);
+const COMPANY = uuid(10);
 const NOW = "2026-09-16T12:00:00.000Z";
+
+// The write path runs against the real schema (pglite): role_corrections has a
+// real FK to roles, a real PK on (user_id, role_id, field) and the value CHECK.
+let db: TestDb;
+before(async () => {
+  db = await makeTestDb();
+});
+after(() => db.close());
+beforeEach(async () => {
+  await truncateAll(db.q);
+  await insertRow(db.q, "companies", { id: COMPANY, name: "Acme" });
+  await insertRow(db.q, "roles", { id: VALID_ROLE_ID, company_id: COMPANY, title: "Software Engineer Intern" });
+  await insertRow(db.q, "roles", { id: OTHER_ROLE_ID, company_id: COMPANY, title: "Data Analyst Intern" });
+});
+const correctionRows = () =>
+  db.q<{ user_id: string; role_id: string; field: string; value: string }>(
+    "select user_id, role_id, field, value from role_corrections order by user_id, field",
+  );
 
 // --- parseCorrection ---------------------------------------------------
 
@@ -76,34 +95,36 @@ test("every Season and Family value is accepted by parseCorrection", () => {
 // --- saveCorrection / removeCorrection ---------------------------------
 
 test("saveCorrection writes exactly one row carrying the given uid; upsert on repeat stays one row with the new value", async () => {
-  const tables: Record<string, Row[]> = { role_corrections: [] };
-  const supabase = fakeSupabase(tables);
   const c: Correction = { role_id: VALID_ROLE_ID, field: "season", value: "fall_2027" };
 
-  await saveCorrection(supabase, UID, c, NOW);
-  assert.equal(tables.role_corrections.length, 1);
-  assert.equal(tables.role_corrections[0].user_id, UID);
-  assert.equal(tables.role_corrections[0].value, "fall_2027");
+  await saveCorrection(db.q, UID, c, NOW);
+  let rows = await correctionRows();
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].user_id, UID);
+  assert.equal(rows[0].value, "fall_2027");
 
-  await saveCorrection(supabase, UID, { ...c, value: "spring_2028" }, NOW);
-  assert.equal(tables.role_corrections.length, 1, "upsert on repeat must not insert a second row");
-  assert.equal(tables.role_corrections[0].value, "spring_2028");
+  await saveCorrection(db.q, UID, { ...c, value: "spring_2028" }, NOW);
+  rows = await correctionRows();
+  assert.equal(rows.length, 1, "upsert on repeat must not insert a second row");
+  assert.equal(rows[0].value, "spring_2028");
+});
+
+test("the database itself rejects a value outside the field's allowed list (defense below parseCorrection)", async () => {
+  await assert.rejects(
+    saveCorrection(db.q, UID, { role_id: VALID_ROLE_ID, field: "season", value: "winter" }, NOW),
+    /DB_QUERY_FAILED \(role_corrections\)/,
+  );
 });
 
 test("removeCorrection deletes only the matching (uid, role, field) row", async () => {
-  const tables: Record<string, Row[]> = {
-    role_corrections: [
-      { user_id: UID, role_id: VALID_ROLE_ID, field: "season", value: "fall_2027" },
-      { user_id: UID, role_id: VALID_ROLE_ID, field: "family", value: "swe" },
-      { user_id: OTHER_UID, role_id: VALID_ROLE_ID, field: "season", value: "coop" },
-    ],
-  };
-  const supabase = fakeSupabase(tables);
+  await insertRow(db.q, "role_corrections", { user_id: UID, role_id: VALID_ROLE_ID, field: "season", value: "fall_2027" });
+  await insertRow(db.q, "role_corrections", { user_id: UID, role_id: VALID_ROLE_ID, field: "family", value: "swe" });
+  await insertRow(db.q, "role_corrections", { user_id: OTHER_UID, role_id: VALID_ROLE_ID, field: "season", value: "coop" });
 
-  await removeCorrection(supabase, UID, VALID_ROLE_ID, "season");
+  await removeCorrection(db.q, UID, VALID_ROLE_ID, "season");
 
   assert.deepEqual(
-    tables.role_corrections.map((r) => ({ user_id: r.user_id, field: r.field })),
+    (await correctionRows()).map((r) => ({ user_id: r.user_id, field: r.field })),
     [
       { user_id: UID, field: "family" },
       { user_id: OTHER_UID, field: "season" },
@@ -235,11 +256,12 @@ test("overlayCorrections: a correction for a role not in rows is ignored", () =>
 
 // --- structural: never a write to public.roles --------------------------
 
-test("lib/corrections.ts and the correction actions in app/role-actions.ts never call .from(\"roles\")", () => {
+test("lib/corrections.ts and the correction actions in app/role-actions.ts never write to the shared roles table", () => {
   const correctionsSrc = readFileSync(join(ROOT, "lib", "corrections.ts"), "utf8");
   const actionsSrc = readFileSync(join(ROOT, "app", "role-actions.ts"), "utf8");
-  assert.doesNotMatch(correctionsSrc, /\.from\(\s*["']roles["']\s*\)/, "lib/corrections.ts must never write to public.roles");
-  assert.doesNotMatch(actionsSrc, /\.from\(\s*["']roles["']\s*\)/, "app/role-actions.ts must never write to public.roles");
+  const WRITES_ROLES = /\b(?:update|insert\s+into|delete\s+from)\s+roles\b/i;
+  assert.doesNotMatch(correctionsSrc, WRITES_ROLES, "lib/corrections.ts must never write to roles");
+  assert.doesNotMatch(actionsSrc, WRITES_ROLES, "app/role-actions.ts must never write to roles");
   // sanity: the file actually contains the two actions this test is meant to guard.
   assert.match(actionsSrc, /export async function correctRoleAction/);
   assert.match(actionsSrc, /export async function uncorrectRoleAction/);

@@ -1,4 +1,4 @@
-import { test } from "node:test";
+import { test, before, beforeEach, after } from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
@@ -8,7 +8,9 @@ import { parseAlertEmail, ingestCandidates, loadContext, detectSource } from "..
 import { upsertRole, type UpsertRoleInput } from "../lib/upsert-role.ts";
 import { buildHomeList } from "../lib/sort.ts";
 import type { RoleWithCompany } from "../lib/types.ts";
-import { fakeSupabase, type Row } from "./helpers/fake-supabase.ts";
+import { makeTestDb, truncateAll, type TestDb } from "./helpers/test-db.ts";
+
+type Row = Record<string, unknown>;
 
 // SC-3 (01-prd.md): "Zero duplicate visible roles across a full watcher cycle,
 // verified by a dedup regression test suite over real ingest fixtures." RB-006 /
@@ -20,10 +22,9 @@ import { fakeSupabase, type Row } from "./helpers/fake-supabase.ts";
 // tests/read-alerts.test.ts already prove parse the real fixtures correctly
 // (parseFeed/ingestFeeds, parseAlertEmail/ingestCandidates) — it never
 // re-implements parsing — then feeds every surviving candidate through the REAL
-// upsertRole (tests/tombstone-replay.test.ts's fake Supabase client, moved to
-// tests/helpers/fake-supabase.ts so both suites share one stub) to prove the
-// full ingest-cycle dedup identity, and finally through the REAL buildHomeList
-// (tests/sort.test.ts) to prove the display-collapse identity.
+// upsertRole against the REAL schema (pglite, tests/helpers/test-db.ts) to
+// prove the full ingest-cycle dedup identity, and finally through the REAL
+// buildHomeList (tests/sort.test.ts) to prove the display-collapse identity.
 
 const here = dirname(fileURLToPath(import.meta.url));
 const readFeedFx = (name: string) => readFile(join(here, "fixtures", "feeds", name), "utf8");
@@ -86,24 +87,28 @@ async function buildAllCandidates() {
   };
 }
 
-function freshTables(): Record<string, Row[]> {
-  return { companies: [], roles: [], tombstones: [] };
+let db: TestDb;
+before(async () => {
+  db = await makeTestDb();
+});
+after(() => db.close());
+beforeEach(() => truncateAll(db.q));
+
+const storedRoles = () => db.q<Row>("select * from roles order by created_at, id");
+async function companyNames(): Promise<Map<string, string>> {
+  const rows = await db.q<{ id: string; name: string }>("select id, name from companies");
+  return new Map(rows.map((c) => [c.id, c.name]));
 }
 
 function tripleKey(row: Row): string {
   return `${row.company_id}|${row.title}|${row.posted_at ?? "null"}`;
 }
 
-function companyNameOf(tables: Record<string, Row[]>, companyId: unknown): string {
-  const company = tables.companies.find((c) => c.id === companyId);
-  return (company?.name as string | undefined) ?? "UNKNOWN_COMPANY";
-}
-
-// Fake-DB role rows carry no created_at (upsertRole never sets one; a real
-// Postgres default would). RoleWithCompany.sortRoles/collapseDuplicates need
-// created_at to order/collapse, so this test assigns one deterministically from
-// call order — the same thing a real watcher cycle's wall-clock would give it.
-function toRoleWithCompany(row: Row, tables: Record<string, Row[]>, createdAt: string): RoleWithCompany {
+// The rows carry a real created_at (the column default), but sortRoles/
+// collapseDuplicates need a deterministic order across a same-millisecond
+// batch, so this test assigns one from call order — the same thing a real
+// watcher cycle's wall-clock would give it.
+function toRoleWithCompany(row: Row, names: Map<string, string>, createdAt: string): RoleWithCompany {
   return {
     id: row.id as string,
     company_id: row.company_id as string,
@@ -132,7 +137,7 @@ function toRoleWithCompany(row: Row, tables: Record<string, Row[]>, createdAt: s
     saved_at: null,
     hidden_at: null,
     jd_error: null,
-    company_name: companyNameOf(tables, row.company_id),
+    company_name: names.get(row.company_id as string) ?? "UNKNOWN_COMPANY",
   };
 }
 
@@ -167,11 +172,8 @@ test("case 1: every fixture in feeds/ + alerts/ parses; the full pool survives u
     `expected 12 surviving candidate roles across both lanes, got ${roles.length}: ${JSON.stringify(roles.map((r) => `${r.company}/${r.title}`))}`,
   );
 
-  const tables = freshTables();
-  const supabase = fakeSupabase(tables);
-
   for (const role of roles) {
-    const result = await upsertRole(supabase, role);
+    const result = await upsertRole(db.q, role);
     assert.equal(
       result.action,
       "insert",
@@ -179,9 +181,10 @@ test("case 1: every fixture in feeds/ + alerts/ parses; the full pool survives u
     );
   }
 
-  assert.equal(tables.roles.length, 12, "a fresh full ingest cycle over the fixtures must produce exactly 12 role rows");
+  const stored = await storedRoles();
+  assert.equal(stored.length, 12, "a fresh full ingest cycle over the fixtures must produce exactly 12 role rows");
 
-  const triples = tables.roles.map(tripleKey);
+  const triples = stored.map(tripleKey);
   assert.equal(
     new Set(triples).size,
     triples.length,
@@ -191,16 +194,14 @@ test("case 1: every fixture in feeds/ + alerts/ parses; the full pool survives u
 
 test("case 2: a watcher replay (the SAME candidate list ingested a second time) inserts nothing and leaves the row count unchanged", async () => {
   const { roles } = await buildAllCandidates();
-  const tables = freshTables();
-  const supabase = fakeSupabase(tables);
 
-  for (const role of roles) await upsertRole(supabase, role);
-  const countAfterFirstPass = tables.roles.length;
+  for (const role of roles) await upsertRole(db.q, role);
+  const countAfterFirstPass = (await storedRoles()).length;
   assert.equal(countAfterFirstPass, 12, "first pass must produce 12 rows before the replay is meaningful");
 
   const secondPassActions: string[] = [];
   for (const role of roles) {
-    const result = await upsertRole(supabase, role);
+    const result = await upsertRole(db.q, role);
     secondPassActions.push(result.action);
   }
 
@@ -214,21 +215,19 @@ test("case 2: a watcher replay (the SAME candidate list ingested a second time) 
     secondPassActions.every((a) => a === "update"),
     `every replayed role should resolve to "update" (existing, unlocked), got: ${JSON.stringify(secondPassActions)}`,
   );
-  assert.equal(tables.roles.length, countAfterFirstPass, "roles table row count must be unchanged after the replay");
+  assert.equal((await storedRoles()).length, countAfterFirstPass, "roles table row count must be unchanged after the replay");
 });
 
 test("case 3: RB-006 display collapse over the real ingest output — buildHomeList shows zero duplicate (company_id, normalized title) rows and one group per company", async () => {
   const { roles } = await buildAllCandidates();
-  const tables = freshTables();
-  const supabase = fakeSupabase(tables);
 
   const baseTime = Date.parse("2026-08-23T00:00:00.000Z");
-  const withCompany: RoleWithCompany[] = [];
-  for (const [i, role] of roles.entries()) {
-    const { role: inserted } = await upsertRole(supabase, role);
-    const createdAt = new Date(baseTime + i * 1000).toISOString();
-    withCompany.push(toRoleWithCompany(inserted as Row, tables, createdAt));
-  }
+  const inserted: Row[] = [];
+  for (const role of roles) inserted.push((await upsertRole(db.q, role)).role as Row);
+  const names = await companyNames();
+  const withCompany: RoleWithCompany[] = inserted.map((row, i) =>
+    toRoleWithCompany(row, names, new Date(baseTime + i * 1000).toISOString()),
+  );
   assert.equal(withCompany.length, 12, "expected 12 RoleWithCompany rows built from the fresh ingest cycle");
 
   const groups = buildHomeList(withCompany, { sort: "recent", query: "" });
@@ -262,17 +261,15 @@ test("case 3: RB-006 display collapse over the real ingest output — buildHomeL
 
 test("case 4 (Pain-6 re-posting, Task 3 T2/T3): identity now matches on canonical_key, so a re-listing UPDATES the same row with a repost counter instead of inserting a duplicate", async () => {
   const { roles } = await buildAllCandidates();
-  const tables = freshTables();
-  const supabase = fakeSupabase(tables);
 
   const baseTime = Date.parse("2026-08-23T00:00:00.000Z");
-  const withCompany: RoleWithCompany[] = [];
-  for (const [i, role] of roles.entries()) {
-    const { role: inserted } = await upsertRole(supabase, role);
-    const createdAt = new Date(baseTime + i * 1000).toISOString();
-    withCompany.push(toRoleWithCompany(inserted as Row, tables, createdAt));
-  }
-  assert.equal(tables.roles.length, 12, "expected 12 rows after the fresh ingest cycle");
+  const inserted: Row[] = [];
+  for (const role of roles) inserted.push((await upsertRole(db.q, role)).role as Row);
+  const names = await companyNames();
+  const withCompany: RoleWithCompany[] = inserted.map((row, i) =>
+    toRoleWithCompany(row, names, new Date(baseTime + i * 1000).toISOString()),
+  );
+  assert.equal((await storedRoles()).length, 12, "expected 12 rows after the fresh ingest cycle");
 
   // The repost: same company + same title (RB-006 defines "duplicate" as
   // company_id + trimmed-lowercased title) as the Google/"Software Engineer
@@ -284,20 +281,23 @@ test("case 4 (Pain-6 re-posting, Task 3 T2/T3): identity now matches on canonica
   const original = roles.find((r) => r.company === "Google" && r.title === "Software Engineer Intern");
   assert.ok(original, "fixture assumption broken: expected a Google / 'Software Engineer Intern' role from simplify.md in the candidate pool");
 
-  const storedRow = tables.roles.find(
-    (r) => r.title === "Software Engineer Intern" && companyNameOf(tables, r.company_id) === "Google",
+  const storedRow = (await storedRoles()).find(
+    (r) => r.title === "Software Engineer Intern" && names.get(r.company_id as string) === "Google",
   ) as Row;
-  assert.ok(storedRow, "expected the original Google role row in the fake roles table");
+  assert.ok(storedRow, "expected the original Google role row in the roles table");
   // Age the stored row's last_seen_at past the T2 7-day repost threshold so
   // the re-find below is recognized as a genuine re-listing.
-  storedRow.last_seen_at = new Date(baseTime - 10 * 24 * 60 * 60 * 1000).toISOString();
+  await db.q("update roles set last_seen_at = $2 where id = $1", [
+    storedRow.id,
+    new Date(baseTime - 10 * 24 * 60 * 60 * 1000).toISOString(),
+  ]);
 
   const repostInput: UpsertRoleInput = {
     ...(original as UpsertRoleInput),
     title: "  SOFTWARE ENGINEER INTERN  ",
     posted_at: "2026-07-01",
   };
-  const repostResult = await upsertRole(supabase, repostInput);
+  const repostResult = await upsertRole(db.q, repostInput);
   assert.equal(
     repostResult.action,
     "update",
@@ -310,13 +310,14 @@ test("case 4 (Pain-6 re-posting, Task 3 T2/T3): identity now matches on canonica
   // Ingest level: the roles table still holds exactly 12 rows — the repost
   // was recognized as the SAME posting, not a new triple (T3 fixes the old
   // Pain-6 double-row behavior at the ingest layer, not just at display time).
-  assert.equal(tables.roles.length, 12, "the repost must not create a new row; roles table must still hold 12 rows");
+  const afterRepost = await storedRoles();
+  assert.equal(afterRepost.length, 12, "the repost must not create a new row; roles table must still hold 12 rows");
   const googleId = (repostResult.role as Row).company_id;
-  const googleTriples = tables.roles.filter((r) => r.company_id === googleId && r.title === "Software Engineer Intern");
+  const googleTriples = afterRepost.filter((r) => r.company_id === googleId && r.title === "Software Engineer Intern");
   assert.equal(googleTriples.length, 1, "exactly one row for this identity must exist after the repost");
 
   const idx = withCompany.findIndex((r) => r.id === storedRow.id);
-  withCompany[idx] = toRoleWithCompany(repostResult.role as Row, tables, withCompany[idx].created_at);
+  withCompany[idx] = toRoleWithCompany(repostResult.role as Row, names, withCompany[idx].created_at);
 
   const groups = buildHomeList(withCompany, { sort: "recent", query: "" });
   const allRoles = groups.flatMap((g) => g.roles);
