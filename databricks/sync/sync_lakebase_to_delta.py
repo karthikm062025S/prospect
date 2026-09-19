@@ -18,8 +18,13 @@
 
 # COMMAND ----------
 
-# MAGIC %pip install psycopg2-binary
+# MAGIC %pip install pg8000 -q
 dbutils.library.restartPython()
+# psycopg2-binary's C extension SIGABRTs the serverless Python kernel on this
+# workspace (proved live, run 484705678820792: "Fatal Python error: Aborted",
+# exit code 134, both task attempts, identical each time). pg8000 is pure
+# Python, no C extension, and connects fine (proved live, run 398285688594045:
+# SUCCESS). Switched 2026-09-19 (L4b).
 
 # COMMAND ----------
 
@@ -31,11 +36,23 @@ schema = dbutils.widgets.get("schema")
 # COMMAND ----------
 
 import decimal
+import json
+import ssl
 import uuid
 from datetime import datetime, timezone
+from urllib.parse import urlparse
 
-import psycopg2
-import psycopg2.errors
+import pg8000.dbapi
+import pg8000.exceptions
+from pyspark.sql.types import (
+    BooleanType,
+    DoubleType,
+    LongType,
+    StringType,
+    StructField,
+    StructType,
+    TimestampType,
+)
 
 # Non-PII column allowlist per table. roles and companies are synced in full
 # (their base columns hold no PII); applications is restricted on purpose.
@@ -67,38 +84,91 @@ def _get_lakebase_url() -> str:
 
 
 def _connect(lakebase_url: str):
+    p = urlparse(lakebase_url)
     try:
-        return psycopg2.connect(lakebase_url, connect_timeout=15)
-    except psycopg2.OperationalError as e:
+        return pg8000.dbapi.connect(
+            user=p.username,
+            password=p.password,
+            host=p.hostname,
+            port=p.port or 5432,
+            database=p.path.lstrip("/"),
+            timeout=15,
+            ssl_context=ssl.create_default_context(),
+        )
+    except Exception as e:  # noqa: BLE001 - re-raised named, never swallowed
         raise RuntimeError(f"SYNC_LAKEBASE_CONNECTION_FAILED: could not connect to Lakebase: {e}") from e
 
 
 def _normalize(value):
-    # psycopg2's uuid/decimal adaptation is not guaranteed registered on every
-    # connection; normalize both to Spark-friendly types explicitly rather
-    # than depend on that registration.
+    # pg8000's uuid/decimal/jsonb adaptation is not guaranteed to match Spark's
+    # types; normalize explicitly rather than depend on it. JSONB columns
+    # (e.g. roles.payload) come back as a dict/list -- Spark has no matching
+    # scalar type in infer_schema, so those are serialized to a JSON string
+    # (the real payload, not a summary or a drop).
     if isinstance(value, uuid.UUID):
         return str(value)
     if isinstance(value, decimal.Decimal):
         return float(value)
+    if isinstance(value, (dict, list)):
+        return json.dumps(value, default=str)
     return value
 
 
 def fetch_table(lakebase_url: str, table_name: str, select_clause: str):
     conn = _connect(lakebase_url)
     try:
-        with conn.cursor() as cur:
-            try:
-                cur.execute(f"{select_clause} from {table_name}")
-            except psycopg2.errors.UndefinedTable as e:
+        cur = conn.cursor()
+        try:
+            cur.execute(f"{select_clause} from {table_name}")
+        except pg8000.exceptions.DatabaseError as e:
+            # SQLSTATE 42P01 = undefined_table (pg8000 surfaces the raw error
+            # response dict as e.args[0], keyed by the single-letter Postgres
+            # protocol field codes; "C" is the SQLSTATE code).
+            code = e.args[0].get("C") if e.args and isinstance(e.args[0], dict) else None
+            if code == "42P01":
                 raise RuntimeError(
                     f"SYNC_SOURCE_TABLE_MISSING: Lakebase table '{table_name}' does not exist"
                 ) from e
-            colnames = [d[0] for d in cur.description]
-            rows = [{k: _normalize(v) for k, v in zip(colnames, row)} for row in cur.fetchall()]
+            raise
+        colnames = [d[0] for d in cur.description]
+        rows = [{k: _normalize(v) for k, v in zip(colnames, row)} for row in cur.fetchall()]
+        cur.close()
         return colnames, rows
     finally:
         conn.close()
+
+
+_PY_TO_SPARK = [
+    (bool, BooleanType()),  # bool before int: bool is an int subclass in Python
+    (int, LongType()),
+    (float, DoubleType()),
+    (datetime, TimestampType()),
+    (str, StringType()),
+]
+
+
+def infer_schema(colnames, rows) -> StructType:
+    # Spark's own createDataFrame type inference raises CANNOT_DETERMINE_TYPE
+    # the moment one column is NULL in every row of the batch (proved live,
+    # run 389422761505343) -- a real condition here, not a sampling-size
+    # problem, since some optional app columns (e.g. a nullable timestamp with
+    # no rows set yet) are genuinely all-NULL across the whole table. Building
+    # the schema explicitly from whichever value we DO see, column by column,
+    # fixes it without inventing data; an all-NULL column defaults to string.
+    fields = []
+    for name in colnames:
+        spark_type = StringType()
+        for row in rows:
+            value = row.get(name)
+            if value is None:
+                continue
+            for py_type, mapped in _PY_TO_SPARK:
+                if isinstance(value, py_type):
+                    spark_type = mapped
+                    break
+            break
+        fields.append(StructField(name, spark_type, nullable=True))
+    return StructType(fields)
 
 
 def existing_row_count(full_table_name: str) -> int:
@@ -139,7 +209,7 @@ for table_name, select_clause in SOURCE_TABLES.items():
     bronze_name = f"{catalog}.{schema}.bronze_{table_name}"
     silver_name = f"{catalog}.{schema}.silver_{table_name}"
 
-    _, rows = fetch_table(lakebase_url, table_name, select_clause)
+    colnames, rows = fetch_table(lakebase_url, table_name, select_clause)
     prior_silver_count = existing_row_count(silver_name)
 
     if len(rows) == 0:
@@ -152,7 +222,8 @@ for table_name, select_clause in SOURCE_TABLES.items():
 
     for row in rows:
         row["_synced_at"] = synced_at
-    sdf = spark.createDataFrame(rows)
+    batch_schema = infer_schema(colnames + ["_synced_at"], rows)
+    sdf = spark.createDataFrame(rows, schema=batch_schema)
 
     sdf.write.format("delta").mode("overwrite").option("overwriteSchema", "true").saveAsTable(bronze_name)
     bronze_count = sdf.count()
