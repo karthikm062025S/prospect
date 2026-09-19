@@ -29,6 +29,10 @@ permissions:
 
 jobs:
   read-alerts:
+    # Opt-in, like classify.yml: the hackathon repo has no GMAIL_* secrets, so
+    # every 3 h run was failing red for nothing. Set repo variable
+    # SCOUT_ALERTS_ENABLED=1 (plus the Gmail secrets) to turn it on.
+    if: ${{ vars.SCOUT_ALERTS_ENABLED == '1' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:

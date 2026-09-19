@@ -77,16 +77,19 @@ jobs:
           if [ "$count" -eq 0 ]; then echo "no fresh feed drops"; exit 0; fi
           day=$(TZ=America/New_York date +%F)
           title="Scout feeds: new drops — $day"
-          body=$(node -e "
+          # Body through a file, capped at 100 lines (same overflow as scan.yml).
+          node -e "
             const d=JSON.parse(require('fs').readFileSync('scripts/last-feeds.json','utf8'));
-            const lines=d.map(r=>'- **'+r.company+'** — '+r.title+' ['+r.role_type+']'+(r.target?' (TAILOR)':'')+(r.link?' — '+r.link:'')).join('\n');
-            console.log('@karthikm062025S — '+d.length+' feed-sourced role(s):\n\n'+lines+'\n\n(TAILOR) = giant/unicorn, resume MUST be tailored (km-resume -> km-resume-review).\n\n→ '+new URL(process.env.SCOUT_WEBHOOK).origin+'');
-          ")
+            const CAP=100;
+            const lines=d.slice(0,CAP).map(r=>'- **'+r.company+'** — '+r.title+' ['+r.role_type+']'+(r.target?' (TAILOR)':'')+(r.link?' — '+r.link:'')).join('\n');
+            const more=d.length>CAP?'\n\n… and '+(d.length-CAP)+' more in the app.':'';
+            require('fs').writeFileSync('/tmp/feeds-body.md','@karthikm062025S — '+d.length+' feed-sourced role(s):\n\n'+lines+more+'\n\n(TAILOR) = giant/unicorn, resume MUST be tailored (km-resume -> km-resume-review).\n\n→ '+new URL(process.env.SCOUT_WEBHOOK).origin+'');
+          "
           num=$(gh issue list --repo "$GITHUB_REPOSITORY" --state open --json number,title --jq ".[] | select(.title==\"$title\") | .number" | head -1)
           if [ -n "$num" ]; then
-            gh issue comment "$num" --repo "$GITHUB_REPOSITORY" --body "$body"
+            gh issue comment "$num" --repo "$GITHUB_REPOSITORY" --body-file /tmp/feeds-body.md
             echo "commented on #$num"
           else
-            gh issue create --repo "$GITHUB_REPOSITORY" --title "$title" --body "$body"
+            gh issue create --repo "$GITHUB_REPOSITORY" --title "$title" --body-file /tmp/feeds-body.md
             echo "created issue"
           fi
