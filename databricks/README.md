@@ -35,3 +35,17 @@ The job is scheduled hourly (`0 0 * * * ?`, Quartz syntax, `America/New_York`) â
 see [Run jobs on a schedule](https://docs.databricks.com/aws/en/jobs/scheduled).
 Never re-run `databricks secrets put-secret` in a shared terminal history; the
 connection string contains the Lakebase password.
+
+## Orchestrator job + Genie space (L4c)
+
+Both scripts read `DATABRICKS_HOST` + `DATABRICKS_TOKEN` (the Genie one also
+`DATABRICKS_WAREHOUSE_PATH`) from the environment and are idempotent by name.
+
+```
+node databricks/orchestrator/create-job.mjs        # imports orchestrate.py, creates job scout-orchestrator (hourly at :20)
+node --experimental-strip-types scripts/orchestrator-smoke.mjs   # run-now + reads back the scout.core.orchestrator_runs row
+node databricks/genie/create-space.mjs             # creates Genie space "Scout: why" from databricks/genie/space.json
+DATABRICKS_GENIE_SPACE_ID=<space id> node --experimental-strip-types scripts/genie-smoke.mjs ["question"]
+```
+
+Judge-facing walkthrough with live ids and counts: `databricks/DEMO.md`.
