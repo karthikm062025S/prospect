@@ -4,7 +4,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import Link from "next/link";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { BrandMark } from "@/components/landing/brand-marks";
-import { GoogleCta, SIGN_IN_EVENT, SIGN_IN_REASON } from "@/components/landing/google-cta";
+import { SignInCta, SIGN_IN_EVENT, SIGN_IN_REASON } from "@/components/landing/sign-in-cta";
 import { ArrowSquareOutIcon } from "@/components/icons";
 import { SEASON_LABEL } from "@/lib/season";
 import { formatStat } from "@/lib/public-stats-format";
@@ -146,11 +146,9 @@ function Row({ row, delay, className = "" }: { row: FeedRow; delay: number; clas
   );
 }
 
-// v7 S4 LANDING-FLOW, persona blocker 1. Save used to be a bare
-// `<form action={signInWithGoogleAction}>`: one click and the whole tab left
-// the landing for a Google chooser that says "continue to
-// <a database host>", with no explanation anywhere. That is the
-// single biggest drop-off on the page.
+// v7 S4 LANDING-FLOW, persona blocker 1. Save used to be a bare sign-in form:
+// one click and the whole tab left the landing for a provider chooser, with no
+// explanation anywhere. That is the single biggest drop-off on the page.
 //
 // Now the click opens a small non-modal prompt anchored to the row that says
 // WHY first (the same SIGN_IN_REASON sentence the hero and the closing CTA
@@ -248,7 +246,7 @@ function SaveWithSignIn({ label }: { label: string }) {
             </p>
             <p className="mt-2 text-pretty text-step-xs leading-body text-text-dim">{SIGN_IN_REASON}</p>
             <div className="mt-4">
-              <GoogleCta />
+              <SignInCta />
             </div>
           </motion.div>
         ) : null}

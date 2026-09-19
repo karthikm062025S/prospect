@@ -10,7 +10,7 @@ function firstHeaderValue(value: string | null) {
   return value?.split(",", 1)[0]?.trim() || null;
 }
 
-// The public origin this request arrived on (proxy-aware), so OAuth and reset
+// The public origin this request arrived on (proxy-aware), so password-reset
 // links come back to the same host the visitor is using.
 async function resolveOrigin(): Promise<string | null> {
   const headerStore = await headers();
@@ -26,26 +26,6 @@ async function resolveOrigin(): Promise<string | null> {
 
 // Error and notice codes are the ONLY thing that reaches the URL; the sign-in
 // dialog maps each to one sentence. Raw Supabase error text never reaches the UI.
-export async function signInWithGoogleAction(formData?: FormData) {
-  const origin = await resolveOrigin();
-  if (!origin) redirect("/welcome?error=auth");
-
-  // "Continue as <name>" passes the remembered email so Google skips its
-  // account chooser; a plain click asks Google to show it (decision 2).
-  const hint = formData ? signInSchema.shape.email.safeParse(field(formData, "login_hint")) : null;
-  const supabase = await createClient();
-  const { data, error } = await supabase.auth.signInWithOAuth({
-    provider: "google",
-    options: {
-      redirectTo: `${origin}/auth/callback?next=/`,
-      queryParams: hint?.success ? { login_hint: hint.data } : { prompt: "select_account" },
-    },
-  });
-
-  if (error || !data.url) redirect("/welcome?error=auth");
-  redirect(data.url);
-}
-
 export async function signInWithPasswordAction(formData: FormData) {
   const parsed = signInSchema.safeParse({
     email: field(formData, "email"),

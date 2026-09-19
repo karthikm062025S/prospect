@@ -10,7 +10,7 @@ import {
   useScroll,
 } from "motion/react";
 import { Logo } from "@/components/logo";
-import { GoogleCta } from "@/components/landing/google-cta";
+import { SignInCta } from "@/components/landing/sign-in-cta";
 import { CaretDownIcon, ChatCircleIcon } from "@/components/landing/icons";
 import { openFeedback } from "@/components/landing/feedback";
 import { FeedbackTrigger } from "@/components/feedback-box";
@@ -184,7 +184,7 @@ export function LandingNav({ signedIn = false }: { signedIn?: boolean }) {
               <ChatCircleIcon size={18} />
               Feedback
             </FeedbackTrigger>
-            <GoogleCta
+            <SignInCta
               label="Sign in"
               signedIn={signedIn}
               className="[&_a]:h-9 [&_a]:text-step-xs [&_button]:h-9 [&_button]:text-step-xs"
@@ -243,7 +243,7 @@ export function LandingNav({ signedIn = false }: { signedIn?: boolean }) {
           {/* v8 fixes: close the sheet before the sign-in dialog opens, so the
             two never sit open together. */}
           <div onClickCapture={closeSheet}>
-            <GoogleCta
+            <SignInCta
               signedIn={signedIn}
               className="mt-3 [&_a]:w-full [&_a]:justify-center [&_button]:w-full [&_button]:justify-center"
             />
