@@ -29,7 +29,14 @@ export function db(): Pool {
   const url = process.env.LAKEBASE_URL;
   if (!url) throw new Error("DATABASE_NOT_CONFIGURED: LAKEBASE_URL is not set");
   // ponytail: one process-wide pool, max 5 (Lakebase scale-to-zero; serverless functions are short-lived).
-  pool ??= new Pool({ connectionString: url, max: 5, idleTimeoutMillis: 10_000 });
+  // A hung connect or a runaway statement fails loudly instead of holding a serverless invocation open.
+  pool ??= new Pool({
+    connectionString: url,
+    max: 5,
+    idleTimeoutMillis: 10_000,
+    connectionTimeoutMillis: 10_000,
+    options: "-c statement_timeout=30000",
+  });
   return pool;
 }
 

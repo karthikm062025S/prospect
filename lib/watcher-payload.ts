@@ -9,11 +9,16 @@ export type WatcherPayloadResult =
   | { ok: false; error: "payload must include at least one valid role" };
 
 // 2026-09-19 addendum (drop latency): an optional ISO-8601 `source_posted_at`
-// per role. A value that is present but does not parse as a date is dropped
-// from that entry (the role still ingests; the latency column just stays null
-// for it) — never stored, never guessed.
-function isIsoDate(value: unknown): value is string {
-  return typeof value === "string" && value.trim() !== "" && Number.isFinite(Date.parse(value));
+// per role. A value that is present but is not strict ISO-8601 (V8's Date.parse
+// also accepts "1" and "12/31/2030"), does not parse, or lies more than an hour
+// in the future is dropped from that entry (the role still ingests; the latency
+// column just stays null for it) — never stored, never guessed.
+const ISO_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:\d{2})$/;
+const FUTURE_SLACK_MS = 60 * 60 * 1000;
+export function isSourcePostedAt(value: unknown, nowMs: number = Date.now()): value is string {
+  if (typeof value !== "string" || !ISO_RE.test(value)) return false;
+  const ms = Date.parse(value);
+  return Number.isFinite(ms) && ms <= nowMs + FUTURE_SLACK_MS;
 }
 
 function isValidRole(value: unknown): value is UpsertRoleInput {
@@ -33,7 +38,7 @@ function normalizeRole(role: UpsertRoleInput): UpsertRoleInput {
   const raw = role as Record<string, unknown>;
   let out = role;
   if (raw.source_posted_at !== undefined) {
-    out = { ...out, source_posted_at: isIsoDate(raw.source_posted_at) ? new Date(raw.source_posted_at).toISOString() : null };
+    out = { ...out, source_posted_at: isSourcePostedAt(raw.source_posted_at) ? new Date(raw.source_posted_at).toISOString() : null };
   }
   if (raw.level !== undefined) {
     out = { ...out, level: (LEVELS as readonly unknown[]).includes(raw.level) ? (raw.level as RoleLevel) : null };

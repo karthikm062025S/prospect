@@ -84,6 +84,29 @@ test("a payload row with source_posted_at lands in roles.source_posted_at", asyn
   assert.equal(bad.roles[0].source_posted_at, null, "an unparseable value is dropped, never stored");
 });
 
+// Addendum 3 (security review fold): strict ISO-8601 only, and never more than an hour in the future.
+test("source_posted_at rejects non-ISO strings V8's Date.parse would accept", () => {
+  for (const value of ["1", "12/31/2030", "2026-09-18", "2026-09-18 09:30:00", "Sep 18 2026"]) {
+    const parsed = parseWatcherPayload({ roles: [{ ...payload, source_posted_at: value }] });
+    assert.ok(parsed.ok);
+    assert.equal(parsed.roles[0].source_posted_at, null, `${JSON.stringify(value)} must be dropped`);
+  }
+  for (const value of ["2026-09-18T09:30Z", "2026-09-18T09:30:00Z", "2026-09-18T09:30:00.123+00:00", "2026-09-18T05:30:00-04:00"]) {
+    const parsed = parseWatcherPayload({ roles: [{ ...payload, source_posted_at: value }] });
+    assert.ok(parsed.ok);
+    assert.equal(parsed.roles[0].source_posted_at, new Date(value).toISOString(), `${JSON.stringify(value)} must be kept`);
+  }
+});
+
+test("source_posted_at more than an hour in the future is dropped", () => {
+  const future = new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString();
+  const soon = new Date(Date.now() + 30 * 60 * 1000).toISOString();
+  const parsed = parseWatcherPayload({ roles: [{ ...payload, source_posted_at: future }, { ...payload, source_posted_at: soon }] });
+  assert.ok(parsed.ok);
+  assert.equal(parsed.roles[0].source_posted_at, null, "2 h ahead is dropped");
+  assert.equal(parsed.roles[1].source_posted_at, soon, "30 min ahead (clock skew) is kept");
+});
+
 test("a brand-new row inserts with source_posted_at set", async () => {
   const parsed = parseWatcherPayload({
     roles: [{ company: company.name, title: "Software Engineer Intern, Summer 2027 (L0 latency probe)", source_posted_at: "2026-09-19T14:00:00Z" }],
