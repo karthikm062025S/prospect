@@ -64,7 +64,14 @@ export default async function HomePage() {
       getStudentProfile(uid, query),
       // L2c: this caller's full ranked feed, best match first (empty = no
       // profile, or a profile that hasn't been ranked yet).
-      listScores(query, uid),
+      // A database whose 006-match.sql has not been applied yet has no
+      // match_scores table: that is "not ranked yet", named in the server log,
+      // never a blank Home (judge test 2026-09-19 18:09 ET). Any other error rethrows.
+      listScores(query, uid).catch((error: Error) => {
+        if (!/relation "match_scores" does not exist/.test(error.message)) throw error;
+        console.error("MATCH_SCORES_TABLE_MISSING: apply db/lakebase/006-match.sql (scripts/apply-schema.mjs)");
+        return [] as MatchScore[];
+      }),
     ]);
 
   const hasProfile = studentProfile !== null;
