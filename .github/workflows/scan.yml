@@ -11,7 +11,13 @@ name: scan
 
 on:
   schedule:
-    - cron: "17 */3 * * *"  # every 3h, off-minute to avoid the hot :00 slot
+    # Karthik 15:05 addendum (2026-09-19): every 30 min (was every 3h) so
+    # drop-latency can be measured against a real cadence, off-minute (:07/:37)
+    # to avoid the hot :00/:30 slot. A single WIDE run of the 999 endpoints
+    # measured ~120s locally during this build (half of the 237.5s --dry-run,
+    # which runs the filter twice for its before/after report) — well inside
+    # the 30-min window even with GitHub Actions queue variance.
+    - cron: "7,37 * * * *"
   workflow_dispatch:
     inputs:
       since_days:
@@ -54,6 +60,21 @@ jobs:
           SCOUT_WEBHOOK: ${{ vars.SCOUT_WEBHOOK }}
           SINCE_DAYS: ${{ github.event.inputs.since_days || '3' }}
         run: node scripts/scan.mjs --since-days "$SINCE_DAYS" --concurrency 16
+
+      # MISSION L2 (2026-09-19): the three new named sources (Workday tenants,
+      # USAJOBS, Adzuna), same webhook, own named ok/FAILED lines per rule 2 —
+      # a missing key never fails the whole job silently, but the step itself
+      # exits non-zero so it shows red in the Actions run until the key lands.
+      - name: run new sources (workday / usajobs / adzuna)
+        continue-on-error: true
+        env:
+          WATCHER_SECRET: ${{ secrets.WATCHER_SECRET }}
+          SCOUT_WEBHOOK: ${{ vars.SCOUT_WEBHOOK }}
+          USAJOBS_API_KEY: ${{ secrets.USAJOBS_API_KEY }}
+          USAJOBS_USER_AGENT: ${{ secrets.USAJOBS_USER_AGENT }}
+          ADZUNA_APP_ID: ${{ secrets.ADZUNA_APP_ID }}
+          ADZUNA_APP_KEY: ${{ secrets.ADZUNA_APP_KEY }}
+        run: node scripts/scan-sources.mjs --limit 100
 
       # Notify layer: the scanner wrote scripts/last-drops.json (roles posted
       # within the last day). If any, mention Karthik on a per-day issue so

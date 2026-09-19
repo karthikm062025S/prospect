@@ -28,7 +28,8 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { dirname, join } from "node:path";
-import { isTargetTitle, looksUS, bucket } from "./scan.mjs";
+import { looksUS } from "./scan.mjs";
+import { isEligiblePosting, bucketWide } from "./scan-core.mjs";
 import { normName, loadContext } from "./read-alerts.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -55,9 +56,41 @@ const FETCH_TIMEOUT_MS = 30000;
 // Public list READMEs. listName is the `feed:<name>` source tag + a fixture key.
 // SimplifyJobs renders an HTML <table>; vanshb03 + speedyapply render a
 // pipe-delimited markdown table — parseFeed auto-detects which.
+//
+// MISSION L2 (coverage lane, 2026-09-19), each verified live during this build
+// (see the build handoff's VERIFIED SOURCES TABLE for URL/status/row-count):
+// - simplify: Summer2026-Internships repo redirected (301) to
+//   SimplifyJobs/Summer2027-Internships (dev branch, same HTML-table format,
+//   1.18MB README, 200 live) — swapped in place, same listName so parseFeed's
+//   HTML detection and every downstream test/fixture stay unchanged.
+// - newgrad: SimplifyJobs/New-Grad-Positions (dev branch) — same publisher,
+//   same HTML-table format (11,975 <td> tags, 200 live), auto-detected as HTML
+//   by parseFeed's content-sniff (not "simplify"/"vanshb03"/"speedyapply" but
+//   contains <td>).
+// - vanshb03-newgrad: vanshb03/New-Grad-2027 (main branch) — 200 live,
+//   VERIFIED identical 5-column pipe-markdown layout to the existing
+//   vanshb03/Summer2027-Internships feed (Company | Role | Location |
+//   Application/Link | Date Posted) — a real drop-in for the existing
+//   parsePipeFeed path, no new parser needed. Its rows are titled "New Grad:
+//   ..." / "New Grad 2027: ..." with NO intern/co-op wording, which is why
+//   buildFeedRole below now gates on isEligiblePosting (wide), not the old
+//   intern-only isTargetTitle — those titles would otherwise all drop.
 const FEEDS = [
-  { name: "simplify", url: "https://raw.githubusercontent.com/SimplifyJobs/Summer2026-Internships/dev/README.md" },
+  { name: "simplify", url: "https://raw.githubusercontent.com/SimplifyJobs/Summer2027-Internships/dev/README.md" },
   { name: "vanshb03", url: "https://raw.githubusercontent.com/vanshb03/Summer2027-Internships/main/README.md" },
+  { name: "newgrad", url: "https://raw.githubusercontent.com/SimplifyJobs/New-Grad-Positions/dev/README.md" },
+  { name: "vanshb03-newgrad", url: "https://raw.githubusercontent.com/vanshb03/New-Grad-2027/main/README.md" },
+  // ponytail: a dedicated quant list (northwesternfintech/2027QuantInternships,
+  // live-verified 200, main branch) was evaluated and NOT added — its README is
+  // organized as one `## <Company>` heading per firm followed by a 2-column
+  // (Role|Links) table, a fundamentally different shape from the 5-column
+  // company/role/location/application/age layout every other feed here shares.
+  // Teaching parsePipeFeed that shape (or writing a dedicated parser) for one
+  // source is exactly the speedyapply situation below — same discipline: don't
+  // ship an untested mis-parse. The two SimplifyJobs lists above already carry
+  // quant + PM postings by name (their own repo descriptions say so) so quant/PM
+  // coverage isn't zero without it. Upgrade path: a dedicated
+  // parseCompanyHeadingFeed() + a passing extraction test, then add it here.
   // ponytail: speedyapply is DISABLED. Its real README (verified 2026-07-13) is a
   // 6-column pipe table — `| Company | Position | Location | Salary | Posting | Age |`
   // — where the apply <a href> lives in the Posting column (index 4) and index 3 is a
@@ -249,7 +282,14 @@ export function withinFeedWindow(age, sinceDays = SINCE_DAYS) {
 // ---------------------------------------------------------------------------
 export function buildFeedRole(cand, listName, ctx) {
   const title = cand.title;
-  if (!isTargetTitle(title)) return null; // title role-gate + wrong-term (reused)
+  // MISSION L2 (2026-09-19): isEligiblePosting (wide: every function/level,
+  // still drops explicit stale-year noise) replaces the old CS-intern-only
+  // isTargetTitle — the new-grad lists (New-Grad-Positions, New-Grad-2027) have
+  // titles like "New Grad: Software Engineer" with NO intern/co-op wording,
+  // which isTargetTitle's term gate would have dropped outright. Strictly more
+  // permissive than isTargetTitle (drops only WRONG_TERM), so every existing
+  // fixture-derived assertion in tests/read-feeds.test.ts still holds.
+  if (!isEligiblePosting(title)) return null; // wide title gate + wrong-term
   if (!looksUS(cand.location, null)) return null; // US filter (reused)
   const norm = normName(cand.company);
   if (!norm) return null;
@@ -260,7 +300,7 @@ export function buildFeedRole(cand, listName, ctx) {
   return {
     company,
     title: title.trim(),
-    role_type: bucket(title),
+    role_type: bucketWide(title),
     posted_at: null, // dedup on (company,title) across hourly runs / repeated lists
     link: cand.link || null,
     source: `${tag}:${listName}`,

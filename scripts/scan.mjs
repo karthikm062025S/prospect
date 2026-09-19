@@ -15,7 +15,10 @@
 //
 // Env: WATCHER_SECRET (required to POST), SCOUT_WEBHOOK (optional, defaults to
 // prod). Flags: --dry-run (no POST), --since-days N (recency window, default 3),
-// --concurrency N (default 8).
+// --concurrency N (default 8), --strict (MISSION L2, 2026-09-19: opt back into
+// the old CS-intern-only filter; the coverage-widened filter — every function,
+// every level — is the DEFAULT now). --dry-run without --strict also prints a
+// before/after comparison against the old filter (Done Means D).
 //
 // The fetch + filter body lives in scripts/scan-core.mjs (shared with the Vercel
 // fast lane, app/api/scan/route.ts); this file is the CLI wrapper: flags, the
@@ -24,7 +27,7 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { dirname, join } from "node:path";
-import { scanEndpoints, epKey } from "./scan-core.mjs";
+import { scanEndpoints, epKey, deriveLevel } from "./scan-core.mjs";
 
 // Re-exported so tests/scan-filter.test.ts keeps importing the pure filters
 // from here, unchanged.
@@ -41,6 +44,8 @@ const opt = (name, def) => {
   return v && !v.startsWith("--") ? v : def;
 };
 const DRY_RUN = flag("dry-run");
+const STRICT = flag("strict");
+const WIDE = !STRICT;
 // Guard against a mistyped flag silently corrupting a scan (NaN window drops all
 // dated jobs; 0 concurrency scans nothing) — fall back to the default.
 const num = (v, def) => {
@@ -66,10 +71,42 @@ function withinDaysAgo(iso, days) {
 async function main() {
   const endpoints = JSON.parse(await readFile(process.env.ENDPOINTS_FILE || join(__dirname, "endpoints.json"), "utf8"));
   console.log(
-    `scan: ${endpoints.length} endpoints · since-days=${SINCE_DAYS} · concurrency=${CONCURRENCY} · ${DRY_RUN ? "DRY-RUN" : "LIVE"} → ${WEBHOOK}`,
+    `scan: ${endpoints.length} endpoints · since-days=${SINCE_DAYS} · concurrency=${CONCURRENCY} · ${WIDE ? "WIDE (all functions/levels)" : "STRICT (CS-intern-only)"} · ${DRY_RUN ? "DRY-RUN" : "LIVE"} → ${WEBHOOK}`,
   );
 
-  const { roles: uniq, okCount, failed, rawCounts } = await scanEndpoints(endpoints, { sinceDays: SINCE_DAYS, concurrency: CONCURRENCY, fetch });
+  // Done Means D (before/after coverage proof): a --dry-run also runs the OLD
+  // strict filter over the SAME endpoints so the widening has a real number,
+  // not an assertion. Skipped on a live run (would double the network cost).
+  // The WIDE result below is reused as `uniq` (no third fetch of the same 999
+  // endpoints).
+  let uniq, okCount, failed, rawCounts;
+  if (DRY_RUN && WIDE) {
+    const before = await scanEndpoints(endpoints, { sinceDays: SINCE_DAYS, concurrency: CONCURRENCY, fetch, wide: false });
+    const after = await scanEndpoints(endpoints, { sinceDays: SINCE_DAYS, concurrency: CONCURRENCY, fetch, wide: true });
+    ({ roles: uniq, okCount, failed, rawCounts } = after);
+    const beforeKeys = new Set(before.roles.map((r) => `${r.company}|${r.title}`));
+    const newOnly = after.roles.filter((r) => !beforeKeys.has(`${r.company}|${r.title}`));
+    console.log(
+      `\n--- coverage before/after (same ${endpoints.length} endpoints, since-days=${SINCE_DAYS}) ---\n` +
+        `BEFORE (strict, CS-intern-only): ${before.roles.length} kept\n` +
+        `AFTER  (wide, every function/level): ${after.roles.length} kept\n` +
+        `net new from widening: ${newOnly.length}`,
+    );
+    const nonSwe = newOnly.filter((r) => !["SWE", "AI", "Data", "Quant"].includes(r.role_type));
+    const examples = nonSwe.length ? nonSwe.slice(0, 5) : newOnly.slice(0, 5);
+    console.log(`\n5 example newly-kept postings (non-engineering functions preferred):`);
+    for (const r of examples) {
+      const board = r.link ? new URL(r.link).hostname : "no-link";
+      console.log(`  · ${r.company} — ${r.title} [${r.role_type} / ${deriveLevel(r.title)}] (${board})`);
+    }
+  } else {
+    ({ roles: uniq, okCount, failed, rawCounts } = await scanEndpoints(endpoints, {
+      sinceDays: SINCE_DAYS,
+      concurrency: CONCURRENCY,
+      fetch,
+      wide: WIDE,
+    }));
+  }
 
   // Health floor: a mass ATS/network outage is caught endpoint-by-endpoint, so the
   // scan would otherwise exit 0 with ~0 candidates — the >26h heartbeat would see a
@@ -194,8 +231,15 @@ async function main() {
 // Run only when invoked as a script (`node scripts/scan.mjs`), NOT when imported
 // by a test — tests import the pure filters (isTargetTitle/looksUS/bucket).
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  main().catch((err) => {
-    console.error("scan failed:", err);
-    process.exit(1);
-  });
+  const runStarted = Date.now();
+  main()
+    .catch((err) => {
+      console.error("scan failed:", err);
+      process.exitCode = 1;
+    })
+    .finally(() => {
+      // Karthik 15:05 addendum: how long one full run takes today, so the
+      // scan.yml cadence bump (every 3h -> every 30m) is a measured decision.
+      console.log(`\nrun duration: ${((Date.now() - runStarted) / 1000).toFixed(1)}s`);
+    });
 }

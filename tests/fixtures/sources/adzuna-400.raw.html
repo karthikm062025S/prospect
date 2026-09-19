@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<!-- This file is managed by Chef -->
+    <head>
+        <meta charset="UTF-8">
+        <title>Uh oh, something isn't right</title>
+        <meta name="HandheldFriendly" content="True">
+        <meta name="MobileOptimized" content="320">
+        <meta name="format-detection" content="telephone=no">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta http-equiv="cleartype" content="on">
+        <style type="text/css">
+            html { margin:0; padding:0; }
+            body {
+                margin:0; padding:20px;
+                font-family:Arial, "Helvetica Neue", Helvetica, sans-serif;
+                font-size:16px; color:#333; line-height:1.4em; text-align:center;
+            }
+            h1 { font-size:24px; font-weight:bold; line-height:1.4em; color:black; }
+            div { max-width:570px; margin:0 auto; }
+            img { width:100%; max-width:570px; }
+            p.details { color:#999; font-size: small; }
+        </style>
+    </head>
+    <body>
+        <div>
+            <img src="//zunamore-abf.kxcdn.com/adzuna_500_rebranded.jpg" alt="Oops" width="570" height="336" />
+            <h1>Well this is embarrassing...</h1>
+            <p><strong>Something, somewhere has gone wrong. Sorry for the inconvenience!</strong></p>
+            <p>Our developers have been notified and are working furiously to fix this.</p>
+            <p>Please try refreshing this page in a few minutes.</p>
+            <p class="details">nginx / 400</p>
+        </div>
+    </body>
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-TBKKH2Q8N6"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'G-TBKKH2Q8N6');
+        gtag('event', 'error', {
+            frontend : 'nginx',
+            server_error : '400',
+            server : '127.0.0.1'
+        });
+    </script>
+</html>
