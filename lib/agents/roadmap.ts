@@ -1,0 +1,302 @@
+import { z } from "zod";
+import type { ProfileOutput } from "./profile";
+
+// ponytail: every OTHER cross-lib value ("../student-profile", "../catalog",
+// "../gemini", "../semesters", "../roadmaps") is reached only through a
+// deferred `await import(...)` inside runRoadmapAgent, exactly like
+// lib/agents/profile.ts's header documents -- a static extensionless VALUE
+// import between two lib/*.ts files throws ERR_MODULE_NOT_FOUND the moment a
+// test imports THIS file directly under node --experimental-strip-types.
+// `import type` (above) is erased at runtime, so it never trips that gotcha.
+// The pure pieces below (schema, validatePlanNode, the two response parsers)
+// have no such import and are what tests/roadmap-validate.test.ts exercises
+// directly, with no network and no database.
+
+export type RoadmapStepKey = "profile" | "catalog" | "certifications" | "planning" | "validating";
+export type RoadmapStep = { step: RoadmapStepKey; label: string; count: number };
+
+export interface CertCandidate {
+  name: string;
+  why: string;
+  sourceUrl: string;
+}
+
+const PlanNodeSchema = z.object({
+  semester: z.string().min(1),
+  kind: z.enum(["course", "club", "project", "certification"]),
+  ref: z.string().nullable().optional(),
+  title: z.string().min(1),
+  why: z.string().min(1),
+  movesToward: z.array(z.string()).default([]),
+});
+export type PlanNode = z.infer<typeof PlanNodeSchema>;
+
+export interface RoadmapNodePlan {
+  semester: string;
+  kind: "course" | "club" | "project" | "certification";
+  refCode: string | null;
+  refName: string | null;
+  title: string;
+  why: string;
+  movesToward: string[];
+  sourceUrl: string | null;
+}
+
+/**
+ * Validates one Gemini-proposed node against the real catalog (Invariant 1:
+ * "a node id not in the courses/clubs/certs tables is rejected"). Never
+ * silently drops an unfindable node -- throws, naming the code/name, so a
+ * bad proposal fails the whole run instead of shipping a partial plan.
+ * `courseCodes` / `clubNames` are real Delta rows (lib/catalog.ts); certs
+ * only ever come from THIS run's own grounded search (`certsByName`), since
+ * there is no certifications table (CONTEXT 13:35: "no dataset, live web
+ * search").
+ */
+export function validatePlanNode(
+  node: PlanNode,
+  ctx: { courseCodes: ReadonlySet<string>; clubNames: ReadonlySet<string>; certsByName: ReadonlyMap<string, CertCandidate> },
+): RoadmapNodePlan {
+  const base = { semester: node.semester, title: node.title, why: node.why, movesToward: node.movesToward };
+
+  if (node.kind === "course") {
+    if (!node.ref) throw new Error(`Roadmap plan proposed a course node with no ref_code: "${node.title}"`);
+    if (!ctx.courseCodes.has(node.ref)) throw new Error(`Course not found in catalog: ${node.ref}`);
+    return { ...base, kind: "course", refCode: node.ref, refName: null, sourceUrl: null };
+  }
+  if (node.kind === "club") {
+    if (!node.ref) throw new Error(`Roadmap plan proposed a club node with no ref_name: "${node.title}"`);
+    if (!ctx.clubNames.has(node.ref)) throw new Error(`Club not found in catalog: ${node.ref}`);
+    return { ...base, kind: "club", refCode: null, refName: node.ref, sourceUrl: null };
+  }
+  if (node.kind === "certification") {
+    const cert = node.ref ? ctx.certsByName.get(node.ref) : undefined;
+    if (!cert) throw new Error(`Certification node has no grounded source_url: "${node.title}"`);
+    return { ...base, kind: "certification", refCode: null, refName: cert.name, sourceUrl: cert.sourceUrl };
+  }
+  // project: always "suggested", never validated against a table (there isn't one).
+  return { ...base, kind: "project", refCode: null, refName: null, sourceUrl: null };
+}
+
+/** One "NAME | WHY | https://url" line per certification; malformed or URL-less lines are dropped, never guessed. */
+export function parseCertLines(text: string): CertCandidate[] {
+  const certs: CertCandidate[] = [];
+  for (const line of text.split("\n")) {
+    const parts = line.split("|").map((p) => p.trim());
+    if (parts.length !== 3) continue;
+    const [name, why, sourceUrl] = parts;
+    if (!name || !why || !/^https?:\/\//.test(sourceUrl)) continue;
+    certs.push({ name, why, sourceUrl });
+  }
+  return certs.slice(0, 3);
+}
+
+/** Parses + validates the planning call's JSON array against PlanNodeSchema. Throws loudly on malformed output. */
+export function parsePlanResponse(text: string): PlanNode[] {
+  const raw = JSON.parse(text) as unknown[];
+  return raw.map((n) => PlanNodeSchema.parse(n));
+}
+
+export interface RoadmapAgentInput {
+  userId: string;
+  /** A semester label ("Fall 2026") to re-plan from; omit for a fresh full-range plan from today. */
+  fromSemester?: string;
+}
+
+export interface RoadmapAgentResult {
+  roadmapId: string;
+  nodes: RoadmapNodePlan[];
+  targetSemesters: string[];
+}
+
+type GeminiClient = ReturnType<typeof import("../gemini").gemini>;
+
+/**
+ * profile -> candidate courses/clubs (Delta) -> grounded certifications
+ * (Gemini + Google Search) -> a structured semester plan (Gemini, JSON
+ * schema) -> validated against the real catalog -> written to Lakebase in
+ * one roadmap row + N node rows, all scoped to `userId`.
+ *
+ * Not covered by the unit suite past validatePlanNode/parseCertLines/
+ * parsePlanResponse (it calls the real Gemini API, the real Databricks
+ * warehouse and the real DB) -- see the handoff for the live-proof path.
+ */
+export async function runRoadmapAgent(
+  input: RoadmapAgentInput,
+  onStep: (step: RoadmapStep) => void,
+): Promise<RoadmapAgentResult> {
+  const { startAgentRun, finishAgentRun, getProfile } = await import("../student-profile");
+  const { loadCourseCandidates, loadClubCandidates, courseCodesExist, clubNamesExist } = await import("../catalog");
+  const { gemini, MODEL_AGENT } = await import("../gemini");
+  const { semestersFromTerm, seasonFromDate, parseSemesterLabel } = await import("../semesters");
+  const { upsertRoadmap, deleteFutureNodes, addNode } = await import("../roadmaps");
+
+  const runId = await startAgentRun("roadmap", input.userId);
+  try {
+    const stored = await getProfile(input.userId);
+    if (!stored) throw new Error("Profile not found. Set up your profile first.");
+    const profile: ProfileOutput = stored.profile;
+
+    onStep({
+      step: "profile",
+      label: `${profile.courses.length} completed courses, goal: ${profile.goal}`,
+      count: profile.courses.length,
+    });
+
+    const from = input.fromSemester
+      ? parseSemesterLabel(input.fromSemester)
+      : { season: seasonFromDate(new Date()), year: new Date().getFullYear() };
+    const targetSemesters = semestersFromTerm(from, profile.targetTerm);
+
+    const keywords = Array.from(
+      new Set(
+        [profile.major, ...profile.skills, ...profile.goal.split(/\s+/)]
+          .map((k) => k.trim())
+          .filter((k) => k.length > 2),
+      ),
+    );
+    const [courses, clubs] = await Promise.all([
+      loadCourseCandidates({ keywords, limit: 200 }),
+      loadClubCandidates({ keywords, limit: 100 }),
+    ]);
+    onStep({
+      step: "catalog",
+      label: `${courses.length} candidate courses, ${clubs.length} candidate clubs`,
+      count: courses.length + clubs.length,
+    });
+
+    const certs = await findCertifications(gemini, MODEL_AGENT, profile.goal, profile.major);
+    onStep({ step: "certifications", label: `${certs.length} certifications found`, count: certs.length });
+
+    const plan = await planSemesters(gemini, MODEL_AGENT, { profile, targetSemesters, courses, clubs, certs });
+    onStep({ step: "planning", label: `${plan.length} nodes proposed`, count: plan.length });
+
+    const courseRefs = plan.filter((n) => n.kind === "course" && n.ref).map((n) => n.ref as string);
+    const clubRefs = plan.filter((n) => n.kind === "club" && n.ref).map((n) => n.ref as string);
+    const [courseCodes, clubNames] = await Promise.all([courseCodesExist(courseRefs), clubNamesExist(clubRefs)]);
+    const certsByName = new Map(certs.map((c) => [c.name, c] as const));
+    const validated = plan.map((node) => validatePlanNode(node, { courseCodes, clubNames, certsByName }));
+    onStep({
+      step: "validating",
+      label: `${validated.length} nodes validated against the catalog`,
+      count: validated.length,
+    });
+
+    const roadmap = await upsertRoadmap(input.userId, {
+      goal: profile.goal,
+      targetTerm: `${profile.targetTerm.season} ${profile.targetTerm.year}`,
+      agentRunId: runId,
+    });
+    // Sequential writes (roadmap row first): lib/db.ts has no withTransaction
+    // helper on this base, so this is not one atomic transaction -- a crash
+    // mid-write leaves the roadmap row but a partial node set, recoverable by
+    // re-running the agent (deleteFutureNodes only ever touches 'suggested'
+    // rows, so a re-run is idempotent from the student's point of view).
+    await deleteFutureNodes(input.userId, roadmap.id, targetSemesters);
+    let position = 0;
+    for (const node of validated) {
+      await addNode(input.userId, {
+        roadmapId: roadmap.id,
+        semester: node.semester,
+        kind: node.kind,
+        refCode: node.refCode,
+        refName: node.refName,
+        title: node.title,
+        why: node.why,
+        movesToward: node.movesToward,
+        sourceUrl: node.sourceUrl,
+        position: position++,
+      });
+    }
+
+    await finishAgentRun(runId, { status: "ok", counts: { nodes: validated.length } });
+    return { roadmapId: roadmap.id, nodes: validated, targetSemesters };
+  } catch (error) {
+    await finishAgentRun(runId, { status: "error", error: (error as Error).message }).catch((auditError) =>
+      console.error("runRoadmapAgent: finishAgentRun failed while recording an error", auditError),
+    );
+    throw error;
+  }
+}
+
+// Call 1 of 2 (Context7-verified, see handoff): Google Search grounding via
+// `tools: [{ googleSearch: {} }]`. Gemini's API does not document combining
+// that tool with `responseSchema`/`responseMimeType: "application/json"` in
+// the SAME call, so this stays a plain-text call and the structured planning
+// call below is a separate, ungrounded request -- the two-call fallback the
+// L3b brief names when the combination is unconfirmed.
+async function findCertifications(
+  geminiFn: () => GeminiClient,
+  model: string,
+  goal: string,
+  major: string,
+): Promise<CertCandidate[]> {
+  const response = await geminiFn().models.generateContent({
+    model,
+    contents: [
+      {
+        text:
+          `Find up to 3 certifications relevant to a Virginia Tech ${major} student whose goal is: "${goal}". ` +
+          "Use live web search. For each certification you actually find a real source URL for, return ONE line " +
+          "in exactly this format with no extra text: NAME | ONE-SENTENCE WHY | https://source-url. " +
+          "If you find none with a real URL, return nothing.",
+      },
+    ],
+    config: { tools: [{ googleSearch: {} }] },
+  });
+  return parseCertLines(response.text ?? "");
+}
+
+// Call 2 of 2: structured JSON planning, no grounding tool attached.
+async function planSemesters(
+  geminiFn: () => GeminiClient,
+  model: string,
+  ctx: {
+    profile: ProfileOutput;
+    targetSemesters: string[];
+    courses: Array<{ code: string; title: string }>;
+    clubs: Array<{ name: string; description: string }>;
+    certs: CertCandidate[];
+  },
+): Promise<PlanNode[]> {
+  const courseList = ctx.courses.map((c) => `${c.code}: ${c.title}`).join("\n") || "none";
+  const clubList = ctx.clubs.map((c) => `${c.name}: ${c.description.slice(0, 80)}`).join("\n") || "none";
+  const certList = ctx.certs.map((c) => `${c.name}: ${c.why}`).join("\n") || "none";
+  const takenCodes = ctx.profile.courses.map((c) => c.code);
+
+  const response = await geminiFn().models.generateContent({
+    model,
+    contents: [
+      {
+        text:
+          `Student major: ${ctx.profile.major}. Goal: ${ctx.profile.goal}. Skills: ${ctx.profile.skills.join(", ")}. ` +
+          `Role types: ${ctx.profile.roleTypes.join(", ")}. Already completed courses: ${takenCodes.join(", ") || "none"}.\n` +
+          `Plan a semester roadmap covering exactly these semesters: ${ctx.targetSemesters.join(", ")}.\n\n` +
+          `Candidate VT courses ("ref" must be the exact code before the colon, never a completed course):\n${courseList}\n\n` +
+          `Candidate VT clubs ("ref" must be the exact name before the colon):\n${clubList}\n\n` +
+          `Grounded certifications ("ref" must be the exact name before the colon; never invent one not listed here):\n${certList}\n\n` +
+          "Return a JSON array of plan nodes. Every course/club/certification node's \"ref\" must be copied " +
+          "EXACTLY from the lists above. A \"project\" node always has ref null and is a suggested project idea, " +
+          "never copied from a list. Distribute nodes across the given semesters. Keep the array under 20 nodes.",
+      },
+    ],
+    config: {
+      responseMimeType: "application/json",
+      responseSchema: {
+        type: "ARRAY",
+        items: {
+          type: "OBJECT",
+          properties: {
+            semester: { type: "STRING" },
+            kind: { type: "STRING", enum: ["course", "club", "project", "certification"] },
+            ref: { type: "STRING", nullable: true },
+            title: { type: "STRING" },
+            why: { type: "STRING" },
+            movesToward: { type: "ARRAY", items: { type: "STRING" } },
+          },
+          required: ["semester", "kind", "title", "why", "movesToward"],
+        },
+      },
+    },
+  });
+  return parsePlanResponse(response.text ?? "[]");
+}
