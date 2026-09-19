@@ -12,12 +12,20 @@ export type SortableRole = {
   title: string;
   created_at: string;
   deadline: string | null;
+  // L2c (Match agent, 2026-09-19): the Match agent's match_scores.score for
+  // this caller, or null/undefined when the posting hasn't been scored (no
+  // profile yet, or ranked outside this run). Optional so every existing
+  // caller building a SortableRole literal (journey/page.tsx's compact feed,
+  // pre-L2c rows) keeps compiling unchanged.
+  matchScore?: number | null;
 };
 
 // D23: the "fit" sort is deleted with lib/fit.ts. D8: "deadline" is deleted
 // (1/1295 rows had one; the option did nothing) in favor of "title".
-export type HomeSort = "recent" | "company" | "title";
-export const HOME_SORTS: readonly HomeSort[] = ["recent", "company", "title"];
+// L2c: "best_match" sorts by the Match agent's score (nulls last, tie ->
+// recent) -- the client-side equivalent of the server's match_scores order.
+export type HomeSort = "best_match" | "recent" | "company" | "title";
+export const HOME_SORTS: readonly HomeSort[] = ["best_match", "recent", "company", "title"];
 
 // RB-003 search: case-insensitive substring over company name OR title.
 export function matchesSearch(row: { company_name: string; title: string }, query: string): boolean {
@@ -106,6 +114,12 @@ export function collapseDuplicates<
 export function sortRoles<T extends SortableRole>(rows: T[], sort: HomeSort): T[] {
   const byRecent = (a: T, b: T) => b.created_at.localeCompare(a.created_at);
 
+  if (sort === "best_match") {
+    return [...rows].sort((a, b) => {
+      const diff = (b.matchScore ?? -Infinity) - (a.matchScore ?? -Infinity);
+      return diff !== 0 ? diff : byRecent(a, b);
+    });
+  }
   if (sort === "company") {
     return [...rows].sort((a, b) => a.company_name.localeCompare(b.company_name) || byRecent(a, b));
   }

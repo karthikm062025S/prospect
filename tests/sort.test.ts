@@ -51,9 +51,9 @@ function makeRole(overrides: Partial<RoleWithCompany> = {}): RoleWithCompany {
 
 // --- HOME_SORTS ---
 // D23: the "fit" sort was deleted with lib/fit.ts. D8: "deadline" was deleted
-// in favor of "title".
-test("HOME_SORTS lists the three surviving sort keys", () => {
-  assert.deepEqual(HOME_SORTS, ["recent", "company", "title"]);
+// in favor of "title". L2c added "best_match" (the Match agent's score).
+test("HOME_SORTS lists the four surviving sort keys", () => {
+  assert.deepEqual(HOME_SORTS, ["best_match", "recent", "company", "title"]);
 });
 
 // --- matchesSearch ---
@@ -341,8 +341,38 @@ test("buildHomeList: empty input returns empty groups", () => {
 });
 
 test("HomeSort type accepts each declared key (compile-time smoke test)", () => {
-  const sorts: HomeSort[] = ["recent", "company", "title"];
-  assert.equal(sorts.length, 3);
+  const sorts: HomeSort[] = ["best_match", "recent", "company", "title"];
+  assert.equal(sorts.length, 4);
+});
+
+// --- sortRoles "best_match" (L2c) ---
+// Plain literals (not makeRole/RoleWithCompany, which carries no matchScore
+// field) -- the same pattern the `tie` fixtures below use, since sortRoles is
+// generic over anything structurally satisfying SortableRole.
+function scored(id: string, matchScore: number | null | undefined, created_at = "2026-08-01T00:00:00Z") {
+  return { id, company_id: "c1", company_name: "Acme", title: id, created_at, deadline: null, matchScore };
+}
+
+test("sortRoles 'best_match' orders by matchScore desc", () => {
+  const a = scored("a", 0.4);
+  const b = scored("b", 0.9);
+  const result = sortRoles([a, b], "best_match");
+  assert.deepEqual(result.map((r) => r.id), ["b", "a"]);
+});
+
+test("sortRoles 'best_match' puts unscored rows (null/undefined matchScore) last", () => {
+  const unscored = scored("unscored", null, "2026-08-10T00:00:00Z");
+  const missing = scored("missing", undefined, "2026-08-15T00:00:00Z");
+  const low = scored("low", 0.1, "2026-08-01T00:00:00Z");
+  const result = sortRoles([unscored, missing, low], "best_match");
+  assert.equal(result[0].id, "low");
+});
+
+test("sortRoles 'best_match' ties on matchScore fall back to recent", () => {
+  const older = scored("older", 0.5, "2026-08-01T00:00:00Z");
+  const newer = scored("newer", 0.5, "2026-08-10T00:00:00Z");
+  const result = sortRoles([older, newer], "best_match");
+  assert.deepEqual(result.map((r) => r.id), ["newer", "older"]);
 });
 
 // --- relativeDay (D28) ---

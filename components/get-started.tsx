@@ -1,13 +1,18 @@
 "use client";
 
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { useEffect, useId, useSyncExternalStore } from "react";
+import { useEffect, useId, useState, useSyncExternalStore } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   BookmarkThinIcon,
   ChatIcon,
   CheckIcon,
   FunnelSimpleIcon,
 } from "@/components/icons";
+
+const paneButton =
+  "inline-flex min-h-11 items-center gap-1.5 border border-hairline px-4 font-sans text-sm font-medium text-text hover:bg-bg hover:text-sage focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage focus-visible:ring-offset-2 focus-visible:ring-offset-raised disabled:cursor-not-allowed disabled:opacity-60";
 
 export const GET_STARTED_DISMISSED_KEY = "scout_get_started_dismissed";
 export const GET_STARTED_FEEDBACK_KEY = "scout_get_started_feedback_clicked";
@@ -151,6 +156,8 @@ function ProgressItem({
 
 export function GetStarted({
   userId,
+  hasProfile,
+  hasScores,
   eligible,
   filtersDone,
   savedDone,
@@ -161,6 +168,11 @@ export function GetStarted({
   // The signed-in user id, purely as the localStorage namespace above. Empty
   // string in a preview/story render, which falls back to the unscoped keys.
   userId: string;
+  // L2c (Match agent, 2026-09-19): whether this caller has a Match agent
+  // profile (resume + transcript + goal) and a ranked feed yet. Neither one
+  // is dismissible -- a first-time judge always sees a path to /setup.
+  hasProfile: boolean;
+  hasScores: boolean;
   eligible: boolean;
   filtersDone: boolean;
   savedDone: boolean;
@@ -184,6 +196,57 @@ export function GetStarted({
     () => false,
   );
   const titleId = useId();
+  const router = useRouter();
+  // L2c: the signed-in NDJSON path (app/api/match/route.ts) -- one line per
+  // named step as the Match agent runs, exactly like components/setup/
+  // setup-form.tsx parses app/api/profile/route.ts's stream.
+  const [ranking, setRanking] = useState(false);
+  const [rankSteps, setRankSteps] = useState<{ step: string; label: string }[]>([]);
+  const [rankError, setRankError] = useState<string | null>(null);
+
+  async function runRankMyFeed() {
+    setRankError(null);
+    setRankSteps([]);
+    setRanking(true);
+    try {
+      const response = await fetch("/api/match", { method: "POST" });
+      if (!response.ok || !response.body) {
+        const body = await response.json().catch(() => null);
+        setRankError(body?.error ?? `Request failed (${response.status})`);
+        setRanking(false);
+        return;
+      }
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          const event = JSON.parse(line) as { step?: string; label?: string; error?: string; done?: boolean };
+          if (event.error) {
+            setRankError(event.error);
+            setRanking(false);
+            return;
+          }
+          if (event.done) {
+            router.refresh(); // re-fetches app/(app)/page.tsx server-side; hasScores flips true
+            return;
+          }
+          if (event.step && event.label) {
+            setRankSteps((prev) => [...prev, { step: event.step as string, label: event.label as string }]);
+          }
+        }
+      }
+    } catch (err) {
+      setRankError((err as Error).message);
+      setRanking(false);
+    }
+  }
 
   useEffect(() => {
     feedbackUserId = userId;
@@ -205,6 +268,62 @@ export function GetStarted({
   };
   const doneCount = Object.values(progress).filter(Boolean).length;
   const allDone = doneCount === 3;
+
+  // L2c: these two states are never dismissible and never gated on `visible`
+  // (eligible/dismissed/activeOnThisDevice) -- a first-time judge with no
+  // profile, or a profile that hasn't been ranked yet, always sees the path
+  // forward, not the old D27 checklist.
+  if (!hasProfile) {
+    return (
+      <section
+        aria-labelledby="profile-setup-heading"
+        className="shrink-0 overflow-hidden rounded-2xl bg-raised p-4 shadow-sm ring-1 ring-hairline"
+      >
+        <h2 id="profile-setup-heading" className="font-display text-lg text-text">
+          Set up your profile
+        </h2>
+        <p className="mt-1 text-[13px] text-text-dim">
+          Upload your resume and transcript so the Match agent can rank the feed for you.
+        </p>
+        <Link href="/setup" className={`${paneButton} mt-3`}>
+          Set up your profile
+        </Link>
+      </section>
+    );
+  }
+
+  if (!hasScores) {
+    return (
+      <section
+        aria-labelledby="rank-feed-heading"
+        className="shrink-0 overflow-hidden rounded-2xl bg-raised p-4 shadow-sm ring-1 ring-hairline"
+      >
+        <h2 id="rank-feed-heading" className="font-display text-lg text-text">
+          Rank my feed
+        </h2>
+        {ranking ? (
+          <ol aria-live="polite" className="mt-2 flex flex-col gap-1 text-[13px] text-text-dim">
+            {rankSteps.map((s, i) => (
+              <li key={`${s.step}-${i}`}>{s.label}</li>
+            ))}
+            {rankSteps.length === 0 ? <li>Starting the Match agent…</li> : null}
+          </ol>
+        ) : (
+          <p className="mt-1 text-[13px] text-text-dim">
+            Score every open posting against your profile and goal, best match first.
+          </p>
+        )}
+        {rankError ? (
+          <p role="alert" className="mt-2 text-[13px] text-danger">
+            {rankError}
+          </p>
+        ) : null}
+        <button type="button" onClick={runRankMyFeed} disabled={ranking} className={`${paneButton} mt-3`}>
+          {ranking ? "Ranking…" : "Rank my feed"}
+        </button>
+      </section>
+    );
+  }
 
   return (
     <AnimatePresence initial={false}>

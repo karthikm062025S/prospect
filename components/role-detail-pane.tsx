@@ -18,6 +18,7 @@ import { FAMILY_ORDER, FAMILY_LABEL } from "@/lib/family";
 import { JdHtml } from "@/components/jd-html";
 import { CompanyAvatar } from "@/components/company-avatar";
 import { CorrectionControl, VISA_LABELS } from "@/components/correction-control";
+import { LabelsBar } from "@/components/labels-bar";
 import {
   ApplyConfirm,
   absoluteDateTime,
@@ -163,6 +164,64 @@ export function RoleDetailPane({
         <Meta label="Deadline" value={row.deadline ? formatDate(row.deadline) : "Not listed"} />
         <Meta label="Source" value={row.source ? row.source[0].toUpperCase() + row.source.slice(1) : "Not listed"} />
       </dl>
+
+      {/* L2c (Match agent, 2026-09-19): only a scored posting gets this
+          section at all -- an unscored one (no profile, or ranked before the
+          agent ran) shows nothing here, never a placeholder fit score. */}
+      {row.matchScore != null ? (
+        <section aria-label="Why this matches" className="flex flex-col gap-2 border-t border-hairline pt-3">
+          <h3 className="font-label text-[11px] uppercase tracking-label text-text-dim">Why this matches</h3>
+
+          <div className="flex flex-wrap items-center gap-2">
+            {row.archetypeName ? (
+              <span className="border border-hairline px-1.5 py-0.5 font-label text-[11px] uppercase tracking-label text-text-dim">
+                {row.archetypeName}
+              </span>
+            ) : null}
+            <LabelsBar counts={row.taskLabelCounts ?? null} />
+          </div>
+
+          {row.matchReasons && row.matchReasons.length > 0 ? (
+            <ul className="flex flex-col gap-1 text-[15px] text-text">
+              {row.matchReasons.map((reason) => (
+                <li key={reason}>{reason}</li>
+              ))}
+            </ul>
+          ) : null}
+
+          {row.requirementsChecked ? (
+            <div className="flex flex-col gap-1 text-[13px]">
+              {row.requirementsMet && row.requirementsMet.length > 0 ? (
+                <p className="text-text">
+                  <span className="font-label text-[11px] uppercase tracking-label text-text-dim">Met </span>
+                  {row.requirementsMet.join(", ")}
+                </p>
+              ) : null}
+              {row.requirementsUnknown && row.requirementsUnknown.length > 0 ? (
+                <p className="text-text-dim">
+                  <span className="font-label text-[11px] uppercase tracking-label text-text-dim">Unknown </span>
+                  {row.requirementsUnknown.join(", ")}
+                </p>
+              ) : null}
+            </div>
+          ) : (
+            <p className="text-[13px] text-text-dim">Requirements not yet checked for this posting.</p>
+          )}
+
+          {row.beforeYouApply && row.beforeYouApply.length > 0 ? (
+            <div className="flex flex-col gap-1 text-[13px]">
+              <span className="font-label text-[11px] uppercase tracking-label text-text-dim">Before you apply</span>
+              <ul className="flex flex-col gap-0.5 text-text">
+                {row.beforeYouApply.map((node) => (
+                  <li key={node.id}>
+                    {node.title} <span className="text-text-dim">- {node.why}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+        </section>
+      ) : null}
 
       {/* Task 3 T5/K1 (lane L5, FR-008): a signed-in user corrects a wrong
           season/family/sponsorship label for their own view only — never a

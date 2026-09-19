@@ -16,9 +16,16 @@ export function CompactFeed({ rows, nowMs }: { rows: HomeRow[] | null; nowMs: nu
   if (rows.length === 0) {
     return <p className="text-[13px] text-text-dim">No open postings right now.</p>;
   }
+  // L2c: same ranked order as Home once the Match agent has scored the feed
+  // -- a no-op (input order preserved) until the caller attaches matchScore
+  // to these rows.
+  const hasScores = rows.some((row) => row.matchScore != null);
+  const ordered = hasScores
+    ? [...rows].sort((a, b) => (b.matchScore ?? -Infinity) - (a.matchScore ?? -Infinity))
+    : rows;
   return (
     <ul className="flex flex-col border border-hairline" style={{ borderRadius: "var(--radius-card, 16px)" }}>
-      {rows.map((row) => (
+      {ordered.map((row) => (
         <RoleRow
           key={row.id}
           row={row}

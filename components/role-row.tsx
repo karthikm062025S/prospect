@@ -17,6 +17,7 @@ import type { Family } from "@/lib/family";
 import type { CorrectionField, SharedLabels } from "@/lib/corrections";
 import { VISA_LABELS } from "@/components/correction-control";
 import { CompanyAvatar } from "@/components/company-avatar";
+import { LabelsBar, type LabelCounts } from "@/components/labels-bar";
 import {
   ArrowSquareOutIcon,
   BookmarkIcon,
@@ -76,7 +77,30 @@ export type HomeRow = {
   // label" (onUncorrectRow) restore the true shared value immediately,
   // instead of the last pre-overlaid server read.
   shared: SharedLabels | null;
+  // L2c (Match agent, 2026-09-19): every field below is OPTIONAL so every
+  // existing HomeRow literal (journey/page.tsx's compact feed rows, built
+  // before this lane) keeps compiling with none of them set -- undefined
+  // reads identically to "not scored yet" everywhere these are rendered.
+  // match_scores.score for this caller, or null/undefined when unscored.
+  matchScore?: number | null;
+  // The printed fit reasons from the score row (lib/agents/match.ts scorePosting).
+  matchReasons?: readonly string[] | null;
+  // This POSTING's own archetype name (role_archetypes/archetypes), never the
+  // student's target archetype (match_scores.target_archetype is the same
+  // value on every row and is not what the chip shows).
+  archetypeName?: string | null;
+  // Top-40-only (match_scores.requirements_checked): met vs unknown, and
+  // whether they were checked at all for this posting this run.
+  requirementsMet?: readonly string[] | null;
+  requirementsUnknown?: readonly string[] | null;
+  requirementsChecked?: boolean;
+  beforeYouApply?: ReadonlyArray<BeforeYouApplyNode> | null;
+  // role_tasks label counts (lib/exposure.ts summarizeLabels), null when this
+  // posting has no role_tasks rows at all (components/labels-bar.tsx "unmapped").
+  taskLabelCounts?: LabelCounts;
 };
+
+export type BeforeYouApplyNode = { id: string; title: string; why: string };
 
 // What the server ACTUALLY serializes into the HTML (A15). The four company
 // columns are stripped here and rebuilt in HomeList from a companies map sent
@@ -432,6 +456,19 @@ function RoleRowBase({
             {row.eligibility_note ??
               `${VISA_LABELS[row.visa_class] ?? row.visa_class}${row.corrected.includes("visa_class") ? " (your correction)" : ""}`}
           </p>
+        ) : null}
+
+        {/* L2c: only a scored row gets a match line -- an unscored row (no
+            profile yet, or ranked before the agent ran) shows nothing here. */}
+        {row.matchScore != null ? (
+          <div className="flex flex-wrap items-center gap-2 pb-1.5 pl-2">
+            {row.archetypeName ? (
+              <span className="border border-hairline px-1.5 py-0.5 font-label text-[10px] uppercase tracking-label text-text-dim">
+                {row.archetypeName}
+              </span>
+            ) : null}
+            <LabelsBar counts={row.taskLabelCounts ?? null} />
+          </div>
         ) : null}
 
         {flow.localError ? (

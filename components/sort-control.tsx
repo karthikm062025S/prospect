@@ -12,7 +12,10 @@ import { SortIcon } from "@/components/icons";
 export const HOME_SORT_KEY = "home_sort";
 
 // D23: the "Fit score" option went with lib/fit.ts. D8: "Deadline" removed.
+// L2c: "Best match" (the Match agent's score) is the new default once scores
+// exist -- see useHomeSort's `fallback` param below.
 const LABELS: Record<HomeSort, string> = {
+  best_match: "Best match",
   recent: "Recently added",
   company: "Company A–Z",
   title: "Title A–Z",
@@ -26,18 +29,6 @@ function subscribe(cb: () => void) {
   listeners.add(cb);
   return () => listeners.delete(cb);
 }
-function getSnapshot(): HomeSort {
-  if (memorySort) return memorySort;
-  try {
-    const raw = localStorage.getItem(HOME_SORT_KEY);
-    return HOME_SORTS.includes(raw as HomeSort) ? (raw as HomeSort) : "recent";
-  } catch {
-    return "recent";
-  }
-}
-function getServerSnapshot(): HomeSort {
-  return "recent";
-}
 function setHomeSort(next: HomeSort) {
   memorySort = next;
   try {
@@ -48,8 +39,22 @@ function setHomeSort(next: HomeSort) {
   listeners.forEach((cb) => cb());
 }
 
-// The persisted sort, shared by SortControl and the list owner.
-export function useHomeSort(): [HomeSort, (sort: HomeSort) => void] {
+// The persisted sort, shared by SortControl and the list owner. `fallback`
+// (L2c) is what a caller with no stored preference sees: HomeList passes
+// "best_match" once the Match agent has scored the feed, "recent" otherwise
+// -- an EXPLICIT stored choice (memorySort or localStorage) always wins over
+// either fallback, so this only changes the never-touched-sort default.
+export function useHomeSort(fallback: HomeSort = "recent"): [HomeSort, (sort: HomeSort) => void] {
+  const getSnapshot = (): HomeSort => {
+    if (memorySort) return memorySort;
+    try {
+      const raw = localStorage.getItem(HOME_SORT_KEY);
+      return HOME_SORTS.includes(raw as HomeSort) ? (raw as HomeSort) : fallback;
+    } catch {
+      return fallback;
+    }
+  };
+  const getServerSnapshot = (): HomeSort => fallback;
   return [useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot), setHomeSort];
 }
 
