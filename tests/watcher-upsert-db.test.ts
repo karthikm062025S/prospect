@@ -95,3 +95,31 @@ test("a brand-new row inserts with source_posted_at set", async () => {
   const [row] = await db.q<{ source_posted_at: string }>("select source_posted_at from roles_public where id = $1", [(result.role as { id: string }).id]);
   assert.equal(row.source_posted_at, "2026-09-19T14:00:00.000Z", "exposed through roles_public");
 });
+
+// Addendum 2 (2026-09-19): `level` rides the watcher payload the same way;
+// validated against the enum, backfills once, never churns; roles_public exposes it.
+test("a payload row with level lands in roles.level; an invalid level is dropped; a stored level never churns", async () => {
+  const parsed = parseWatcherPayload({ roles: [{ ...payload, level: "internship" }] });
+  assert.ok(parsed.ok);
+  const result = await upsertRole(db.q, parsed.roles[0], "2026-09-19T16:50:00.000Z");
+  assert.equal(result.action, "update");
+  assert.equal((result.role as { level: string | null }).level, "internship");
+
+  const again = parseWatcherPayload({ roles: [{ ...payload, level: "full_time" }] });
+  assert.ok(again.ok);
+  const second = await upsertRole(db.q, again.roles[0], "2026-09-19T16:55:00.000Z");
+  assert.equal((second.role as { level: string }).level, "internship", "never churned once set");
+
+  const bad = parseWatcherPayload({ roles: [{ ...payload, level: "senior" }] });
+  assert.ok(bad.ok);
+  assert.equal(bad.roles[0].level, null, "a value outside the enum is dropped, never stored");
+
+  const fresh = parseWatcherPayload({
+    roles: [{ company: company.name, title: "Nursing Intern (L0 wide-gate probe)", level: "coop" }],
+  });
+  assert.ok(fresh.ok);
+  const inserted = await upsertRole(db.q, fresh.roles[0], "2026-09-19T17:00:00.000Z");
+  assert.equal(inserted.action, "insert", "a non-CS title is eligible (every major, every level)");
+  const [row] = await db.q<{ level: string }>("select level from roles_public where id = $1", [(inserted.role as { id: string }).id]);
+  assert.equal(row.level, "coop");
+});

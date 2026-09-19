@@ -2,58 +2,10 @@ import type { QueryFn } from "./db";
 import type { Season } from "./season";
 import type { Family } from "./family";
 
-// Deterministic title role-gate for INGEST (SPEC FR-012: hard-impossible
-// auto-remove). Inlined here (co-located with the ingest path, no cross-module
-// runtime import so node --experimental-strip-types resolves it) and exported so
-// tests can lock it.
-//
-// ponytail: these five predicates are a deliberate copy of scripts/scan.mjs (the
-// GitHub Actions scanner, deployed OUTSIDE this repo tree — it must stay
-// import-standalone, so we do NOT cross-import it). Both copies are test-locked
-// (tests/title-filter.test.ts mirrors tests/scan-filter.test.ts) so drift
-// surfaces as a failing test. Keep the two in sync. Recall-first: a real US
-// SWE/AI/Data/Quant intern title survives; only unambiguous non-targets drop;
-// borderline passes through to the owner's manual delete. Location is NOT gated
-// here (the webhook payload carries none — non-US strays are caught by the
-// scanner's own looksUS filter + manual delete/tombstone).
-// The INTERNSHIP-TERM gate. Widened 2026-09-03 (v7/feed lane): MISSION v7 D8 and
-// Karthik's ingest decision admit co-op terms, but the gate still required the
-// literal word "intern", so "Software Engineering Co-op 2027" and
-// "2027 Summer Technology Analyst" were dropped at ingest (verified against the
-// live feed: not one co-op-titled row without "intern" had ever been ingested).
-// "summer analyst/associate/scholar" are the term-of-art internship titles used
-// by finance/consulting technology programs. A CS signal is still REQUIRED
-// separately (INCLUDE below), so a bare "Co-op 2027" or "2027 Summer Analyst"
-// still drops.
-const INTERN = /\bintern(ships?|s)?\b|\bco-?op\b|\bcooperative education\b|\bsummer\b(?:\s+[\w&/'-]+){0,3}\s+(analysts?|associates?|scholars?)\b/i;
-
-// STRONG unambiguous CS-engineering signal. A title matching this is KEPT even
-// when it also carries a non-technical DEPARTMENT word (e.g. "Marketing Software
-// Engineer", "Software Engineer Intern, Accounting Platform") — these phrases
-// never head a non-CS role, so they WIN over EXCLUDE. Deliberately NOT bare
-// "engineer" (mechanical/civil/etc. use it).
-const STRONG_TECH =
-  /\b(software\s+(engineer|developer)|software development engineer|machine learning|deep learning|data scien|data engineer|analytics engineer|full[\s-]?stack|back[\s-]?end\s+engineer|front[\s-]?end\s+engineer|devops|site reliability|\bsre\b|security engineer|firmware|compiler|distributed systems|graphics engineer|rendering|\bsdet\b)/i;
-
-// Broad CS-technical INCLUDE — EVERY CS-technical family (completeness-first,
-// the owner, 2026-07-18: never miss a real role; he filters the noise himself).
-// SWE/Frontend/Backend/Fullstack/Mobile, AI/ML/GenAI/LLM/NLP/CV, Data
-// Science/Eng/Analytics/BI, Data/Business/Product Analyst, Quant, DevOps/SRE/
-// Platform/Infra/Cloud, Security/Cyber, QA/SDET/Test, Product & (T)PM, Solutions/
-// Sales/Forward-Deployed Eng, DevRel, UX/UI, Robotics/Embedded/Firmware,
-// Research/Applied Scientist, Systems/Compiler/Distributed/Network, Games/Graphics.
-// Bare ai/ml/bi kept on purpose; the non-tech "<dept> AI/analytics" compounds are
-// cut by EXCLUDE below.
-const INCLUDE =
-  /\b(software|swe|sde|develop(er|ment)?|programmer|programming|full[\s-]?stack|back[\s-]?end|front[\s-]?end|engineer|engineering|machine learning|\bml\b|\bai\b|artificial intelligence|deep learning|\bnlp\b|\bllm\b|generative ai|computer vision|reinforcement learning|data scien|data engineer|data analyst|business analyst|product analyst|business systems analyst|analytics|business intelligence|\bbi\b|infrastructure|\bplatform\b|\bcloud\b|security|cyber|appsec|infosec|robotics|perception|autonomy|autonomous|embedded|firmware|scientist|research|devops|site reliability|\bsre\b|\bqa\b|\bsdet\b|quality assurance|quality engineer|test engineer|fpga|quant|systems|compiler|distributed|network|rendering|graphics|game|gameplay|solutions engineer|sales engineer|forward deployed|field engineer|implementation engineer|developer advocate|developer relations|devrel|product manager|product management|program manager|project manager|associate product manager|\bapm\b|\btpm\b|\bux\b|\bui\b|user experience|ic design|hardware|architect|technology)/i;
-
-// EXCLUDE — clearly NON-technical functions only, as PRECISE compounds so a
-// technical role that merely CONTAINS one of these words survives (Sales
-// *Engineer*, *Data* Analyst, *Business* Analyst, Backend Engineer/*Treasury*).
-// EXCLUDE loses to STRONG_TECH. Bare department words (sales/design/product/
-// analyst/business) are FORBIDDEN here — they misfire on real CS titles.
-const EXCLUDE =
-  /\b(marketing|human resources|\bhr\b|people ops|talent acquisition|recruit(ing|er|ment)?|sales development|sales representative|sales rep\b|account executive|account manager|business development|\bsdr\b|\bbdr\b|sales strategy|market research|financial analyst|finance analyst|finance intern|accounting|investment banking|financial reporting|legal|counsel|paralegal|public relations|social media|content marketing|customer success|customer support|customer experience|graphic design|visual design|product marketing|product operations|business operations|sales operations|marketing operations|people operations|management analyst|mechanical engineer(ing)?|civil engineer(ing)?|chemical engineer(ing)?|biomedical engineer(ing)?|industrial engineer(ing)?|environmental engineer(ing)?|aerospace engineer(ing)?|materials engineer(ing)?|manufacturing engineer(ing)?|structural engineer(ing)?|pharmac(y|ist|eutical|ists|ies)|nursing|clinical|phlebotom)\b/i;
+// Ingest-time title gate. Until 2026-09-19 this was the CS-intern-only rule
+// (INTERN + INCLUDE/EXCLUDE/STRONG_TECH, a copy of scripts/scan.mjs); addendum 2
+// of the VTHacks build widened it to "every major, every level", so only the
+// stale-year / wrong-term marker below still drops a posting.
 // Widened 2026-09-02 (MISSION v7 D8): fall/spring/winter/autumn and co-op are no
 // longer automatic rejections — lib/season.ts now classifies the term (and a
 // title with no supported term still ingests as season:"unspecified", filtered
@@ -61,14 +13,19 @@ const EXCLUDE =
 // explicit year ≤2026 and a near-term "summer '20"–"summer '26".
 const WRONG_TERM = /\b(2019|2020|2021|2022|2023|2024|2025|2026)\b|summer\s*'?2[0-6]\b/i;
 
+// 2026-09-19 addendum 2 (VTHacks "every major, every level"): the insert gate
+// is WIDE. A posting is kept unless its title carries a stale-year / wrong-term
+// marker (WRONG_TERM); every function and every level is eligible. Mirrors
+// scripts/scan-core.mjs isEligiblePosting (the L2 lane's widened scanner rule);
+// tests/title-filter.test.ts locks it.
 export function isTargetTitle(title: string | null | undefined): boolean {
-  if (!title || !INTERN.test(title)) return false;
-  // EXCLUDE loses to STRONG_TECH: a genuine CS-eng title in a non-tech dept stays.
-  if (EXCLUDE.test(title) && !STRONG_TECH.test(title)) return false;
-  if (!INCLUDE.test(title)) return false;
-  if (WRONG_TERM.test(title)) return false;
-  return true;
+  if (!title || !title.trim()) return false;
+  return !WRONG_TERM.test(title);
 }
+
+// Addendum 2: the posting level a source can state. Null when it did not.
+export const ROLE_LEVELS = ["internship", "coop", "new_grad", "full_time", "research"] as const;
+export type RoleLevel = (typeof ROLE_LEVELS)[number];
 
 // Season/family derivation at ingest (MISSION v7 D8). Duplicated (not
 // imported) from lib/season.ts / lib/family.ts: those two stay dependency-free
@@ -275,6 +232,11 @@ export type UpsertRoleInput = {
   // on update only when the stored value is null. Validated in
   // lib/watcher-payload.ts before it reaches here.
   source_posted_at?: string | null;
+  // 2026-09-19 addendum 2: the source's own level label (ROLE_LEVELS); stored on
+  // insert, on update only when the stored value is null. Validated in
+  // lib/watcher-payload.ts; never derived here (lib/family.ts deriveLevel lands
+  // with the L2 merge and is not imported yet).
+  level?: RoleLevel | null;
 };
 
 // Echo shape for the watcher webhook's `inserted_roles` (identity of a
@@ -511,6 +473,8 @@ export async function upsertRole(
     if (input.location !== undefined) row.location = input.location;
     // Drop-latency addendum: the board's own publish time rides in on insert.
     if (input.source_posted_at != null) row.source_posted_at = input.source_posted_at;
+    // Addendum 2: the source's level, when it stated one.
+    if (input.level != null) row.level = input.level;
     return { action, role: await insertRoleRow(q, row) };
   }
 
@@ -536,6 +500,8 @@ export async function upsertRole(
   if (input.location !== undefined && existingRole.location == null) patch.location = input.location;
   // Drop-latency addendum: backfills once, never churns (same rule as location).
   if (input.source_posted_at != null && existingRole.source_posted_at == null) patch.source_posted_at = input.source_posted_at;
+  // Addendum 2: level backfills once, never churns.
+  if (input.level != null && existingRole.level == null) patch.level = input.level;
   if (isSettableLifecycle(input.lifecycle)) patch.lifecycle = input.lifecycle;
   // D8: title is the dedup key for this row and never changes on an update, so
   // a re-derive here only matters for an older row that still has no value.

@@ -1,4 +1,8 @@
-import type { UpsertRoleInput } from "./upsert-role";
+import type { RoleLevel, UpsertRoleInput } from "./upsert-role";
+
+// Mirrors ROLE_LEVELS in lib/upsert-role.ts (type-only import above: a runtime
+// value import between lib/*.ts files does not resolve under `node --test`).
+const LEVELS = ["internship", "coop", "new_grad", "full_time", "research"] as const satisfies readonly RoleLevel[];
 
 export type WatcherPayloadResult =
   | { ok: true; roles: UpsertRoleInput[] }
@@ -23,10 +27,18 @@ function isValidRole(value: unknown): value is UpsertRoleInput {
   );
 }
 
+// 2026-09-19 addendum 2: an optional `level` per role (LEVELS). A value outside
+// the enum is dropped from that entry (null), never stored, never guessed.
 function normalizeRole(role: UpsertRoleInput): UpsertRoleInput {
-  const raw = (role as Record<string, unknown>).source_posted_at;
-  if (raw === undefined) return role;
-  return { ...role, source_posted_at: isIsoDate(raw) ? new Date(raw).toISOString() : null };
+  const raw = role as Record<string, unknown>;
+  let out = role;
+  if (raw.source_posted_at !== undefined) {
+    out = { ...out, source_posted_at: isIsoDate(raw.source_posted_at) ? new Date(raw.source_posted_at).toISOString() : null };
+  }
+  if (raw.level !== undefined) {
+    out = { ...out, level: (LEVELS as readonly unknown[]).includes(raw.level) ? (raw.level as RoleLevel) : null };
+  }
+  return out;
 }
 
 export function parseWatcherPayload(body: unknown): WatcherPayloadResult {

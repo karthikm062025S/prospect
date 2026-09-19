@@ -2,14 +2,14 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { isTargetTitle } from "../lib/upsert-role.ts";
 
-// Parity lock: these cases MIRROR tests/scan-filter.test.ts so the ingest gate in
-// lib/upsert-role.ts can never silently drift from scripts/scan.mjs (the scanner).
-// Completeness-first (Karthik 2026-07-18): EVERY CS-technical intern title must
-// survive at EVERY company — missing one is the only real failure; he filters the
-// noise himself. Only clearly non-technical functions drop. STRONG_TECH beats a
-// department word ("Marketing Software Engineer" stays).
+// Parity lock for the INGEST gate in lib/upsert-role.ts. 2026-09-19 addendum 2
+// (VTHacks, "every major, every level"): the gate is WIDE. A title is kept
+// unless it carries a stale-year / wrong-term marker; every function and level
+// is eligible (mirrors scripts/scan-core.mjs isEligiblePosting on the L2 lane).
+// The pre-widening CS-intern-only cases stay below as KEEP so the old
+// coverage can never regress, and every title the old gate DROPPED for being
+// non-CS or non-intern is now asserted KEPT (flipped, not deleted).
 const KEEP = [
-  // --- core SWE / AI / Data / Quant (original coverage) ---
   "Software Engineering Internships",
   "Quantitative Research Internships",
   "Applied Scientist Intern",
@@ -26,7 +26,6 @@ const KEEP = [
   "DevOps Intern",
   "SRE Intern",
   "Site Reliability Engineering Internship",
-  // --- families added in the 2026-07-18 completeness broadening ---
   "Product Management Intern (Summer 2027)", // Databricks — the exact miss this fixes
   "Product Manager Intern",
   "Technical Program Manager Intern",
@@ -58,22 +57,17 @@ const KEEP = [
   "Technology Summer Analyst Intern", // bank SWE track titled "Technology Analyst"
   "Hardware Engineer Intern",
   "Solutions Architect Intern",
-  // --- v7/feed lane, 2026-09-03: the term gate widened past the literal word
-  // "intern" (MISSION v7 D8 / Karthik: ingest Summer/Fall/Spring/co-op 2027+).
-  // Every one of these was DROPPED before the widening.
   "Software Engineering Co-op 2027",
   "Software Engineer Co-Op (Spring 2028)",
   "Data Science Coop - Fall 2027",
   "2027 Summer Technology Analyst",
   "Summer Associate, Software Engineering 2027",
   "Cooperative Education Program - Software Development",
-  // --- v7/feed lane: terms the widened WRONG_TERM must now ADMIT ---
   "Software Engineering Intern (Fall 2027)",
   "Software Engineer Intern (Spring 2027)",
   "Winter 2027 Software Engineering Intern",
   "Machine Learning Intern - Summer 2028",
-];
-const DROP = [
+  // --- addendum 2, 2026-09-19: DROPPED by the old CS-intern gate, KEPT by the wide one ---
   "Internal Audit Data Analytics Lead", // "Internal" is not "intern"
   "Senior Software Engineer", // not an intern → dropped by the INTERN gate
   "Marketing Intern",
@@ -101,18 +95,20 @@ const DROP = [
   "Digital Marketing Intern - Technical AI", // "marketing"; bare AI/technical must NOT rescue it
   "Market Research Intern",
   "Operations Intern",
-  "Software Engineer Intern - Fall 2026", // wrong term
   "Data Engineer, Full-time", // not an intern
-  // --- v7/feed lane, 2026-09-03: the widened TERM gate must not open the door
-  // on its own. A co-op / summer-analyst term with NO CS signal still drops
-  // (INCLUDE is a separate, still-required test).
   "Co-op 2027",
   "2027 Summer Analyst",
   "Summer Associate - Wealth Management",
   "Co-op Student - Facilities",
   "Senior Engineer", // no term at all
+];
+// Only a stale-year / wrong-term marker drops a posting now.
+const DROP = [
+  "Software Engineer Intern - Fall 2026", // wrong term
   "Summer 2026 Intern", // supported term word, year we do not cover
   "Software Engineering Co-op 2026", // co-op admitted, but WRONG_TERM year
+  "Software Engineer Intern 2025",
+  "Summer '26 SWE Intern",
 ];
 
 for (const title of KEEP) {
