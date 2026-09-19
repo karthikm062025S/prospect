@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { COOKIE_OPTIONS, sessionCookieOptions } from "@/lib/supabase/cookie-options";
+import { authOutageError, isAuthOutage } from "@/lib/require-user";
 
 const PUBLIC_FILES = new Set([
   "/apple-icon.png",
@@ -58,8 +59,15 @@ export async function proxy(request: NextRequest) {
 
   const {
     data: { user },
+    error,
   } = await supabase.auth.getUser();
   const pathname = request.nextUrl.pathname;
+
+  // An Auth outage must never read as "signed out" (locked rule: failures loud
+  // and named). Public paths still render; everything else gets a named 503.
+  if (isAuthOutage(error) && !isPublicPath(pathname)) {
+    return NextResponse.json({ error: authOutageError(error!).message }, { status: 503 });
+  }
 
   if (!user && pathname === "/") {
     return NextResponse.rewrite(new URL("/welcome", request.url));

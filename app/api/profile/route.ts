@@ -11,9 +11,19 @@ import { runProfileAgent, ProfileFormSchema, encodeStepLine, type ProfileForm } 
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
 
+// Named refusal before buffering: Vercel's own body limit (~4.5 MB) would
+// otherwise answer with an anonymous platform 413 (security validation 2026-09-19).
+const MAX_PDF_BYTES = 4 * 1024 * 1024;
+
 async function readFile(form: FormData, field: string): Promise<Uint8Array | undefined> {
   const value = form.get(field);
   if (!(value instanceof File) || value.size === 0) return undefined;
+  if (value.size > MAX_PDF_BYTES) {
+    throw new Error(`FILE_TOO_LARGE: ${field} is ${(value.size / 1024 / 1024).toFixed(1)} MB; the limit is 4 MB`);
+  }
+  if (value.type && value.type !== "application/pdf") {
+    throw new Error(`FILE_NOT_PDF: ${field} is ${value.type}; upload a PDF`);
+  }
   return new Uint8Array(await value.arrayBuffer());
 }
 

@@ -87,6 +87,27 @@ function sqlStringLiteral(value: string): string {
  * helper. Per the brief's stated fallback ("else sequential and say so") this
  * is that fallback, named here rather than silently assumed atomic.
  */
+const ONET_INDEX = "scout.core.onet_tasks_index";
+let onetIndexCheck: Promise<void> | null = null;
+
+function assertOnetIndexUsable(): Promise<void> {
+  onetIndexCheck ??= (async () => {
+    const { indexStatus } = await import("./vector-search");
+    const status = (await indexStatus(ONET_INDEX)) as { ready?: boolean; indexed_row_count?: number; message?: string };
+    const rows = status.indexed_row_count ?? 0;
+    if (!status.ready && rows === 0) {
+      throw new Error(`ONET_INDEX_NOT_READY: ${ONET_INDEX} has 0 indexed rows (${status.message ?? "still syncing"})`);
+    }
+    if (!status.ready) {
+      console.warn(`ONET_INDEX_PARTIAL: ${ONET_INDEX} has ${rows} of 18838 tasks indexed; task labels are provisional until the sync finishes`);
+    }
+  })().catch((error) => {
+    onetIndexCheck = null; // let the next call re-check instead of caching a transient failure
+    throw error;
+  });
+  return onetIndexCheck;
+}
+
 export async function mapPostingTasks(input: PostingTasksInput, q: QueryFn): Promise<Record<Label, number>> {
   const { gemini, MODEL_AGENT } = await import("./gemini");
   const { queryIndex } = await import("./vector-search");
@@ -110,6 +131,15 @@ export async function mapPostingTasks(input: PostingTasksInput, q: QueryFn): Pro
     },
   });
   const duties = parseDutiesResponse(response.text ?? '{"duties":[]}');
+
+  // The O*NET index is a DELTA_SYNC index that spent hours syncing on the Free
+  // Edition endpoint; a query against a half-synced index returns 200 with
+  // real rows, so ranking silently ran against a fraction of the 18,838 tasks
+  // (validation 2026-09-19). Empty index → named failure. Partial index →
+  // named warning, labels still computed (they are provisional, not wrong).
+  // ponytail: one status GET per process; add a TTL if the index is ever
+  // rebuilt while a long-lived process keeps running.
+  await assertOnetIndexUsable();
 
   const matches: OnetMatch[] = await Promise.all(
     duties.map(async (duty) => {

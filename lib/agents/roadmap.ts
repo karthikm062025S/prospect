@@ -154,13 +154,26 @@ export async function runRoadmapAgent(
           .filter((k) => k.length > 2),
       ),
     );
-    const [courses, clubs] = await Promise.all([
-      loadCourseCandidates({ keywords, limit: 200 }),
-      loadClubCandidates({ keywords, limit: 100 }),
-    ]);
+    // Courses are required (the roadmap plans from them). Clubs are one node
+    // kind and datasets/vt_clubs.csv is still Karthik's to deliver: a missing
+    // club catalog is NAMED in the step label and the plan runs without club
+    // nodes, instead of the whole roadmap throwing for every student
+    // (validation 2026-09-19: scout.core.vt_clubs absent → Promise.all rejected).
+    // Any other club error (env, warehouse) still throws verbatim.
+    const courses = await loadCourseCandidates({ keywords, limit: 200 });
+    let clubs: Awaited<ReturnType<typeof loadClubCandidates>> = [];
+    let clubsNotice: string | null = null;
+    try {
+      clubs = await loadClubCandidates({ keywords, limit: 100 });
+    } catch (error) {
+      if (!(error instanceof Error) || !error.message.startsWith("Club catalog not loaded")) throw error;
+      clubsNotice = error.message;
+    }
     onStep({
       step: "catalog",
-      label: `${courses.length} candidate courses, ${clubs.length} candidate clubs`,
+      label: clubsNotice
+        ? `${courses.length} candidate courses; ${clubsNotice}`
+        : `${courses.length} candidate courses, ${clubs.length} candidate clubs`,
       count: courses.length + clubs.length,
     });
 
@@ -172,7 +185,11 @@ export async function runRoadmapAgent(
 
     const courseRefs = plan.filter((n) => n.kind === "course" && n.ref).map((n) => n.ref as string);
     const clubRefs = plan.filter((n) => n.kind === "club" && n.ref).map((n) => n.ref as string);
-    const [courseCodes, clubNames] = await Promise.all([courseCodesExist(courseRefs), clubNamesExist(clubRefs)]);
+    const [courseCodes, clubNames] = await Promise.all([
+      courseCodesExist(courseRefs),
+      // no club catalog → no club can validate; planSemesters got an empty club list anyway
+      clubsNotice ? Promise.resolve(new Set<string>()) : clubNamesExist(clubRefs),
+    ]);
     const certsByName = new Map(certs.map((c) => [c.name, c] as const));
     const validated = plan.map((node) => validatePlanNode(node, { courseCodes, clubNames, certsByName }));
     onStep({

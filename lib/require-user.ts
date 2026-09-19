@@ -2,6 +2,20 @@ export function resolveUid(user: { id: string } | null | undefined): string | nu
   return user?.id ?? null;
 }
 
+// supabase-js RETURNS (never throws) an error from getUser(). "No session" is a
+// normal signed-out read (AuthSessionMissingError / 4xx). A network failure or
+// a 5xx from Supabase Auth is an OUTAGE and must be loud and named, never read
+// as "signed out" (locked rule 13:25; auth validation 2026-09-19 BLOCKER).
+export function isAuthOutage(error: { name?: string; status?: number } | null | undefined): boolean {
+  if (!error) return false;
+  if (error.name === "AuthRetryableFetchError") return true;
+  return typeof error.status === "number" && error.status >= 500;
+}
+
+export function authOutageError(error: { name?: string; message?: string; status?: number }): Error {
+  return new Error(`AUTH_UNAVAILABLE: Supabase Auth did not answer (${error.name ?? "error"}${error.status ? " " + error.status : ""}): ${error.message ?? ""}`);
+}
+
 // Server actions are public POST endpoints resolvable from ANY route by their
 // build-time ID -- the proxy matcher is NOT a gate for them. Every action must
 // re-check the authenticated user. This is a plain server module, not a
@@ -15,7 +29,9 @@ export async function requireUser(): Promise<string> {
   const supabase = await createClient();
   const {
     data: { user },
+    error,
   } = await supabase.auth.getUser();
+  if (isAuthOutage(error)) throw authOutageError(error!);
   const uid = resolveUid(user);
 
   if (!uid) {
