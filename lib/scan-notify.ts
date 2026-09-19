@@ -12,7 +12,7 @@
 // ("owner/repo") is read by the ONE impure caller (app/api/scan/route.ts) and
 // passed in; unset = notify skipped, exactly like a missing PAT. The builders
 // below stay pure so the node:test runner can call them (D6).
-export const ISSUE_FOOTER_URL = "https://scoutfeed.vercel.app";
+export const ISSUE_FOOTER_URL = process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : "";
 
 /** "owner/repo" -> "@owner"; the @mention the daily issue opens with. */
 export function issueMention(repo: string): string {

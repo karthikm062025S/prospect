@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { filterTier } from "../lib/scan-tier.ts";
-import { buildIssueBody, buildIssueTitle, issueDay, issueMention, postDailyIssue, type NotifyRole } from "../lib/scan-notify.ts";
+import { buildIssueBody, buildIssueTitle, issueDay, issueMention, postDailyIssue, ISSUE_FOOTER_URL, type NotifyRole } from "../lib/scan-notify.ts";
 
 // /api/scan's pure halves (MISSION A4): the tier split over the REAL data files
 // and the per-day GitHub issue the fast lane @mentions on. The issue title +
@@ -52,7 +52,9 @@ test("buildIssueBody matches scan.yml's node one-liner byte for byte", () => {
     "@karthikm062025S — 2 fresh role(s) found:\n\n" +
       "- **Stripe** — Software Engineer Intern [swe] 2026-08-24 — https://stripe.com/jobs/1\n" +
       "- **Palantir** — ML Intern [ai_ml] \n\n" +
-      "→ https://scoutfeed.vercel.app",
+      // The footer URL is the deployment's own origin (VERCEL_PROJECT_PRODUCTION_URL on
+      // Vercel, SCOUT_WEBHOOK's origin in Actions) — never a hardcoded host.
+      `→ ${ISSUE_FOOTER_URL}`,
   );
 });
 

@@ -36,10 +36,11 @@ jobs:
       - name: sweep the residue
         env:
           WATCHER_SECRET: ${{ secrets.WATCHER_SECRET }}
-          URL: ${{ vars.SCOUT_CLASSIFY_URL || 'https://scoutfeed.vercel.app/api/classify' }}
+          URL: ${{ vars.SCOUT_CLASSIFY_URL }}  # required repo variable, no default (never the old app)
           DRY_RUN: ${{ github.event.inputs.dry_run || '0' }}
         run: |
           set -eu
+          test -n "$URL" || { echo "SCOUT_CLASSIFY_URL is not set"; exit 1; }
           for i in $(seq 1 10); do
             body=$(mktemp)
             code=$(curl -sS -o "$body" -w '%{http_code}' -X POST \
