@@ -93,6 +93,88 @@ export function isTargetTitle(title) {
   return true;
 }
 
+// ---------------------------------------------------------------------------
+// L2 (VTHacks coverage lane, 2026-09-19): the WIDE-mode gate + classifiers.
+// isTargetTitle/bucket above are UNCHANGED (byte-identical) — tests/scan-filter.test.ts,
+// tests/scan-core.test.ts and tests/title-filter.test.ts (lib/upsert-role.ts's
+// parity copy) all lock the old CS-intern-only behavior and stay green.
+// scanEndpoints below only switches to these when called with { wide: true }
+// (opt-in, default off, so every existing caller/test is unaffected).
+//
+// isEligiblePosting: "replace exclusion-by-function with inclusion of
+// everything that is a job posting" (MISSION L2 fence) — every function AND
+// every level, dropping only the one check that is function/level-agnostic
+// (an explicitly stale posting year). The ATS itself is the trust boundary for
+// "is this a real posting"; nothing else here second-guesses it.
+// ---------------------------------------------------------------------------
+export function isEligiblePosting(title) {
+  if (!title) return false;
+  if (WRONG_TERM.test(title)) return false;
+  return true;
+}
+
+// Level baseline — MIRRORS lib/family.ts's deriveLevel (standalone JS copy,
+// same discipline as isTargetTitle/bucket's TS siblings above). Kept in sync
+// by hand; tests/family.test.ts locks the canonical TS version. Used only for
+// scan-time reporting (the watcher payload has no `level` column — see the
+// build handoff's QUESTIONS), never sent over the wire.
+const COOP_TERM = /\bco-?op\b|\bcooperative education\b/i;
+const INTERN_TERM = /\bintern(ships?|s)?\b|\bsummer\b(?:\s+[\w&/'-]+){0,3}\s+(analysts?|associates?|scholars?)\b/i;
+const NEW_GRAD_TERM =
+  /new[\s-]?grad(uate)?s?\b|university grad(uate)?s?\b|early career|entry[\s-]?level|class of 20(2[6-9]|3\d)\b/i;
+const RESEARCH_TERM = /\bresearch(er)?\b|post-?doc(toral)?\b|\bphd\b|doctoral/i;
+export function deriveLevel(title) {
+  if (!title) return "full_time";
+  if (COOP_TERM.test(title)) return "coop";
+  if (INTERN_TERM.test(title)) return "internship";
+  if (NEW_GRAD_TERM.test(title)) return "new_grad";
+  if (RESEARCH_TERM.test(title)) return "research";
+  return "full_time";
+}
+
+// Wide-mode function bucket — bucket() above stays untouched (its 4 buckets
+// are byte-locked by tests/scan-core.test.ts's exact role_type assertions).
+// This is a SEPARATE, broader classifier used only when wide:true, covering
+// the non-engineering functions the widened filter now admits. Unmatched ->
+// "Other" (not "SWE" — that default only held when every input was already
+// CS-technical, which is no longer guaranteed under isEligiblePosting).
+export function bucketWide(title) {
+  const t = title.toLowerCase();
+  if (/\bquant/.test(t)) return "Quant";
+  if (/machine learning|\bml\b|\bai\b|artificial intelligence|deep learning|research scien|applied scien/.test(t))
+    return "AI";
+  if (/data scien|data engineer|analytics engineer|data analyst|business intelligence|\bbi\b|\banalytics\b/.test(t))
+    return "Data";
+  if (/security|cyber|appsec|infosec/.test(t)) return "Security";
+  if (/firmware|embedded|fpga|hardware|ic design|robotics|perception|autonomy|autonomous/.test(t)) return "Hardware";
+  if (/\bux\b|\bui\b|user experience|product design|visual design|graphic design/.test(t)) return "Design";
+  if (
+    /product manager|product management|program manager|project manager|associate product manager|\bapm\b|\btpm\b|technical program manager/.test(
+      t,
+    )
+  )
+    return "Product";
+  if (
+    /investment banking|financial analyst|finance\b|accounting|audit|treasury|wealth management|asset management|\btrading\b|underwrit/.test(
+      t,
+    )
+  )
+    return "Finance";
+  if (/consult(ing|ant)/.test(t)) return "Consulting";
+  if (/marketing|brand\b|social media|content market/.test(t)) return "Marketing";
+  if (/human resources|\bhr\b|people (ops|operations)|talent acquisition|recruit(ing|er|ment)?/.test(t)) return "HR";
+  if (/\bsales\b|account executive|account manager|business development|\bsdr\b|\bbdr\b/.test(t)) return "Sales";
+  if (/operations|supply chain|logistics/.test(t)) return "Operations";
+  if (/nursing|clinical|pharmac|biomedical|health\s*care/.test(t)) return "Healthcare";
+  if (
+    /software|swe|sde|develop(er|ment)?|programmer|programming|full[\s-]?stack|back[\s-]?end|front[\s-]?end|engineer|engineering|devops|site reliability|\bsre\b|\bqa\b|\bsdet\b|systems|compiler|distributed|network|rendering|graphics|game|gameplay|solutions engineer|architect|infrastructure|\bplatform\b|\bcloud\b/.test(
+      t,
+    )
+  )
+    return "SWE";
+  return "Other";
+}
+
 export function looksUS(locationStr, countryHint) {
   if (countryHint) {
     const c = String(countryHint).toLowerCase();
@@ -130,6 +212,17 @@ const isoDate = (iso) => {
   return Number.isNaN(t) ? null : new Date(t).toISOString().slice(0, 10);
 };
 
+// Karthik 15:05 addendum: full-precision ISO instant (not day-truncated like
+// isoDate above) for the board's OWN publish timestamp, so drop-latency can be
+// MEASURED, not asserted. Never fabricated: undefined when unparseable, and
+// buildCandidate below never calls this for an approxDate (reconstructed/
+// relative, e.g. Workday "Posted Today") source.
+const isoInstant = (iso) => {
+  if (!iso) return undefined;
+  const t = Date.parse(iso);
+  return Number.isNaN(t) ? undefined : new Date(t).toISOString();
+};
+
 // The webhook payload for one candidate. Deliberately MINIMAL: no lifecycle,
 // eligible, or eligibility_note. The scanner runs 2x/day and re-finds the same
 // roles inside their recency window, hitting the webhook's UPDATE path; if it
@@ -153,12 +246,21 @@ const isoDate = (iso) => {
 // locationsText / etc.) — pass it through when non-empty so roles.location
 // gets backfilled at ingest. upsert-role.ts only writes it when the stored
 // value is null, so a later re-find never churns it.
-export function buildCandidate(company, job) {
+// opts.wide (default false, BYTE-IDENTICAL old output when omitted — every
+// existing caller/test passes no opts): switches role_type to the broader
+// bucketWide() classifier and adds source_posted_at (Karthik 15:05 addendum) —
+// the board's OWN real publish instant, omitted (never fabricated) for an
+// approxDate (reconstructed/relative) source. Gated behind the same flag as
+// isEligiblePosting above for the same reason: tests/scan-core.test.ts locks
+// the exact 6-key row shape scanEndpoints returns by default.
+export function buildCandidate(company, job, opts = {}) {
+  const wide = !!opts.wide;
   return {
     company,
     title: job.title.trim(),
-    role_type: bucket(job.title),
+    role_type: wide ? bucketWide(job.title) : bucket(job.title),
     posted_at: job.approxDate ? null : isoDate(job.published),
+    ...(wide && !job.approxDate && isoInstant(job.published) ? { source_posted_at: isoInstant(job.published) } : {}),
     link: job.url,
     source: "scanner",
     location: job.location || null,
@@ -176,6 +278,14 @@ export function buildCandidate(company, job) {
 const WD_LIMIT = 20;
 const WD_MAX_PAGES = 12;
 const isoAgo = (days) => new Date(Date.now() - days * 86400000).toISOString();
+// A relative string ("Posted Today"/"Posted Yesterday"/"Posted N+ Days Ago") is
+// a RECONSTRUCTED date, never a real one — Karthik 15:05 addendum: only treat
+// postedOn as source_posted_at when it is NOT one of these.
+const WD_RELATIVE = /today|yesterday|\d+\s*\+?\s*days?\s*ago/i;
+function wdIsRealDate(postedOn) {
+  if (!postedOn || WD_RELATIVE.test(String(postedOn))) return false;
+  return !Number.isNaN(Date.parse(String(postedOn)));
+}
 function wdDate(postedOn) {
   if (!postedOn) return isoAgo(31); // unknown → treat as old (safely outside window)
   const s = String(postedOn).toLowerCase();
@@ -185,7 +295,13 @@ function wdDate(postedOn) {
   if (m) return isoAgo(Number(m[1]));
   return isoAgo(31);
 }
-async function fetchWorkday(ep, fetchFn) {
+// wide (L2 addition): searchText:"intern" keyword-filters the WHOLE board
+// server-side, so a non-intern (full-time/new-grad/research) posting on an
+// already-verified Workday tenant never even reaches the JS-side filter. Wide
+// mode drops the keyword (empty searchText = the unfiltered board) so every
+// level/function on the tenant is fetched; isEligiblePosting/looksUS/window
+// still cut downstream, same as every other adapter.
+async function fetchWorkday(ep, fetchFn, wide) {
   const url = `https://${ep.host}/wday/cxs/${ep.tenant}/${ep.site}/jobs`;
   const out = [];
   for (let page = 0; page < WD_MAX_PAGES; page++) {
@@ -197,7 +313,12 @@ async function fetchWorkday(ep, fetchFn) {
         method: "POST",
         signal: ctrl.signal,
         headers: { "content-type": "application/json", accept: "application/json" },
-        body: JSON.stringify({ appliedFacets: {}, limit: WD_LIMIT, offset: page * WD_LIMIT, searchText: "intern" }),
+        body: JSON.stringify({
+          appliedFacets: {},
+          limit: WD_LIMIT,
+          offset: page * WD_LIMIT,
+          searchText: wide ? "" : "intern",
+        }),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       data = await res.json();
@@ -206,14 +327,15 @@ async function fetchWorkday(ep, fetchFn) {
     }
     const posts = data.jobPostings || [];
     for (const j of posts) {
+      const realDate = wdIsRealDate(j.postedOn);
       out.push({
         title: j.title,
         location: j.locationsText || "",
         country: null,
-        published: wdDate(j.postedOn),
+        published: realDate ? new Date(Date.parse(j.postedOn)).toISOString() : wdDate(j.postedOn),
         id: j.externalPath || j.title,
         url: j.externalPath ? `https://${ep.host}/en-US/${ep.site}${j.externalPath}` : null,
-        approxDate: true, // relative "Posted Today/N days ago" → send posted_at:null (see buildCandidate)
+        approxDate: !realDate, // relative "Posted Today/N days ago" → send posted_at:null (see buildCandidate)
       });
     }
     if (posts.length < WD_LIMIT) break;
@@ -307,9 +429,13 @@ async function fetchJson(url, headers, fetchFn) {
 // reliably honored, so the shared looksUS filter does the US cut.
 // ponytail: 100 most-recent postings per run; add an offset loop only if Amazon
 // ever posts >100 matching interns inside the recency window (it doesn't today).
-async function fetchAmazon(_ep, fetchFn) {
+async function fetchAmazon(_ep, fetchFn, wide) {
   const data = await fetchJson(
-    "https://www.amazon.jobs/en/search.json?base_query=intern&result_limit=100&sort=recent",
+    // wide: empty base_query drops the server-side "intern" keyword filter so
+    // full-time/new-grad Amazon postings are fetched too (live-verified
+    // 2026-09-19: base_query="" returns real non-engineering titles, e.g.
+    // "Pharmacy Technician, Amazon Pharmacy").
+    `https://www.amazon.jobs/en/search.json?base_query=${wide ? "" : "intern"}&result_limit=100&sort=recent`,
     { "user-agent": UA },
     fetchFn,
   );
@@ -330,11 +456,11 @@ async function fetchAmazon(_ep, fetchFn) {
 // ep: { host, site }. keyword=intern is a fuzzy relevance match (returns non-
 // intern titles too) — the shared isTargetTitle title-gate cuts those. The list
 // is nested at items[0].requisitionList.items[].
-async function fetchOracle(ep, fetchFn) {
+async function fetchOracle(ep, fetchFn, wide) {
   const url =
     `https://${ep.host}/hcmRestApi/resources/latest/recruitingCEJobRequisitions` +
     `?onlyData=true&expand=requisitionList&finder=findReqs;siteNumber=${ep.site},` +
-    `limit=100,offset=0,sortBy=POSTING_DATES_DESC,keyword=intern`;
+    `limit=100,offset=0,sortBy=POSTING_DATES_DESC${wide ? "" : ",keyword=intern"}`;
   const data = await fetchJson(url, { "REST-Framework-Version": "4", "user-agent": UA }, fetchFn);
   // items[] absent ⇒ schema drift → throw (visible). Present-but-no-requisitionList
   // is a legit empty result → [].
@@ -352,8 +478,12 @@ async function fetchOracle(ep, fetchFn) {
 
 // ---- Phenom People (careers <host>/api/jobs) ----
 // ep: { host }. jobs[].data carries a real ISO posted_date + apply_url.
-async function fetchPhenom(ep, fetchFn) {
-  const data = await fetchJson(`https://${ep.host}/api/jobs?keyword=intern&limit=100`, { "user-agent": UA }, fetchFn);
+async function fetchPhenom(ep, fetchFn, wide) {
+  const data = await fetchJson(
+    `https://${ep.host}/api/jobs?limit=100${wide ? "" : "&keyword=intern"}`,
+    { "user-agent": UA },
+    fetchFn,
+  );
   if (!Array.isArray(data.jobs)) throw new Error("phenom: missing jobs[] (schema drift?)");
   // Skip null/dataless elements individually so one bad record doesn't drop the endpoint.
   return data.jobs
@@ -376,9 +506,9 @@ async function fetchPhenom(ep, fetchFn) {
 // legitimately be 0 off-season → NOT a full-board adapter, excluded from the canary).
 // positions[] carries name / location(s) / t_create (epoch SECONDS, a REAL absolute
 // date) / canonicalPositionUrl.
-async function fetchEightfold(ep, fetchFn) {
+async function fetchEightfold(ep, fetchFn, wide) {
   const data = await fetchJson(
-    `https://${ep.host}/api/apply/v2/jobs?domain=${ep.domain}&hl=en&query=intern&start=0&num=100`,
+    `https://${ep.host}/api/apply/v2/jobs?domain=${ep.domain}&hl=en&query=${wide ? "" : "intern"}&start=0&num=100`,
     { "user-agent": UA },
     fetchFn,
   );
@@ -387,7 +517,10 @@ async function fetchEightfold(ep, fetchFn) {
     title: p.name,
     location: p.location || (Array.isArray(p.locations) ? p.locations.join(", ") : ""),
     country: null,
-    published: p.t_create ? new Date(p.t_create * 1000).toISOString().slice(0, 10) : null,
+    // full instant (not day-truncated) — t_create is epoch seconds, a REAL
+    // absolute timestamp; isoDate()/isoInstant() in buildCandidate each
+    // truncate/parse as needed downstream.
+    published: p.t_create ? new Date(p.t_create * 1000).toISOString() : null,
     id: String(p.display_job_id || p.ats_job_id || p.id || p.name),
     url: p.canonicalPositionUrl || null,
   }));
@@ -471,12 +604,19 @@ async function pool(items, limit, worker) {
   return results;
 }
 
-export async function scanEndpoints(endpoints, { sinceDays, concurrency, fetch: fetchFn = globalThis.fetch }) {
+// wide (default false — every existing caller/test omits it and gets the
+// EXACT prior behavior/output): the MISSION L2 coverage widening, opt-in only.
+// scripts/scan.mjs's CLI passes wide:true by default (--strict opts back out).
+export async function scanEndpoints(
+  endpoints,
+  { sinceDays, concurrency, fetch: fetchFn = globalThis.fetch, wide = false },
+) {
   let okCount = 0;
   const failed = [];
   const candidates = [];
   const seen = new Set(); // ats:id within this run
   const rawCounts = {}; // epKey → raw postings fetched this run (for the canary)
+  const titleGate = wide ? isEligiblePosting : isTargetTitle;
 
   await pool(endpoints, concurrency, async (ep) => {
     const special = SPECIAL_FETCHERS[ep.ats];
@@ -485,17 +625,19 @@ export async function scanEndpoints(endpoints, { sinceDays, concurrency, fetch: 
       return;
     }
     try {
-      const jobs = special ? await special(ep, fetchFn) : normalize(ep.ats, await fetchJson(fetchUrl(ep.ats, ep.token), {}, fetchFn));
+      const jobs = special
+        ? await special(ep, fetchFn, wide)
+        : normalize(ep.ats, await fetchJson(fetchUrl(ep.ats, ep.token), {}, fetchFn));
       okCount++;
       rawCounts[epKey(ep)] = jobs.length;
       for (const job of jobs) {
-        if (!isTargetTitle(job.title)) continue;
+        if (!titleGate(job.title)) continue;
         if (!withinWindow(job.published, sinceDays)) continue;
         if (!looksUS(job.location, job.country)) continue;
         const key = `${epKey(ep)}:${job.id}`;
         if (seen.has(key)) continue;
         seen.add(key);
-        candidates.push(buildCandidate(ep.company, job));
+        candidates.push(buildCandidate(ep.company, job, { wide }));
       }
     } catch (err) {
       failed.push(`${ep.company} (${ep.ats}: ${err.message})`);

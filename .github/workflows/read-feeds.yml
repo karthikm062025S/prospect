@@ -7,8 +7,9 @@ name: read-feeds
 # (dedup + applied-lock server-side). Catches curated community-list drops that the
 # ATS scanner + alert-email ingest don't have yet. Runs HOURLY.
 #
-# Requires repo secret WATCHER_SECRET. Optional repo variable SCOUT_WEBHOOK
-# overrides the prod URL.
+# Requires repo secret WATCHER_SECRET. Required repo variable SCOUT_WEBHOOK
+# (no default — this is a hackathon repo and must never silently fall back to
+# the old Scout production URL, 2026-09-19 16:45 fix).
 
 on:
   schedule:

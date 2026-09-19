@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { deriveFamily, familySignals, FAMILY_LABEL, FAMILY_ORDER } from "../lib/family.ts";
+import { deriveFamily, familySignals, FAMILY_LABEL, FAMILY_ORDER, deriveLevel, LEVEL_LABEL, LEVEL_ORDER } from "../lib/family.ts";
 
 // MISSION v7 D8 / contract V4: pure title -> Family classifier, mirroring the
 // intent of scripts/scan-core.mjs bucket() (Quant/AI/Data, default SWE) and the
@@ -90,4 +90,40 @@ test("familySignals()[0] equals deriveFamily() for every case title", () => {
   for (const [title] of CASES) {
     assert.equal(familySignals(title)[0], deriveFamily(title), `mismatch for ${JSON.stringify(title)}`);
   }
+});
+
+// ---------------------------------------------------------------------------
+// L2 (VTHacks coverage lane, 2026-09-19): deriveLevel is a SEPARATE axis from
+// Family (function vs seniority-stage). Baseline the classifier is measured
+// against later.
+// ---------------------------------------------------------------------------
+const LEVEL_CASES: Array<[string, ReturnType<typeof deriveLevel>]> = [
+  ["Software Engineer Intern", "internship"],
+  ["Software Engineering Internships", "internship"],
+  ["2027 Summer Technology Analyst", "internship"],
+  ["Software Engineering Co-op 2027", "coop"],
+  ["Cooperative Education Program - Software Development", "coop"],
+  ["New Grad Software Engineer", "new_grad"],
+  ["University Graduate - Data Analyst", "new_grad"],
+  ["Class of 2027 - Financial Analyst Program", "new_grad"],
+  ["Entry Level Marketing Associate", "new_grad"],
+  ["Postdoctoral Research Fellow", "research"],
+  ["Research Scientist", "research"],
+  ["Financial Analyst", "full_time"],
+  ["Senior Software Engineer", "full_time"],
+  ["Marketing Manager", "full_time"],
+  ["Research Intern (PhD students)", "internship"], // intern wins over research (term > function)
+  ["", "full_time"],
+];
+
+for (const [title, expected] of LEVEL_CASES) {
+  test(`deriveLevel(${JSON.stringify(title)}) -> ${expected}`, () => {
+    assert.equal(deriveLevel(title), expected);
+  });
+}
+
+test("LEVEL_ORDER contains exactly the LEVEL_LABEL keys, once each", () => {
+  const labelKeys = Object.keys(LEVEL_LABEL).sort();
+  const orderKeys = [...LEVEL_ORDER].sort();
+  assert.deepEqual(orderKeys, labelKeys);
 });

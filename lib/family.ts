@@ -124,3 +124,50 @@ export function familySignals(title: string): Family[] {
   const matches = SIGNAL_PRIORITY.filter((family) => FAMILY_TEST[family].test(title));
   return matches.length > 0 ? matches : ["other"];
 }
+
+// ---------------------------------------------------------------------------
+// L2 (VTHacks coverage lane, 2026-09-19): the LEVEL baseline — a SEPARATE axis
+// from Family above (function vs seniority-stage). This is the pure-regex
+// baseline CONTEXT.md's distilled classifier is measured against ("held-out
+// precision vs the keyword baseline"). Extends this file; deriveFamily/
+// familySignals/Family above are untouched (byte-identical) so tests/family.test.ts's
+// existing cases keep passing unmodified.
+// Mirrored (standalone copy, same discipline as isTargetTitle/bucket in
+// scripts/scan-core.mjs and lib/upsert-role.ts) into scripts/scan-core.mjs's
+// deriveLevel so the scan and the app agree on what a level string means —
+// keep the two in sync by hand on any rule change.
+// ---------------------------------------------------------------------------
+export type Level = "internship" | "coop" | "new_grad" | "full_time" | "research";
+
+export const LEVEL_LABEL: Record<Level, string> = {
+  internship: "Internship",
+  coop: "Co-op",
+  new_grad: "New Grad",
+  full_time: "Full-time",
+  research: "Research",
+};
+
+export const LEVEL_ORDER: Level[] = ["internship", "coop", "new_grad", "full_time", "research"];
+
+const COOP_TERM = /\bco-?op\b|\bcooperative education\b/i;
+// Reuses the same intern/summer-analyst wording as lib/upsert-role.ts's INTERN
+// gate (minus the co-op alternation, checked separately above so co-op wins).
+const INTERN_TERM =
+  /\bintern(ships?|s)?\b|\bsummer\b(?:\s+[\w&/'-]+){0,3}\s+(analysts?|associates?|scholars?)\b/i;
+const NEW_GRAD_TERM =
+  /new[\s-]?grad(uate)?s?\b|university grad(uate)?s?\b|early career|entry[\s-]?level|class of 20(2[6-9]|3\d)\b/i;
+const RESEARCH_TERM = /\bresearch(er)?\b|post-?doc(toral)?\b|\bphd\b|doctoral/i;
+
+// Pure title -> Level. Deliberately NO function/department filtering (that's
+// Family's job) — level is orthogonal. A title with no term-of-art at all is
+// the common case for a genuine full-time req (most full-time postings never
+// say "full-time" in the title), so that's the default, not "other" — every
+// posting has SOME level for the demo's 5-way split.
+export function deriveLevel(title: string): Level {
+  if (!title) return "full_time";
+  if (COOP_TERM.test(title)) return "coop";
+  if (INTERN_TERM.test(title)) return "internship";
+  if (NEW_GRAD_TERM.test(title)) return "new_grad";
+  if (RESEARCH_TERM.test(title)) return "research";
+  return "full_time";
+}
