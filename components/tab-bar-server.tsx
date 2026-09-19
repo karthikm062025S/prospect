@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { query } from "@/lib/db";
 import { requireUser } from "@/lib/require-user";
 import { nowMs } from "@/lib/dashboard";
 import { velocity } from "@/lib/velocity";
@@ -21,16 +22,17 @@ const EMPTY_PROFILE: Profile = {
 
 // Server wrapper: computes the Applications-tab badge (RB-007 week count) and
 // reads the D9 user_metadata profile, so the client TabBar never needs its own
-// Supabase round trip. A query error never crashes the shell — it just renders
-// with no badge.
+// Supabase round trip. A failed applications read throws, named, into the
+// (app) error boundary (build/MISSION.md 13:25 lock: nothing catches and
+// continues); auth stays on Supabase.
 export async function TabBarServer() {
   const uid = await requireUser();
   const supabase = await createClient();
-  const [{ data, error }, { data: userData }] = await Promise.all([
-    supabase.from("applications").select("date_applied").eq("user_id", uid),
+  const [data, { data: userData }] = await Promise.all([
+    query<{ date_applied: string | null }>("select date_applied from applications where user_id = $1", [uid], "applications"),
     supabase.auth.getUser(),
   ]);
-  const weekCount = error ? 0 : velocity(data ?? [], nowMs()).week;
+  const weekCount = velocity(data, nowMs()).week;
   const profile = userData?.user ? readProfile(userData.user) : EMPTY_PROFILE;
 
   return (

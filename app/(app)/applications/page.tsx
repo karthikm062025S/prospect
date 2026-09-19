@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { query } from "@/lib/db";
 import { requireUser } from "@/lib/require-user";
 import { nowMs } from "@/lib/dashboard";
 import type { Application, ApplicationEvent, Company, EventRow } from "@/lib/types";
@@ -18,43 +18,35 @@ type LinkedRoleRow = { id: string; posted_at: string | null; deadline: string | 
 
 export default async function ApplicationsPage() {
   const uid = await requireUser();
-  const supabase = await createClient();
-  const [
-    { data: appRows, error: appError },
-    { data: eventRows, error: eventError },
-    { data: companyRows, error: companyError },
-  ] = await Promise.all([
-    supabase
-      .from("applications")
-      .select(APPLICATION_COLUMNS)
-      .eq("user_id", uid)
-      .order("date_applied", { ascending: false }),
-    supabase
-      .from("application_events")
-      .select(EVENT_COLUMNS)
-      .eq("user_id", uid)
-      .eq("classified_by", "user")
-      .not("application_id", "is", null)
-      .order("received_at", { ascending: false }),
-    supabase.from("companies_public").select("id, name, tier, careers_url, link, visa_note"),
+  // Every read throws (named) into the route's error boundary on failure.
+  const [appRows, eventRows, companyRows] = await Promise.all([
+    query<ApplicationRow>(
+      `select ${APPLICATION_COLUMNS} from applications where user_id = $1 order by date_applied desc`,
+      [uid],
+      "applications",
+    ),
+    query<EventQueryRow>(
+      `select ${EVENT_COLUMNS} from application_events
+        where user_id = $1 and classified_by = 'user' and application_id is not null
+        order by received_at desc`,
+      [uid],
+      "application_events",
+    ),
+    query<Company>("select id, name, tier, careers_url, link, visa_note from companies_public", [], "companies_public"),
   ]);
-  if (appError) throw new Error(appError.message);
-  if (eventError) throw new Error(eventError.message);
-  if (companyError) throw new Error(companyError.message);
 
   // L8 audit item 4c: only the roles this user actually applied to, not the
   // whole shared feed — roleIds is empty for a user with no linked roles yet
-  // (an off-app apply has no role_id), and .in([]) errors, so skip the query.
-  const roleIds = linkedRoleIds((appRows ?? []) as unknown as ApplicationRow[]);
-  const { data: roleRows, error: roleError } = roleIds.length
-    ? await supabase.from("roles_public").select("id, posted_at, deadline").in("id", roleIds)
-    : { data: [] as LinkedRoleRow[], error: null };
-  if (roleError) throw new Error(roleError.message);
+  // (an off-app apply has no role_id).
+  const roleIds = linkedRoleIds(appRows);
+  const roleRows = roleIds.length
+    ? await query<LinkedRoleRow>("select id, posted_at, deadline from roles_public where id = any($1::uuid[])", [roleIds], "roles_public")
+    : [];
 
-  const roleById = new Map(((roleRows ?? []) as LinkedRoleRow[]).map((role) => [role.id, role]));
-  const companyById = new Map(((companyRows ?? []) as Company[]).map((company) => [company.id, company]));
+  const roleById = new Map(roleRows.map((role) => [role.id, role]));
+  const companyById = new Map(companyRows.map((company) => [company.id, company]));
 
-  const applications: ApplicationsRow[] = ((appRows ?? []) as unknown as ApplicationRow[]).map((app) => {
+  const applications: ApplicationsRow[] = appRows.map((app) => {
     const company = companyById.get(app.company_id);
     const role = app.role_id ? roleById.get(app.role_id) : undefined;
     return {
@@ -65,7 +57,7 @@ export default async function ApplicationsPage() {
       deadline: role?.deadline ?? null,
     };
   });
-  const events: EventRow[] = ((eventRows ?? []) as EventQueryRow[]).map((event) => ({
+  const events: EventRow[] = eventRows.map((event) => ({
     ...event,
     company_name: event.company_id ? companyById.get(event.company_id)?.name ?? null : null,
   }));

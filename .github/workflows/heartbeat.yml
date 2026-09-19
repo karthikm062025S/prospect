@@ -7,11 +7,18 @@ name: heartbeat
 # SUCCESSFUL run and alerts if it has gone stale — proof the cron ran, not
 # just that it exists.
 #
-# No repo secrets required beyond the default GITHUB_TOKEN.
+# No repo secrets required beyond the default GITHUB_TOKEN for the heartbeat.
+#
+# L0 (2026-09-19): the hot scan tier moved here from Supabase pg_cron (Lakebase
+# has no pg_cron). Every 30 minutes the `hot-scan` job POSTs /api/scan?tier=hot
+# with the watcher secret; the route answers 202 and scans in after(). Requires
+# repo secret WATCHER_SECRET; optional repo variable SCOUT_SCAN_URL overrides
+# the prod URL. The two schedules are told apart by github.event.schedule.
 
 on:
   schedule:
     - cron: "7 */6 * * *"  # every 6h, off-minute to avoid the hot :00 slot
+    - cron: "13,43 * * * *"  # every 30 min (hot scan tier), off-minute
   workflow_dispatch:
 
 permissions:
@@ -19,7 +26,27 @@ permissions:
   issues: write   # opens/comments the silent-scanner alert issue
 
 jobs:
+  hot-scan:
+    if: ${{ github.event.schedule == '13,43 * * * *' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: trigger the hot scan tier
+        env:
+          WATCHER_SECRET: ${{ secrets.WATCHER_SECRET }}
+          URL: ${{ vars.SCOUT_SCAN_URL || 'https://scoutfeed.vercel.app/api/scan' }}
+        run: |
+          set -eu
+          code=$(curl -sS -o /dev/null -w '%{http_code}' -X POST \
+            -H "X-Watcher-Secret: $WATCHER_SECRET" \
+            -H "content-type: application/json" \
+            -d '{}' \
+            "$URL?tier=hot")
+          echo "hot scan: http $code"
+          [ "$code" = "202" ]
+
   heartbeat:
+    if: ${{ github.event.schedule != '13,43 * * * *' }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:

@@ -6,7 +6,7 @@
 //   node --env-file=.env.local scripts/sample-rows.mjs --n 40 --out planning/task-2-labels.csv
 import { writeFileSync } from "node:fs";
 import { parseArgs } from "node:util";
-import { createClient } from "@supabase/supabase-js";
+import pg from "pg";
 
 const { values: args } = parseArgs({
   options: { n: { type: "string", default: "40" }, out: { type: "string", default: "planning/task-2-labels.csv" } },
@@ -16,32 +16,15 @@ if (!Number.isFinite(n) || n < 1) {
   console.error("--n must be a positive integer");
   process.exit(1);
 }
-if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-  console.error("NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required (run with --env-file=.env.local)");
+if (!process.env.LAKEBASE_URL) {
+  console.error("DATABASE_NOT_CONFIGURED: LAKEBASE_URL is not set (run with --env-file=.env.local)");
   process.exit(1);
 }
 
-const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, {
-  auth: { persistSession: false },
-});
-
-const PAGE = 1000;
-const rows = [];
-for (let from = 0; ; from += PAGE) {
-  const { data, error } = await supabase
-    .from("roles")
-    .select("id,title,link,company_id")
-    .eq("lifecycle", "open")
-    .not("jd_snapshot", "is", null)
-    .order("id")
-    .range(from, from + PAGE - 1);
-  if (error) {
-    console.error(`roles read failed: ${error.message}`);
-    process.exit(1);
-  }
-  rows.push(...(data ?? []));
-  if (!data || data.length < PAGE) break;
-}
+const pool = new pg.Pool({ connectionString: process.env.LAKEBASE_URL, max: 1 });
+const { rows } = await pool.query(
+  "select id, title, link, company_id from roles where lifecycle = 'open' and jd_snapshot is not null order by id",
+);
 
 // Fisher-Yates, then take the head: every row equally likely.
 for (let i = rows.length - 1; i > 0; i -= 1) {
@@ -51,12 +34,9 @@ for (let i = rows.length - 1; i > 0; i -= 1) {
 const sample = rows.slice(0, n);
 
 const companyIds = [...new Set(sample.map((r) => r.company_id))];
-const { data: companies, error: companyError } = await supabase.from("companies").select("id,name").in("id", companyIds);
-if (companyError) {
-  console.error(`companies read failed: ${companyError.message}`);
-  process.exit(1);
-}
-const companyName = new Map((companies ?? []).map((c) => [c.id, c.name]));
+const { rows: companies } = await pool.query("select id, name from companies where id = any($1::uuid[])", [companyIds]);
+await pool.end();
+const companyName = new Map(companies.map((c) => [c.id, c.name]));
 
 // Titles and links come from employers: a cell starting with = + - @ would run
 // as a formula when the CSV is opened in a spreadsheet, so it gets a leading

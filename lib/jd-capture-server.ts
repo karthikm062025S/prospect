@@ -1,6 +1,6 @@
 import "server-only";
 
-import { createServiceClient } from "@/lib/supabase/service";
+import { query } from "@/lib/db";
 import { ensureRoleJd, type RoleJd } from "@/lib/role-jd";
 import { captureJobDescription, type Endpoint } from "@/lib/jd-snapshot";
 import jdEndpoints from "@/scripts/endpoints.json";
@@ -9,7 +9,7 @@ export async function captureRoleJdServer(
   roleId: string,
   opts?: { force?: boolean },
 ): Promise<RoleJd> {
-  return ensureRoleJd(createServiceClient(), roleId, opts);
+  return ensureRoleJd(query, roleId, opts);
 }
 
 export async function captureUnlinkedApplicationJdServer(input: {
@@ -17,13 +17,17 @@ export async function captureUnlinkedApplicationJdServer(input: {
   companyId: string;
   link: string | null;
 }): Promise<RoleJd> {
-  const supabase = createServiceClient();
-  const { data: company, error } = await supabase
-    .from("companies")
-    .select("name, ats, endpoint")
-    .eq("id", input.companyId)
-    .maybeSingle();
-  if (error) return { html: null, captured_at: null, error: error.message, location: null };
+  let company: { name: string | null; ats: string | null; endpoint: string | null } | undefined;
+  try {
+    [company] = await query<{ name: string | null; ats: string | null; endpoint: string | null }>(
+      "select name, ats, endpoint from companies where id = $1",
+      [input.companyId],
+      "companies",
+    );
+  } catch (error) {
+    // Same contract as ensureRoleJd: this path returns its error instead of throwing.
+    return { html: null, captured_at: null, error: (error as Error).message, location: null };
+  }
 
   const snapshot = await captureJobDescription(
     {

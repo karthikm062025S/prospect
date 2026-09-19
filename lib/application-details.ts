@@ -1,4 +1,4 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { QueryFn } from "./db";
 import type { AppStatus } from "./types";
 
 export type SetStatusResult = { ok: true } | { ok: false; reason: "not_found" };
@@ -9,31 +9,27 @@ export type SetStatusResult = { ok: true } | { ok: false; reason: "not_found" };
 // clock. Called by the detail-pane status select (S7) and the MCP
 // update_status tool.
 export async function setApplicationStatus(
-  supabase: SupabaseClient,
+  q: QueryFn,
   uid: string,
   applicationId: string,
   status: AppStatus,
   nowIso: string,
 ): Promise<SetStatusResult> {
-  const { data: existing, error: findError } = await supabase
-    .from("applications")
-    .select("status")
-    .eq("id", applicationId)
-    .eq("user_id", uid)
-    .maybeSingle();
-  if (findError) throw new Error(`application lookup failed: ${findError.message}`);
+  const [existing] = await q<{ status: AppStatus }>(
+    "select status from applications where id = $1 and user_id = $2",
+    [applicationId, uid],
+    "applications",
+  );
   if (!existing) return { ok: false, reason: "not_found" };
 
-  const prevStatus = existing.status as AppStatus;
-  const patch: Record<string, unknown> = { status, updated_at: nowIso };
-  if (status !== prevStatus) patch.status_changed_at = nowIso;
-
-  const { error: updateError } = await supabase
-    .from("applications")
-    .update(patch)
-    .eq("id", applicationId)
-    .eq("user_id", uid);
-  if (updateError) throw new Error(`application status update failed: ${updateError.message}`);
+  const changed = status !== existing.status;
+  await q(
+    `update applications
+        set status = $3, updated_at = $4, status_changed_at = case when $5::boolean then $4::timestamptz else status_changed_at end
+      where id = $1 and user_id = $2`,
+    [applicationId, uid, status, nowIso, changed],
+    "applications",
+  );
   return { ok: true };
 }
 
@@ -56,7 +52,7 @@ export type UpdateDetailsResult =
   | { ok: false; reason: "not_found" | "empty_patch" | "invalid_date" };
 
 export async function updateApplicationDetails(
-  supabase: SupabaseClient,
+  q: QueryFn,
   uid: string,
   applicationId: string,
   patch: DetailsPatch,
@@ -75,13 +71,14 @@ export async function updateApplicationDetails(
   }
   update.updated_at = nowIso;
 
-  const { data, error } = await supabase
-    .from("applications")
-    .update(update)
-    .eq("id", applicationId)
-    .eq("user_id", uid)
-    .select("id");
-  if (error) throw new Error(`application details update failed: ${error.message}`);
-  if (!data || data.length === 0) return { ok: false, reason: "not_found" };
+  // Column names come from DETAIL_KEYS (+ updated_at) only, never from the caller.
+  const keys = Object.keys(update);
+  const sets = keys.map((key, i) => `${key} = $${i + 3}`).join(", ");
+  const rows = await q<{ id: string }>(
+    `update applications set ${sets} where id = $1 and user_id = $2 returning id`,
+    [applicationId, uid, ...keys.map((key) => update[key])],
+    "applications",
+  );
+  if (rows.length === 0) return { ok: false, reason: "not_found" };
   return { ok: true };
 }

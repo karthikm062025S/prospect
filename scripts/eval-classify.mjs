@@ -40,25 +40,25 @@ const COUNT_BAR = 444; // D9a
 // ---- counts block ----
 let unspecifiedWithJd = null;
 if (args.counts) {
-  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-    console.error("NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required for --counts (run with --env-file=.env.local)");
+  if (!process.env.LAKEBASE_URL) {
+    console.error("DATABASE_NOT_CONFIGURED: LAKEBASE_URL is not set (--counts needs it; run with --env-file=.env.local)");
     process.exit(1);
   }
-  const { createClient } = await import("@supabase/supabase-js");
-  const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, {
-    auth: { persistSession: false },
-  });
-  const count = async (label, refine) => {
-    const { count: n, error } = await refine(supabase.from("roles").select("id", { count: "exact", head: true }).eq("lifecycle", "open"));
-    if (error) {
-      console.error(`${label} count failed: ${error.message}`);
+  const { default: pg } = await import("pg");
+  const pool = new pg.Pool({ connectionString: process.env.LAKEBASE_URL, max: 1 });
+  const count = async (label, where) => {
+    try {
+      const { rows } = await pool.query(`select count(*)::int as n from roles where lifecycle = 'open' ${where}`);
+      return rows[0].n;
+    } catch (err) {
+      console.error(`${label} count failed: ${err.message}`);
       process.exit(1);
     }
-    return n ?? 0;
   };
-  const open = await count("open", (q) => q);
-  const unspecified = await count("unspecified", (q) => q.eq("season", "unspecified"));
-  unspecifiedWithJd = await count("unspecified with jd", (q) => q.eq("season", "unspecified").not("jd_snapshot", "is", null));
+  const open = await count("open", "");
+  const unspecified = await count("unspecified", "and season = 'unspecified'");
+  unspecifiedWithJd = await count("unspecified with jd", "and season = 'unspecified' and jd_snapshot is not null");
+  await pool.end();
   console.log(`open roles ${open}`);
   console.log(`open roles with season unspecified ${unspecified}`);
   console.log(`open roles with season unspecified and a stored jd ${unspecifiedWithJd} (bar <= ${COUNT_BAR})`);

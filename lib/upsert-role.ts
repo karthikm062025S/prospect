@@ -1,4 +1,4 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { QueryFn } from "./db";
 import type { Season } from "./season";
 import type { Family } from "./family";
 
@@ -270,6 +270,11 @@ export type UpsertRoleInput = {
   // MISSION v7 D8: posting text, when the caller has it, sharpens season
   // derivation beyond the title alone (lib/season.ts's `text` param).
   jd_text?: string | null;
+  // 2026-09-19 addendum (drop latency): the board's own publish timestamp
+  // (Greenhouse first_published, Lever createdAt), ISO-8601. Stored on insert;
+  // on update only when the stored value is null. Validated in
+  // lib/watcher-payload.ts before it reaches here.
+  source_posted_at?: string | null;
 };
 
 // Echo shape for the watcher webhook's `inserted_roles` (identity of a
@@ -345,12 +350,35 @@ export function isSettableLifecycle(
   return !!value && value !== "applied" && (ROLE_LIFECYCLES as readonly string[]).includes(value);
 }
 
+// Column names in both helpers come from the fixed lists above plus the fixed
+// keys upsertRole assigns, never from the payload.
+async function insertRoleRow(q: QueryFn, row: Record<string, unknown>): Promise<Record<string, unknown>> {
+  const keys = Object.keys(row);
+  const [inserted] = await q<Record<string, unknown>>(
+    `insert into roles (${keys.join(", ")}) values (${keys.map((_, i) => `$${i + 1}`).join(", ")}) returning *`,
+    keys.map((key) => row[key]),
+    "roles",
+  );
+  return inserted;
+}
+
+async function updateRoleRow(q: QueryFn, id: string, patch: Record<string, unknown>): Promise<Record<string, unknown>> {
+  const keys = Object.keys(patch);
+  const rows = await q<Record<string, unknown>>(
+    `update roles set ${keys.map((key, i) => `${key} = $${i + 2}`).join(", ")} where id = $1 returning *`,
+    [id, ...keys.map((key) => patch[key])],
+    "roles",
+  );
+  if (rows.length !== 1) throw new Error(`role update failed: role ${id} not found`);
+  return rows[0];
+}
+
 // Single source of truth for "add or flip a role": used by the watcher webhook
 // and the upsert_role MCP tool. Looks the company up by name (created as a
 // one-off, unwatched, if missing — SPEC §5); dedups on (company_id, title,
 // posted_at); never touches an `applied` role and never sets application_id.
 export async function upsertRole(
-  supabase: SupabaseClient,
+  q: QueryFn,
   input: UpsertRoleInput,
   nowIso: string = new Date().toISOString(),
 ): Promise<{ action: RoleUpsertDecision; role: unknown }> {
@@ -361,23 +389,21 @@ export async function upsertRole(
 
   // Escape LIKE metacharacters so "S&P_Global" style names match literally.
   const likeSafeName = company.replace(/[\\%_]/g, "\\$&");
-  const { data: existingCompany, error: findError } = await supabase
-    .from("companies")
-    .select("id")
-    .ilike("name", likeSafeName)
-    .maybeSingle();
-  if (findError) throw new Error(`company lookup failed: ${findError.message}`);
+  const [existingCompany] = await q<{ id: string }>(
+    "select id from companies where name ilike $1 limit 1",
+    [likeSafeName],
+    "companies",
+  );
 
   let companyId: string;
   if (existingCompany) {
     companyId = existingCompany.id;
   } else {
-    const { data: created, error: createError } = await supabase
-      .from("companies")
-      .insert({ name: company, is_watched: false })
-      .select("id")
-      .single();
-    if (createError) throw new Error(`company create failed: ${createError.message}`);
+    const [created] = await q<{ id: string }>(
+      "insert into companies (name, is_watched) values ($1, false) returning id",
+      [company],
+      "companies",
+    );
     companyId = created.id;
   }
 
@@ -406,12 +432,12 @@ export async function upsertRole(
   // insert). The ATS-id form has no such ambiguity: it never depends on
   // posted_at or location in the first place.
   const incomingAtsId = extractAtsId(input.link);
-  const { data: tombRows, error: tombError } = await supabase
-    .from("tombstones")
-    .select("id, title, posted_at, link")
-    .eq("company_id", companyId);
-  if (tombError) throw new Error(`tombstone lookup failed: ${tombError.message}`);
-  const tombMatch = (tombRows ?? []).find((row) => {
+  const tombRows = await q<{ id: string; title: string; posted_at: string | null; link: string | null }>(
+    "select id, title, posted_at, link from tombstones where company_id = $1",
+    [companyId],
+    "tombstones",
+  );
+  const tombMatch = tombRows.find((row) => {
     const t = row as Record<string, unknown>;
     const sameTriple =
       t.title === title && (input.posted_at == null ? t.posted_at == null : t.posted_at === input.posted_at);
@@ -434,26 +460,21 @@ export async function upsertRole(
   // lever/ashby/smartrecruiters ids are already effectively global, so the
   // extra .eq costs nothing there. The fallback (co:<id>|...) form already
   // embeds company_id, so this is a no-op for it either way.
-  const { data: byKey, error: keyFindError } = await supabase
-    .from("roles")
-    .select("*")
-    .eq("company_id", companyId)
-    .eq("canonical_key", canonicalKey)
-    .order("created_at", { ascending: true })
-    .limit(1)
-    .maybeSingle();
-  if (keyFindError) throw new Error(`role lookup failed: ${keyFindError.message}`);
-  let existingRole = byKey ?? null;
+  const [byKey] = await q<Record<string, unknown>>(
+    "select * from roles where company_id = $1 and canonical_key = $2 order by created_at asc limit 1",
+    [companyId, canonicalKey],
+    "roles",
+  );
+  let existingRole: Record<string, unknown> | null = byKey ?? null;
 
   if (!existingRole) {
-    // Dedup key is (company_id, title, posted_at); null posted_at needs .is().
-    let roleQuery = supabase.from("roles").select("*").eq("company_id", companyId).eq("title", title);
-    roleQuery =
-      input.posted_at == null
-        ? roleQuery.is("posted_at", null)
-        : roleQuery.eq("posted_at", input.posted_at);
-    const { data: byTriple, error: roleFindError } = await roleQuery.maybeSingle();
-    if (roleFindError) throw new Error(`role lookup failed: ${roleFindError.message}`);
+    // Dedup key is (company_id, title, posted_at); IS NOT DISTINCT FROM treats a
+    // null posted_at as a value, matching the NULLS NOT DISTINCT unique index.
+    const [byTriple] = await q<Record<string, unknown>>(
+      "select * from roles where company_id = $1 and title = $2 and posted_at is not distinct from $3::date limit 1",
+      [companyId, title, input.posted_at ?? null],
+      "roles",
+    );
     existingRole = byTriple ?? null;
   }
 
@@ -488,9 +509,9 @@ export async function upsertRole(
     }
     // D34 (MISSION v5): location from the ATS, set on insert like any other field.
     if (input.location !== undefined) row.location = input.location;
-    const { data, error } = await supabase.from("roles").insert(row).select("*").single();
-    if (error) throw new Error(`role insert failed: ${error.message}`);
-    return { action, role: data };
+    // Drop-latency addendum: the board's own publish time rides in on insert.
+    if (input.source_posted_at != null) row.source_posted_at = input.source_posted_at;
+    return { action, role: await insertRoleRow(q, row) };
   }
 
   // update: only fields explicitly provided; lifecycle only if valid; never
@@ -513,6 +534,8 @@ export async function upsertRole(
   // D34: location backfills once, never churns — a scanner re-find must not
   // clobber a value the lazy JD capture (or a prior scan) already stored.
   if (input.location !== undefined && existingRole.location == null) patch.location = input.location;
+  // Drop-latency addendum: backfills once, never churns (same rule as location).
+  if (input.source_posted_at != null && existingRole.source_posted_at == null) patch.source_posted_at = input.source_posted_at;
   if (isSettableLifecycle(input.lifecycle)) patch.lifecycle = input.lifecycle;
   // D8: title is the dedup key for this row and never changes on an update, so
   // a re-derive here only matters for an older row that still has no value.
@@ -532,27 +555,15 @@ export async function upsertRole(
     patch.repost_count = ((existingRole.repost_count as number | null | undefined) ?? 0) + 1;
     if (input.posted_at !== undefined && input.posted_at !== (existingRole.posted_at as string | null | undefined)) {
       // T2 guard: the dedup triple index still holds; a historical duplicate owning that date keeps it
-      let colliderQuery = supabase
-        .from("roles")
-        .select("id")
-        .eq("company_id", companyId)
-        .eq("title", title)
-        .neq("id", existingRole.id as string);
-      colliderQuery =
-        input.posted_at == null ? colliderQuery.is("posted_at", null) : colliderQuery.eq("posted_at", input.posted_at);
-      const { data: colliderRows, error: colliderError } = await colliderQuery.limit(1);
-      if (colliderError) throw new Error(`dedup collision check failed: ${colliderError.message}`);
-      if (!colliderRows || colliderRows.length === 0) {
+      const colliderRows = await q<{ id: string }>(
+        "select id from roles where company_id = $1 and title = $2 and id <> $3 and posted_at is not distinct from $4::date limit 1",
+        [companyId, title, existingRole.id as string, input.posted_at ?? null],
+        "roles",
+      );
+      if (colliderRows.length === 0) {
         patch.posted_at = input.posted_at;
       }
     }
   }
-  const { data, error } = await supabase
-    .from("roles")
-    .update(patch)
-    .eq("id", existingRole.id)
-    .select("*")
-    .single();
-  if (error) throw new Error(`role update failed: ${error.message}`);
-  return { action, role: data };
+  return { action, role: await updateRoleRow(q, existingRole.id as string, patch) };
 }

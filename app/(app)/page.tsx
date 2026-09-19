@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { query } from "@/lib/db";
 import { requireUser } from "@/lib/require-user";
 import { readProfile } from "@/lib/profile";
 import { ProfileBanner } from "@/components/profile-banner";
@@ -21,32 +22,6 @@ export const dynamic = "force-dynamic";
 const ROLE_COLUMNS =
   "id, company_id, title, role_type, lifecycle, created_at, updated_at, posted_at, deadline, location, visa_class, eligible, eligibility_note, link, source, season, family, families, last_seen_at, repost_count, canonical_key";
 
-// PostgREST caps ANY single response at 1,000 rows on this Supabase project
-// (measured 2026-09-03: `roles_public` holds 1,276 open roles, and both an
-// unbounded select and `.limit(1500)` came back with exactly 1,000). An
-// unbounded read therefore silently dropped 276 live internships from Home —
-// the feed is the product, so the read pages through instead. `.order` is
-// REQUIRED for range paging to be deterministic (PostgREST gives no stable
-// order otherwise, so pages could overlap or skip).
-// ponytail: a plain loop, ceiling PAGE_ROWS per request. Upgrade path if the
-// feed outgrows a single pageview: server-side filtering + infinite scroll.
-const PAGE_ROWS = 1000;
-
-type PagedResult<T> = { data: T[]; error: { message: string } | null };
-
-async function selectAllOrdered<T>(
-  page: (from: number, to: number) => PromiseLike<{ data: unknown; error: { message: string } | null }>,
-): Promise<PagedResult<T>> {
-  const rows: T[] = [];
-  for (let from = 0; ; from += PAGE_ROWS) {
-    const { data, error } = await page(from, from + PAGE_ROWS - 1);
-    if (error) return { data: rows, error };
-    const batch = (data ?? []) as T[];
-    rows.push(...batch);
-    if (batch.length < PAGE_ROWS) return { data: rows, error: null };
-  }
-}
-
 export default async function HomePage() {
   const uid = await requireUser();
   const supabase = await createClient();
@@ -57,63 +32,36 @@ export default async function HomePage() {
   const now = nowMs();
   const recentSince = nyTodayStartIso(new Date(now));
 
-  const [
-    { data: roleRows, error: roleError },
-    { data: userRows, error: userError },
-    { data: appRows, error: appError },
-    { data: recentRows, error: recentError },
-    { data: companyRows, error: companyError },
-    { data: correctionRows, error: correctionError },
-  ] = await Promise.all([
-    selectAllOrdered<Role>((from, to) =>
-      supabase
-        .from("roles_public")
-        .select(ROLE_COLUMNS)
-        .eq("lifecycle", "open")
-        .order("created_at", { ascending: false })
-        .range(from, to),
+  // D9 (build/MISSION.md): fail-loud. Any failed read throws a named
+  // DB_QUERY_FAILED (<table>) into the route's error boundary; nothing here
+  // catches and renders a partial feed. No paging: Postgres has no 1,000-row cap.
+  const [roleRows, userRows, appRows, recentRows, companyRows, correctionRows] = await Promise.all([
+    query<Role>(
+      `select ${ROLE_COLUMNS} from roles_public where lifecycle = 'open' order by created_at desc`,
+      [],
+      "roles_public",
     ),
-    supabase
-      .from("user_roles")
-      .select("role_id, saved_at, hidden_at, apply_clicked_at, deleted_at, application_id")
-      .eq("user_id", uid),
-    supabase.from("applications").select("date_applied").eq("user_id", uid),
-    supabase.from("roles_public").select("created_at").gte("created_at", recentSince),
-    selectAllOrdered<Company>((from, to) =>
-      supabase
-        .from("companies_public")
-        .select("id, name, tier, careers_url, link, visa_note")
-        .order("id", { ascending: true })
-        .range(from, to),
+    query<UserRoleState>(
+      "select role_id, saved_at, hidden_at, apply_clicked_at, deleted_at, application_id from user_roles where user_id = $1",
+      [uid],
+      "user_roles",
     ),
-    // T5 (K1): the caller's own corrections. RLS already scopes this table to
-    // the owner; the .eq stays explicit rather than relying on the policy alone.
-    supabase.from("role_corrections").select("role_id, field, value").eq("user_id", uid),
+    query<{ date_applied: string | null }>("select date_applied from applications where user_id = $1", [uid], "applications"),
+    query<{ created_at: string }>("select created_at from roles_public where created_at >= $1", [recentSince], "roles_public"),
+    query<Company>("select id, name, tier, careers_url, link, visa_note from companies_public order by id", [], "companies_public"),
+    // T5 (K1): the caller's own corrections, scoped explicitly to the owner.
+    query<{ role_id: string; field: string; value: string }>(
+      "select role_id, field, value from role_corrections where user_id = $1",
+      [uid],
+      "role_corrections",
+    ),
   ]);
 
-  // Crash-proofing (2026-09-03, v7/feed lane): a read that fails must degrade to
-  // an empty/partial feed, never a 500. An empty DB, a column the live schema
-  // has not got yet, or a transient PostgREST error all land here; the DB
-  // message is logged server-side and never rendered (it can name columns).
-  for (const [label, error] of [
-    ["roles", roleError],
-    ["user_roles", userError],
-    ["applications", appError],
-    ["recent", recentError],
-    ["companies", companyError],
-    ["role_corrections", correctionError],
-  ] as const) {
-    if (error) console.error(`[home] ${label} read failed`, error.message);
-  }
-
-  const pace = velocity((appRows ?? []) as { date_applied: string | null }[], now, profile?.monthlyTarget ?? null);
-  const merged = mergeUserRoles(
-    (roleRows ?? []) as unknown as Role[],
-    (userRows ?? []) as UserRoleState[],
-  );
+  const pace = velocity(appRows, now, profile?.monthlyTarget ?? null);
+  const merged = mergeUserRoles(roleRows, userRows);
   const inPlay = merged.rows.filter((role) => isInPlay(role, now));
 
-  const companyById = new Map(((companyRows ?? []) as Company[]).map((company) => [company.id, company]));
+  const companyById = new Map(companyRows.map((company) => [company.id, company]));
   const companies: Record<string, HomeCompany> = {};
   for (const { company_id } of inPlay) {
     const company = companyById.get(company_id);
@@ -169,10 +117,9 @@ export default async function HomePage() {
 
   // T5 (K1): overlay the caller's own corrections onto their own rows only.
   // Pure; never touches the shared roles row.
-  // Defense in depth (L4 audit): RLS lets a user insert their own row directly
-  // over PostgREST, so a stored value is re-validated here exactly like the
-  // action validates it; a row that fails is ignored, never rendered.
-  const corrections: Correction[] = ((correctionRows ?? []) as { role_id: string; field: string; value: string }[])
+  // Defense in depth (L4 audit): a stored value is re-validated here exactly
+  // like the action validates it; a row that fails is ignored, never rendered.
+  const corrections: Correction[] = correctionRows
     .map((c) => parseCorrection({ roleId: c.role_id, field: c.field, value: c.value }))
     .filter((c): c is NonNullable<typeof c> => c !== null)
     .map((c) => ({ role_id: c.roleId, field: c.field, value: c.value }));
@@ -184,10 +131,10 @@ export default async function HomePage() {
       <HomeList
         rows={correctedRows}
         companies={companies}
-        recentCreatedAt={((recentRows ?? []) as { created_at: string }[]).map((row) => row.created_at)}
+        recentCreatedAt={recentRows.map((row) => row.created_at)}
         pace={pace}
         serverNowMs={now}
-        getStartedEligible={(userRows ?? []).length === 0 && (appRows ?? []).length === 0}
+        getStartedEligible={userRows.length === 0 && appRows.length === 0}
         userId={uid}
       />
     </>

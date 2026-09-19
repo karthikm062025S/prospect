@@ -1,4 +1,4 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { QueryFn } from "./db";
 import type { AppStatus } from "./types";
 
 export type DashboardSummary = {
@@ -52,27 +52,22 @@ export function relativeTime(iso: string, now: number): string {
 }
 
 // Shared by the dashboard header and the get_dashboard_summary MCP tool.
-export async function getDashboardSummary(supabase: SupabaseClient, uid: string): Promise<DashboardSummary> {
-  const [appsRes, watchRes] = await Promise.all([
-    supabase.from("applications").select("status").eq("user_id", uid),
-    supabase
-      .from("companies")
-      .select("id", { count: "exact", head: true })
-      .eq("is_watched", true)
-      .eq("watch_status", "open"),
+export async function getDashboardSummary(q: QueryFn, uid: string): Promise<DashboardSummary> {
+  const [apps, [watch]] = await Promise.all([
+    q<{ status: AppStatus }>("select status from applications where user_id = $1", [uid], "applications"),
+    q<{ n: number }>(
+      "select count(*)::int as n from companies where is_watched = true and watch_status = 'open'",
+      [],
+      "companies",
+    ),
   ]);
 
-  if (appsRes.error) throw new Error(appsRes.error.message);
-  if (watchRes.error) throw new Error(watchRes.error.message);
-
   const by_status = Object.fromEntries(STATUSES.map((s) => [s, 0])) as Record<AppStatus, number>;
-  for (const row of appsRes.data ?? []) {
-    by_status[row.status as AppStatus] += 1;
-  }
+  for (const row of apps) by_status[row.status] += 1;
 
   return {
-    total_applications: appsRes.data?.length ?? 0,
+    total_applications: apps.length,
     by_status,
-    open_watched_companies: watchRes.count ?? 0,
+    open_watched_companies: watch.n,
   };
 }
