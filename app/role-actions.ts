@@ -1,7 +1,7 @@
 "use server";
 
 import { after } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { query, withTransaction } from "@/lib/db";
 import { requireUser } from "@/lib/require-user";
 import { applyToRole, applyResultError } from "@/lib/apply-role";
 import { captureRoleJdServer } from "@/lib/jd-capture-server";
@@ -11,10 +11,9 @@ import { CORRECTION_FIELDS, parseCorrection, saveCorrection, removeCorrection, t
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
-// The user never sees an internal error string: a Supabase/PostgREST message
-// ("new row violates row-level security policy for ...") or a raw network error
-// is noise to them and detail to an attacker. One friendly line for them, the
-// real error in the server log for us.
+// The user never sees an internal error string: a DB message ("DB_QUERY_FAILED
+// (user_roles): ...") or a raw network error is noise to them and detail to an
+// attacker. One friendly line for them, the real error in the server log for us.
 function failed(err: unknown): ActionResult {
   console.error("action", err);
   return { ok: false, error: GENERIC_ERROR };
@@ -24,16 +23,19 @@ export async function getRoleJdAction(roleId: string, opts?: { force?: boolean }
   const uid = await requireUser();
   void uid;
   if (!roleId) return { html: null, captured_at: null, error: "missing role id", location: null };
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("roles_public")
-    .select("jd_snapshot, jd_snapshot_at, location")
-    .eq("id", roleId)
-    .maybeSingle();
-  // The raw PostgREST message stays in the server log (publicError), never in the pane.
-  if (error) return { html: null, captured_at: null, error: publicError(error.message), location: null };
+  let data: { jd_snapshot: string | null; jd_snapshot_at: string | null; location: string | null } | undefined;
+  try {
+    [data] = await query<{ jd_snapshot: string | null; jd_snapshot_at: string | null; location: string | null }>(
+      "select jd_snapshot, jd_snapshot_at, location from roles_public where id = $1",
+      [roleId],
+      "roles_public",
+    );
+  } catch (err) {
+    // The raw DB message stays in the server log (publicError), never in the pane.
+    return { html: null, captured_at: null, error: publicError((err as Error).message), location: null };
+  }
   if (!data) return { html: null, captured_at: null, error: "role not found", location: null };
-  // ponytail: any signed-in user can trigger a service-role capture; force is honoured only when the
+  // ponytail: any signed-in user can trigger a capture; force is honoured only when the
   // cached snapshot is older than a day so one client cannot hammer employer pages (audit M1).
   const staleMs = 24 * 60 * 60 * 1000;
   const fresh =
@@ -54,19 +56,23 @@ export async function getRoleJdAction(roleId: string, opts?: { force?: boolean }
   return { ...captured, error: publicError(captured.error) };
 }
 
+// One (user_id, role_id) row per user per role; the repeat write updates ONLY
+// the flag it carries (saved_at OR hidden_at) plus updated_at, never the other.
 async function stampRole(
   uid: string,
   roleId: string,
-  patch: { saved_at?: string | null; hidden_at?: string | null },
+  column: "saved_at" | "hidden_at",
+  value: string | null,
 ): Promise<ActionResult> {
   try {
-    const supabase = await createClient();
     const now = new Date().toISOString();
-    const { error } = await supabase.from("user_roles").upsert(
-      { user_id: uid, role_id: roleId, ...patch, updated_at: now },
-      { onConflict: "user_id,role_id" },
+    await query(
+      `insert into user_roles (user_id, role_id, ${column}, updated_at)
+       values ($1, $2, $3, $4)
+       on conflict (user_id, role_id) do update set ${column} = excluded.${column}, updated_at = excluded.updated_at`,
+      [uid, roleId, value, now],
+      "user_roles",
     );
-    if (error) return { ok: false, error: GENERIC_ERROR };
     return { ok: true };
   } catch (err) {
     return failed(err);
@@ -83,37 +89,36 @@ async function stampRole(
 export async function saveRoleAction(roleId: string, saved: boolean): Promise<ActionResult> {
   const uid = await requireUser();
   if (!roleId) return { ok: false, error: "missing role id" };
-  return stampRole(uid, roleId, { saved_at: saved ? new Date().toISOString() : null });
+  return stampRole(uid, roleId, "saved_at", saved ? new Date().toISOString() : null);
 }
 
 export async function hideRoleAction(roleId: string, hidden: boolean): Promise<ActionResult> {
   const uid = await requireUser();
   if (!roleId) return { ok: false, error: "missing role id" };
-  return stampRole(uid, roleId, { hidden_at: hidden ? new Date().toISOString() : null });
+  return stampRole(uid, roleId, "hidden_at", hidden ? new Date().toISOString() : null);
 }
 
 export async function markAlreadyAppliedAction(roleId: string): Promise<ActionResult> {
   const uid = await requireUser();
   if (!roleId) return { ok: false, error: "missing role id" };
   try {
-    const supabase = await createClient();
-    // ponytail: see the identical comment in app/actions.ts confirmAppliedAction
-    // — same non-atomic check-then-insert, same race, same fix (a unique
-    // partial index on user_roles(application_id), or `select ... for update`).
-    const result = await applyToRole(supabase, uid, roleId);
+    // Same transaction as app/actions.ts confirmAppliedAction: check + insert +
+    // link are atomic, and the guarded link closes the L8 race.
+    const result = await withTransaction((q) => applyToRole(q, uid, roleId));
     if (!result.ok) return { ok: false, error: applyResultError(result.reason) };
     if (!result.application.jd_snapshot) {
       const applicationId = result.application.id;
       after(async () => {
         const captured = await captureRoleJdServer(roleId);
         if (!captured.html) return;
-        const { error } = await supabase
-          .from("applications")
-          .update({ jd_snapshot: captured.html, jd_snapshot_at: captured.captured_at })
-          .eq("id", applicationId)
-          .eq("user_id", uid);
-        if (error) {
-          console.error(JSON.stringify({ lane: "jd-wiring", application_id: applicationId, role_id: roleId, error: error.message }));
+        try {
+          await query(
+            "update applications set jd_snapshot = $1, jd_snapshot_at = $2 where id = $3 and user_id = $4",
+            [captured.html, captured.captured_at, applicationId, uid],
+            "applications",
+          );
+        } catch (err) {
+          console.error(JSON.stringify({ lane: "jd-wiring", application_id: applicationId, role_id: roleId, error: err instanceof Error ? err.message : String(err) }));
         }
       });
     }
@@ -141,9 +146,8 @@ export async function correctRoleAction(roleId: string, field: string, value: st
   const parsed = parseCorrection({ roleId, field, value });
   if (!parsed) return { ok: false, error: "invalid correction" };
   try {
-    const supabase = await createClient();
     await saveCorrection(
-      supabase,
+      query,
       uid,
       { role_id: parsed.roleId, field: parsed.field, value: parsed.value },
       new Date().toISOString(),
@@ -159,8 +163,7 @@ export async function uncorrectRoleAction(roleId: string, field: string): Promis
   if (!roleId) return { ok: false, error: "missing role id" };
   if (!(CORRECTION_FIELDS as readonly string[]).includes(field)) return { ok: false, error: "invalid correction" };
   try {
-    const supabase = await createClient();
-    await removeCorrection(supabase, uid, roleId, field as CorrectionField);
+    await removeCorrection(query, uid, roleId, field as CorrectionField);
     return { ok: true };
   } catch (err) {
     return failed(err);

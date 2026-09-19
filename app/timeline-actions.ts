@@ -6,7 +6,7 @@
 // classified_by = 'user'; the owner predicate and author marker are re-checked
 // server-side before a row can be read or removed.
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
+import { query } from "@/lib/db";
 import { requireUser } from "@/lib/require-user";
 import type { ActionResult } from "@/app/actions";
 import { GENERIC_ERROR } from "@/lib/types";
@@ -42,34 +42,19 @@ export async function addTimelineEntryAction(
   if (!receivedAt) return { ok: false, error: "invalid date" };
 
   try {
-    const supabase = await createClient();
-    const { data: app, error: findError } = await supabase
-      .from("applications")
-      .select("id, company_id")
-      .eq("id", applicationId)
-      .eq("user_id", uid)
-      .maybeSingle();
-    if (findError) {
-      console.error("addTimelineEntry find", findError);
-      return { ok: false, error: GENERIC_ERROR };
-    }
+    const [app] = await query<{ id: string; company_id: string }>(
+      "select id, company_id from applications where id = $1 and user_id = $2",
+      [applicationId, uid],
+      "applications",
+    );
     if (!app) return { ok: false, error: "application not found" };
 
-    const { error } = await supabase.from("application_events").insert({
-      user_id: uid,
-      application_id: applicationId,
-      company_id: app.company_id,
-      kind: "other",
-      subject: text.slice(0, 200),
-      snippet: text,
-      sender: "you",
-      received_at: receivedAt,
-      classified_by: "user",
-    });
-    if (error) {
-      console.error("addTimelineEntry insert", error);
-      return { ok: false, error: GENERIC_ERROR };
-    }
+    await query(
+      `insert into application_events (user_id, application_id, company_id, kind, subject, snippet, sender, received_at, classified_by)
+       values ($1, $2, $3, 'other', $4, $5, 'you', $6, 'user')`,
+      [uid, applicationId, app.company_id, text.slice(0, 200), text, receivedAt],
+      "application_events",
+    );
   } catch (err) {
     console.error("addTimelineEntry", err);
     return { ok: false, error: GENERIC_ERROR };
@@ -82,21 +67,14 @@ export async function deleteTimelineEntryAction(eventId: string): Promise<Action
   const uid = await requireUser();
   if (!eventId) return { ok: false, error: "missing event id" };
   try {
-    const supabase = await createClient();
     // Scoped delete: the guard is in the WHERE clause, so a concurrent write
     // cannot slip an email row through between a read and the delete.
-    const { data, error } = await supabase
-      .from("application_events")
-      .delete()
-      .eq("id", eventId)
-      .eq("user_id", uid)
-      .eq("classified_by", "user")
-      .select("id");
-    if (error) {
-      console.error("deleteTimelineEntry", error);
-      return { ok: false, error: GENERIC_ERROR };
-    }
-    if (!data || data.length === 0) return { ok: false, error: "only your own entries can be deleted" };
+    const rows = await query<{ id: string }>(
+      "delete from application_events where id = $1 and user_id = $2 and classified_by = 'user' returning id",
+      [eventId, uid],
+      "application_events",
+    );
+    if (rows.length === 0) return { ok: false, error: "only your own entries can be deleted" };
   } catch (err) {
     console.error("deleteTimelineEntry", err);
     return { ok: false, error: GENERIC_ERROR };

@@ -1,5 +1,5 @@
 import { NextResponse, after } from "next/server";
-import { createServiceClient } from "@/lib/supabase/service";
+import { query } from "@/lib/db";
 import { isCorrectPassword } from "@/lib/gate";
 import { upsertRole, toInsertedRoleEcho, type InsertedRoleEcho } from "@/lib/upsert-role";
 import { captureInsertedRoleJds } from "@/lib/role-jd";
@@ -22,7 +22,6 @@ export async function POST(request: Request) {
   const parsed = parseWatcherPayload(body);
   if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 });
 
-  const supabase = createServiceClient();
   let inserted = 0;
   let updated = 0;
   let skippedApplied = 0;
@@ -34,7 +33,7 @@ export async function POST(request: Request) {
 
   for (const entry of parsed.roles) {
     try {
-      const { action, role } = await upsertRole(supabase, entry);
+      const { action, role } = await upsertRole(query, entry);
       if (action === "insert") {
         inserted += 1;
         insertedRoles.push(toInsertedRoleEcho(entry));
@@ -46,6 +45,7 @@ export async function POST(request: Request) {
       else if (action === "skip_filtered") skippedFiltered += 1;
       else skippedApplied += 1;
     } catch (err) {
+      // Per-row errors are collected (named) into the response; one bad row never drops the batch.
       if (roleErrors.length < 10) {
         roleErrors.push(err instanceof Error ? err.message : "role upsert failed");
       }
@@ -54,7 +54,7 @@ export async function POST(request: Request) {
 
   if (insertedRoleIds.length > 0) {
     after(async () => {
-      const { captured, failed } = await captureInsertedRoleJds(supabase, insertedRoleIds);
+      const { captured, failed } = await captureInsertedRoleJds(query, insertedRoleIds);
       console.log(JSON.stringify({ lane: "jd-ingest", inserted: insertedRoleIds.length, captured, failed }));
     });
   }

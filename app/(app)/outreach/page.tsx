@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { query } from "@/lib/db";
 import { requireUser } from "@/lib/require-user";
 import type { Outreach } from "@/lib/types";
 import { addOutreachAction } from "./actions";
@@ -51,13 +51,12 @@ function groupByCompany(rows: Outreach[], today: string): OutreachGroup[] {
 
 export default async function OutreachPage() {
   const uid = await requireUser();
-  const supabase = await createClient();
   const today = new Date().toISOString().slice(0, 10);
 
-  const { data, error } = await supabase.from("outreach").select("*").eq("user_id", uid);
-  if (error) throw new Error(error.message);
+  // A failed read throws (named) into the route's error boundary.
+  const data = await query<Outreach>("select * from outreach where user_id = $1", [uid], "outreach");
 
-  const groups = groupByCompany((data ?? []) as Outreach[], today);
+  const groups = groupByCompany(data, today);
 
   return (
     <div className="flex flex-col gap-6 py-4">

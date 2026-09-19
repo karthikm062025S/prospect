@@ -1,6 +1,5 @@
 import { NextResponse, after } from "next/server";
-import type { SupabaseClient } from "@supabase/supabase-js";
-import { createServiceClient } from "@/lib/supabase/service";
+import { query, type QueryFn } from "@/lib/db";
 import { isCorrectPassword } from "@/lib/gate";
 import { toInsertedRoleEcho, upsertRole } from "@/lib/upsert-role";
 import { filterTier } from "@/lib/scan-tier";
@@ -11,18 +10,16 @@ import { scanEndpoints } from "@/scripts/scan-core.mjs";
 import endpoints from "@/scripts/endpoints.json";
 import targets from "@/scripts/targets.json";
 
-// Fast discovery lane (RB-082 v2, slice 6c). pg_cron → pg_net POSTs here every
-// few minutes with the watcher secret; we answer 202 at once (pg_net's timeout
-// is short) and do the scan + upsert in after(). Same core as the Actions CLI
+// Fast discovery lane (RB-082 v2, slice 6c). .github/workflows/heartbeat.yml
+// POSTs here every 30 minutes (tier=hot) with the watcher secret; we answer 202 at once (the caller's
+// timeout is short) and do the scan + upsert in after(). Same core as the Actions CLI
 // (scripts/scan-core.mjs), same ingest path (lib/upsert-role.ts), so the two
 // lanes dedup against each other server-side. Same args as scan.yml passes:
 // --since-days 3 --concurrency 16.
 //
 // 6c-finish: the ETag branch (TRD §13 spike 5). `watch_state` rows feed
 // lib/etag-fetch.ts, which wraps `fetch` through the core's existing `fetchFn`
-// seam — a 304 skips the multi-MB download + parse that is the CPU. The table
-// is loaded best-effort: missing table / any error → empty Map + a log line,
-// never a failed scan (the cold path is the same scan as before). Inserted
+// seam — a 304 skips the multi-MB download + parse that is the CPU. Inserted
 // roles @mention the owner on the per-day GitHub issue scan.yml also uses
 // (lib/scan-notify.ts); no `GITHUB_ISSUES_PAT` → notify skipped, logged.
 //
@@ -34,32 +31,32 @@ export const dynamic = "force-dynamic";
 
 const SINCE_DAYS = 3;
 const CONCURRENCY = 16;
-const PAGE = 1000; // PostgREST max-rows; full tier has ~900 GET urls, so page
-
-async function loadWatchState(supabase: SupabaseClient): Promise<WatchState> {
+async function loadWatchState(q: QueryFn): Promise<WatchState> {
   const state: WatchState = new Map();
-  for (let from = 0; ; from += PAGE) {
-    const { data, error } = await supabase
-      .from("watch_state")
-      .select("endpoint_key,etag,last_modified")
-      .order("endpoint_key")
-      .range(from, from + PAGE - 1);
-    if (error) throw new Error(error.message);
-    for (const row of data ?? []) state.set(row.endpoint_key, { etag: row.etag, last_modified: row.last_modified });
-    if (!data || data.length < PAGE) break;
-  }
+  const rows = await q<{ endpoint_key: string; etag: string | null; last_modified: string | null }>(
+    "select endpoint_key, etag, last_modified from watch_state order by endpoint_key",
+    [],
+    "watch_state",
+  );
+  for (const row of rows) state.set(row.endpoint_key, { etag: row.etag, last_modified: row.last_modified });
   return state;
 }
 
 async function saveWatchState(
-  supabase: SupabaseClient,
+  q: QueryFn,
   updates: Map<string, { etag: string | null; last_modified: string | null }>,
   checkedAt: string,
 ): Promise<number> {
   if (updates.size === 0) return 0;
-  const rows = [...updates].map(([endpoint_key, v]) => ({ endpoint_key, ...v, checked_at: checkedAt }));
-  const { error } = await supabase.from("watch_state").upsert(rows, { onConflict: "endpoint_key" });
-  if (error) throw new Error(error.message);
+  const rows = [...updates];
+  await q(
+    `insert into watch_state (endpoint_key, etag, last_modified, checked_at)
+     select * from unnest($1::text[], $2::text[], $3::text[], $4::timestamptz[])
+     on conflict (endpoint_key) do update
+       set etag = excluded.etag, last_modified = excluded.last_modified, checked_at = excluded.checked_at`,
+    [rows.map(([key]) => key), rows.map(([, v]) => v.etag), rows.map(([, v]) => v.last_modified), rows.map(() => checkedAt)],
+    "watch_state",
+  );
   return rows.length;
 }
 
@@ -86,14 +83,9 @@ export async function POST(request: Request) {
     const vendors: Record<string, number> = {};
     for (const ep of filtered) vendors[ep.ats] = (vendors[ep.ats] ?? 0) + 1;
     try {
-      const supabase = createServiceClient();
-      let state: WatchState = new Map();
-      try {
-        state = await loadWatchState(supabase);
-      } catch (err) {
-        // e.g. relation "watch_state" does not exist (migration not applied yet) → cold scan.
-        console.log(JSON.stringify({ lane: "fast", tier, watch_state: "unavailable", error: err instanceof Error ? err.message : String(err) }));
-      }
+      // A failed watch_state read fails the run, named, via the catch below
+      // (the table is part of db/lakebase/001-schema.sql; there is no cold path).
+      const state: WatchState = await loadWatchState(query);
       const conditional = makeConditionalFetch(fetch, state);
 
       const { roles } = await scanEndpoints(filtered, { sinceDays: SINCE_DAYS, concurrency: CONCURRENCY, fetch: conditional.fetch });
@@ -124,7 +116,7 @@ export async function POST(request: Request) {
       const insertedRoleIds: string[] = [];
       for (const entry of roles) {
         try {
-          const { action, role } = await upsertRole(supabase, entry);
+          const { action, role } = await upsertRole(query, entry);
           if (action === "insert") {
             inserted += 1;
             insertedRoles.push(toInsertedRoleEcho(entry));
@@ -142,16 +134,11 @@ export async function POST(request: Request) {
       // D24/item 2 (MISSION v5): JD capture for roles genuinely INSERTED this
       // run, bounded + inside the already-non-blocking after() this route runs in.
       if (insertedRoleIds.length > 0) {
-        const { captured, failed } = await captureInsertedRoleJds(supabase, insertedRoleIds);
+        const { captured, failed } = await captureInsertedRoleJds(query, insertedRoleIds);
         console.log(JSON.stringify({ lane: "jd-ingest", inserted: insertedRoleIds.length, captured, failed }));
       }
 
-      let watchStateSaved = 0;
-      try {
-        watchStateSaved = await saveWatchState(supabase, conditional.updates, new Date().toISOString());
-      } catch (err) {
-        console.log(JSON.stringify({ lane: "fast", tier, watch_state: "save-failed", error: err instanceof Error ? err.message : String(err) }));
-      }
+      const watchStateSaved = await saveWatchState(query, conditional.updates, new Date().toISOString());
 
       const pat = process.env.GITHUB_ISSUES_PAT;
       // G1 L3: "owner/repo" comes from the environment, never from source.

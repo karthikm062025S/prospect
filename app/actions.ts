@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { query, withTransaction } from "@/lib/db";
 import { unlinkLegacyRolePointer } from "@/lib/application-delete-server";
 import { requireUser } from "@/lib/require-user";
 import { setApplyClicked, clearApplyClicked } from "@/lib/apply-intent";
@@ -21,13 +21,35 @@ import { GENERIC_ERROR, publicError, type AppStatus } from "@/lib/types";
 export type ActionResult = { ok: true } | { ok: false; error: string };
 export type JdCaptureResult = { ok: true } | { ok: false; error: string };
 
-// The user never sees an internal error string: a Supabase/PostgREST message
-// ("new row violates row-level security policy for ...") or a raw network error
-// is noise to them and detail to an attacker. One friendly line for them, the
-// real error in the server log for us.
+// The user never sees an internal error string: a DB message ("DB_QUERY_FAILED
+// (applications): ...") or a raw network error is noise to them and detail to
+// an attacker. One friendly line for them, the real error in the server log for us.
 function failed(err: unknown): ActionResult {
   console.error("action", err);
   return { ok: false, error: GENERIC_ERROR };
+}
+
+// The apply-time JD copy (after the response): a role's snapshot captured after
+// the application row was created lands on that application too.
+async function copyRoleJdToApplication(uid: string, roleId: string, applicationId: string): Promise<void> {
+  const captured = await captureRoleJdServer(roleId);
+  if (!captured.html) return;
+  try {
+    await query(
+      "update applications set jd_snapshot = $1, jd_snapshot_at = $2 where id = $3 and user_id = $4",
+      [captured.html, captured.captured_at, applicationId, uid],
+      "applications",
+    );
+  } catch (err) {
+    console.error(
+      JSON.stringify({
+        lane: "jd-wiring",
+        application_id: applicationId,
+        role_id: roleId,
+        error: err instanceof Error ? err.message : String(err),
+      }),
+    );
+  }
 }
 
 export async function armApplyIntentAction(
@@ -36,9 +58,8 @@ export async function armApplyIntentAction(
   const uid = await requireUser();
   if (!roleId) return { ok: false, error: "missing role id" };
   try {
-    const supabase = await createClient();
     const result = await setApplyClicked(
-      supabase,
+      query,
       uid,
       roleId,
       new Date().toISOString(),
@@ -58,8 +79,7 @@ export async function applyNotYetAction(roleId: string): Promise<ActionResult> {
   const uid = await requireUser();
   if (!roleId) return { ok: false, error: "missing role id" };
   try {
-    const supabase = await createClient();
-    await clearApplyClicked(supabase, uid, roleId);
+    await clearApplyClicked(query, uid, roleId);
   } catch (err) {
     return failed(err);
   }
@@ -76,42 +96,16 @@ export async function confirmAppliedAction(
   const uid = await requireUser();
   if (!roleId) return { ok: false, error: "missing role id" };
   try {
-    const supabase = await createClient();
-    // ponytail: applyToRole's existing-link check + application insert are two
-    // round trips, not one transaction — two confirms landing on the same role
-    // at once can both pass the check and both insert, orphaning the first
-    // application (L8 audit). Ceiling: fine while applies are human-paced,
-    // one per click. Upgrade: a unique partial index on
-    // user_roles(application_id) where application_id is not null, or wrap
-    // the check + insert in `select ... for update`.
-    const result = await applyToRole(supabase, uid, roleId);
+    // One transaction: the existing-link check, the application insert and the
+    // user_roles link commit together or not at all (the L8 race is closed by
+    // the guarded link in lib/apply-role.ts).
+    const result = await withTransaction((q) => applyToRole(q, uid, roleId));
     if (!result.ok) {
       return { ok: false, error: applyResultError(result.reason) };
     }
     if (!result.application.jd_snapshot) {
       const applicationId = result.application.id;
-      after(async () => {
-        const captured = await captureRoleJdServer(roleId);
-        if (!captured.html) return;
-        const { error } = await supabase
-          .from("applications")
-          .update({
-            jd_snapshot: captured.html,
-            jd_snapshot_at: captured.captured_at,
-          })
-          .eq("id", applicationId)
-          .eq("user_id", uid);
-        if (error) {
-          console.error(
-            JSON.stringify({
-              lane: "jd-wiring",
-              application_id: applicationId,
-              role_id: roleId,
-              error: error.message,
-            }),
-          );
-        }
-      });
+      after(() => copyRoleJdToApplication(uid, roleId, applicationId));
     }
   } catch (err) {
     return failed(err);
@@ -137,14 +131,17 @@ export async function recaptureJdAction(
 ): Promise<JdCaptureResult> {
   const uid = await requireUser();
   if (!applicationId) return { ok: false, error: "missing application id" };
-  const supabase = await createClient();
-  const { data: application, error } = await supabase
-    .from("applications")
-    .select("id, company_id, role_id, jd_link")
-    .eq("id", applicationId)
-    .eq("user_id", uid)
-    .maybeSingle();
-  if (error) return { ok: false, error: GENERIC_ERROR };
+  let application: { id: string; company_id: string; role_id: string | null; jd_link: string | null } | undefined;
+  try {
+    [application] = await query<{ id: string; company_id: string; role_id: string | null; jd_link: string | null }>(
+      "select id, company_id, role_id, jd_link from applications where id = $1 and user_id = $2",
+      [applicationId, uid],
+      "applications",
+    );
+  } catch (err) {
+    console.error("recaptureJd find", err);
+    return { ok: false, error: GENERIC_ERROR };
+  }
   if (!application) return { ok: false, error: "application not found" };
 
   const captured = application.role_id
@@ -154,20 +151,18 @@ export async function recaptureJdAction(
         companyId: application.company_id,
         link: application.jd_link,
       });
-  // Never the raw capture/PostgREST string: publicError logs it and returns one line.
+  // Never the raw capture/DB string: publicError logs it and returns one line.
   if (!captured.html)
     return { ok: false, error: publicError(captured.error) ?? GENERIC_ERROR };
 
-  const { error: storeError } = await supabase
-    .from("applications")
-    .update({
-      jd_snapshot: captured.html,
-      jd_snapshot_at: captured.captured_at,
-    })
-    .eq("id", applicationId)
-    .eq("user_id", uid);
-  if (storeError) {
-    console.error("recaptureJd store", storeError);
+  try {
+    await query(
+      "update applications set jd_snapshot = $1, jd_snapshot_at = $2 where id = $3 and user_id = $4",
+      [captured.html, captured.captured_at, applicationId, uid],
+      "applications",
+    );
+  } catch (err) {
+    console.error("recaptureJd store", err);
     return { ok: false, error: GENERIC_ERROR };
   }
   revalidatePath("/applications");
@@ -181,18 +176,14 @@ export async function deleteRolesAction(
   const ids = [...new Set(roleIds.filter(Boolean))];
   if (ids.length === 0) return { ok: false, error: "nothing selected" };
   try {
-    const supabase = await createClient();
     const now = new Date().toISOString();
-    const { error } = await supabase.from("user_roles").upsert(
-      ids.map((roleId) => ({
-        user_id: uid,
-        role_id: roleId,
-        deleted_at: now,
-        updated_at: now,
-      })),
-      { onConflict: "user_id,role_id" },
+    await query(
+      `insert into user_roles (user_id, role_id, deleted_at, updated_at)
+       select $1, unnest($2::uuid[]), $3::timestamptz, $3::timestamptz
+       on conflict (user_id, role_id) do update set deleted_at = excluded.deleted_at, updated_at = excluded.updated_at`,
+      [uid, ids, now],
+      "user_roles",
     );
-    if (error) return { ok: false, error: GENERIC_ERROR };
   } catch (err) {
     return failed(err);
   }
@@ -220,9 +211,8 @@ export async function setApplicationStatusAction(
   if (!PIPELINE_STATUSES.includes(status))
     return { ok: false, error: "invalid status" };
   try {
-    const supabase = await createClient();
     const result = await setApplicationStatus(
-      supabase,
+      query,
       uid,
       applicationId,
       status,
@@ -243,9 +233,8 @@ export async function updateApplicationDetailsAction(
   const uid = await requireUser();
   if (!applicationId) return { ok: false, error: "missing application id" };
   try {
-    const supabase = await createClient();
     const result = await updateApplicationDetails(
-      supabase,
+      query,
       uid,
       applicationId,
       patch,
@@ -275,50 +264,30 @@ export async function deleteApplicationAction(
   const uid = await requireUser();
   if (!applicationId) return { ok: false, error: "missing application id" };
   try {
-    const supabase = await createClient();
-    const { data: application, error: findError } = await supabase
-      .from("applications")
-      .select("id, role_id")
-      .eq("id", applicationId)
-      .eq("user_id", uid)
-      .maybeSingle();
-    if (findError) {
-      console.error("deleteApplication find", findError);
-      return { ok: false, error: GENERIC_ERROR };
-    }
-    if (!application) return { ok: false, error: "application not found" };
+    // One transaction: find (locked) -> unlink the legacy roles pointer -> delete
+    // -> restore the user_roles row. A failure anywhere leaves every row as it was.
+    const found = await withTransaction(async (q) => {
+      const [application] = await q<{ id: string; role_id: string | null }>(
+        "select id, role_id from applications where id = $1 and user_id = $2 for update",
+        [applicationId, uid],
+        "applications",
+      );
+      if (!application) return false;
 
-    const unlinkError = await unlinkLegacyRolePointer(applicationId);
-    if (unlinkError) {
-      console.error("deleteApplication unlink role", unlinkError);
-      return { ok: false, error: GENERIC_ERROR };
-    }
+      await unlinkLegacyRolePointer(q, applicationId);
+      await q("delete from applications where id = $1 and user_id = $2", [applicationId, uid], "applications");
 
-    const { error: deleteError } = await supabase
-      .from("applications")
-      .delete()
-      .eq("id", applicationId)
-      .eq("user_id", uid);
-    if (deleteError) {
-      console.error("deleteApplication delete", deleteError);
-      return { ok: false, error: GENERIC_ERROR };
-    }
-
-    if (application.role_id) {
-      const { error: roleError } = await supabase
-        .from("user_roles")
-        .update({
-          application_id: null,
-          apply_clicked_at: null,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("user_id", uid)
-        .eq("role_id", application.role_id);
-      if (roleError) {
-        console.error("deleteApplication role restore", roleError);
-        return { ok: false, error: GENERIC_ERROR };
+      if (application.role_id) {
+        await q(
+          `update user_roles set application_id = null, apply_clicked_at = null, updated_at = $3
+            where user_id = $1 and role_id = $2`,
+          [uid, application.role_id, new Date().toISOString()],
+          "user_roles",
+        );
       }
-    }
+      return true;
+    });
+    if (!found) return { ok: false, error: "application not found" };
   } catch (err) {
     return failed(err);
   }
