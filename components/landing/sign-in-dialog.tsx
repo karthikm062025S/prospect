@@ -6,22 +6,22 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useFormStatus } from "react-dom";
 import {
   requestPasswordResetAction,
-  signInWithGoogleAction,
   signInWithPasswordAction,
   signUpAction,
 } from "@/app/auth/actions";
 import { LAST_ACCOUNT_KEY, clearLastAccount, parseLastAccount, type LastAccount } from "@/lib/last-account";
 import { initials } from "@/lib/profile";
-import { GoogleGlyph, SIGN_IN_EVENT } from "@/components/landing/google-cta";
+import { SIGN_IN_EVENT } from "@/components/landing/sign-in-cta";
 
 // v8 onboarding: the ONE sign-in dialog. Mounted once in app/welcome/page.tsx;
-// every GoogleCta on the landing opens it by dispatching SIGN_IN_EVENT.
+// every SignInCta on the landing opens it by dispatching SIGN_IN_EVENT.
 // Native <dialog> + showModal(): Escape, focus trap and inert background come
 // from the UA (tests/dialog-a11y.test.ts states the contract).
 //
 // Top to bottom: "Continue as <name>" card (localStorage, lib/last-account.ts)
-// -> Continue with Google -> "or" -> email form (Sign in / Create account /
-// Reset password) -> the Terms + cookies line (Karthik decision 5).
+// -> email form (Sign in / Create account / Reset password) -> the Terms +
+// cookies line (Karthik decision 5). Google sign-in was removed 2026-09-19;
+// email + password is the only way in.
 //
 // Server actions redirect back to /welcome?error=... or ?notice=... ; those
 // codes map to one sentence each here, and the dialog re-opens on mount when
@@ -101,7 +101,7 @@ function ContinueAsCard({
           Continue as {account.fullName ?? account.email}
         </span>
         <span className="block truncate font-sans text-step-xs text-text-dim">
-          {account.email} · via {account.provider === "google" ? "Google" : "email"}
+          {account.email}
         </span>
       </span>
     </>
@@ -109,18 +109,9 @@ function ContinueAsCard({
 
   return (
     <div className="flex flex-col gap-2">
-      {account.provider === "google" ? (
-        <form action={signInWithGoogleAction}>
-          <input type="hidden" name="login_hint" value={account.email} />
-          <button type="submit" className={cardClass}>
-            {body}
-          </button>
-        </form>
-      ) : (
-        <button type="button" onClick={onUseEmail} className={cardClass}>
-          {body}
-        </button>
-      )}
+      <button type="button" onClick={onUseEmail} className={cardClass}>
+        {body}
+      </button>
       <button type="button" onClick={onForget} className={`${textLink} self-start`}>
         Not you? Use a different account
       </button>
@@ -243,19 +234,6 @@ function SignInDialogInner() {
         {lastAccount && (
           <ContinueAsCard account={lastAccount} onUseEmail={pickLastEmail} onForget={forgetLastAccount} />
         )}
-
-        <form action={signInWithGoogleAction}>
-          <SubmitButton>
-            <GoogleGlyph />
-            Continue with Google
-          </SubmitButton>
-        </form>
-
-        <p className="flex items-center gap-3 font-sans text-step-xs text-text-dim" aria-hidden="true">
-          <span className="h-px flex-1 bg-hairline" />
-          or
-          <span className="h-px flex-1 bg-hairline" />
-        </p>
 
         <form action={emailAction} className="flex flex-col gap-3">
           {mode === "signup" && (

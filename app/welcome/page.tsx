@@ -5,7 +5,7 @@ import { BoardsList, BoardsStrip } from "@/components/landing/boards-strip";
 import { CELESTIAL, GEESE, RISING_WAVES } from "@/components/landing/art";
 import { CoverageOdometer } from "@/components/landing/coverage-odometer";
 import { FeedPreview } from "@/components/landing/feed-preview";
-import { GoogleCta, SIGN_IN_REASON } from "@/components/landing/google-cta";
+import { SignInCta, SIGN_IN_REASON } from "@/components/landing/sign-in-cta";
 import { SignInDialog } from "@/components/landing/sign-in-dialog";
 import { HandLine } from "@/components/landing/hand-line";
 import { Hero } from "@/components/landing/hero";
@@ -157,7 +157,7 @@ export default async function WelcomePage({
           fragment (sign-out, an expired session, the signed-out gate). */}
       <OpenOnHero />
       <LandingNav signedIn={signedIn} />
-      {/* v8 onboarding: the one sign-in dialog every GoogleCta opens. */}
+      {/* v8 onboarding: the one sign-in dialog every SignInCta opens. */}
       <SignInDialog />
       {/* D26: the 2px accent read-progress hairline; null when settled. */}
       <ScrollProgress />
@@ -399,7 +399,7 @@ export default async function WelcomePage({
             />
             <Rise>
               <div className="mt-6 flex flex-wrap items-center gap-x-6 gap-y-4">
-                <GoogleCta signedIn={signedIn} />
+                <SignInCta signedIn={signedIn} />
                 <FeedbackButton />
                 <Link
                   href="#feed"
@@ -423,7 +423,7 @@ export default async function WelcomePage({
         <div className={INNER}>
           <div className="flex flex-col gap-12 border-t border-hairline pt-12 lg:flex-row lg:justify-between">
             <Rise className="flex items-center gap-3">
-              <GoogleCta signedIn={signedIn} />
+              <SignInCta signedIn={signedIn} />
               <BackToTop />
             </Rise>
 

@@ -2,7 +2,7 @@
 
 import { ArtPoster, HERO_TALL, HERO_WIDE } from "@/components/landing/art";
 import AuthNotice from "@/components/landing/auth-notice";
-import { GoogleCta, SIGN_IN_REASON } from "@/components/landing/google-cta";
+import { SignInCta, SIGN_IN_REASON } from "@/components/landing/sign-in-cta";
 import { ArrowDownIcon } from "@/components/landing/icons";
 import { KenBurns } from "@/components/motion/ken-burns";
 import { Rise } from "@/components/landing/rise";
@@ -104,7 +104,7 @@ export function Hero({
               </Rise>
               <Rise delay={0.15} immediate>
                 <div className="mt-6 flex items-center gap-3">
-                  <GoogleCta
+                  <SignInCta
                     tone="ink"
                     label="Get started"
                     signedIn={signedIn}

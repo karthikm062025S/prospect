@@ -3,7 +3,7 @@
 import { Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
-// D27.5: /welcome?error=auth means signInWithGoogleAction (app/auth/actions.ts)
+// D27.5: /welcome?error=auth means an auth server action (app/auth/actions.ts)
 // or the /auth/callback exchange failed and bounced the visitor back here.
 // useSearchParams needs a Suspense boundary; it lives INSIDE this default
 // export so the orchestrator's mount under the hero CTA stays one line.

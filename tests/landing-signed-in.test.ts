@@ -17,5 +17,5 @@ test("the landing reads the session and threads it to every CTA", () => {
 });
 
 test("a signed-in visitor is offered the dashboard, not a sign-in", () => {
-  assert.match(read("components/landing/google-cta.tsx"), /My dashboard/);
+  assert.match(read("components/landing/sign-in-cta.tsx"), /My dashboard/);
 });
