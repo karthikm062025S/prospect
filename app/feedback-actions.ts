@@ -80,9 +80,9 @@ export async function submitFeedbackAction(_prev: FeedbackState, formData: FormD
     // is logged now instead of resolving silently - see sendFeedbackMail.
     await sendFeedbackMail(
       {
-        from: "Scout <onboarding@resend.dev>",
+        from: "Prospect <onboarding@resend.dev>",
         to,
-        subject: `Scout feedback · ${page}`,
+        subject: `Prospect feedback · ${page}`,
         text: `${message}\n\n- from: ${email ?? "no email"} · user: ${uid ?? "anonymous"} · page: ${page} · ua: ${userAgent}`,
       },
       (mail) => new Resend(resendKey).emails.send(mail),

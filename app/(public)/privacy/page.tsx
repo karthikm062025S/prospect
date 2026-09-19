@@ -23,9 +23,8 @@ export default function PrivacyPage() {
         <h2 className="font-label text-[11px] uppercase tracking-label text-text">What we collect</h2>
         <ul className="flex flex-col gap-3 text-text-dim">
           <li>
-            <strong className="text-text">From sign-in:</strong> with Google, your Google account
-            id, email, name, and avatar URL; with email, your name, email and a password hash. Used
-            only to run your account. Your browser also keeps the name and email of the last
+            <strong className="text-text">From sign-in:</strong> your email and a password hash,
+            plus the name you choose to add. Used only to run your account. Your browser also keeps the name and email of the last
             account you used, so the sign-in dialog can offer it back to you.
           </li>
           <li>

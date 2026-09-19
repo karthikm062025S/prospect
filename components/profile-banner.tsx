@@ -52,7 +52,7 @@ export function ProfileBanner({ uid }: { uid: string }) {
   return (
     <div className="flex items-center justify-between gap-3 border border-hairline bg-raised px-4 py-2 text-sm text-text">
       <p>
-        Update your profile. Add your name so Scout can greet you.{" "}
+        Update your profile. Add your name so Prospect can greet you.{" "}
         <Link href="/settings#profile" className="underline underline-offset-2 hover:text-sage">
           Go to profile
         </Link>
