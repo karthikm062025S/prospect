@@ -54,7 +54,7 @@ export async function insertOutreach(q: QueryFn, uid: string, input: InsertOutre
 
   const status = clean(input.status);
   const validStatus = status && (OUTREACH_STATUSES as readonly string[]).includes(status) ? status : null;
-  const [row] = await q<Outreach>(
+  const inserted = await q<Outreach>(
     `insert into outreach (user_id, company_name, contact_name, channel, role_label, contact_title, contact_handle, message, follow_up_at, notes, status)
      values ($1, $2, $3, $4, $5, $6, $7, $8, $9::date, $10, coalesce($11::text, 'drafted'))
      returning *`,
@@ -73,7 +73,8 @@ export async function insertOutreach(q: QueryFn, uid: string, input: InsertOutre
     ],
     "outreach",
   );
-  return row;
+  if (inserted.length !== 1) throw new Error(`DB_EXPECTED_ONE (outreach): got ${inserted.length}`);
+  return inserted[0];
 }
 
 // Single source of truth for the status transition + its side effects. Marking

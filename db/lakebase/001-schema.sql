@@ -229,6 +229,8 @@ create index if not exists feedback_user_day_idx on feedback (user_id, created_a
 create index if not exists feedback_created_idx on feedback (created_at desc);
 create index if not exists feedback_ip_day_idx on feedback (ip_hash, created_at desc);
 create index if not exists tombstones_lookup_idx on tombstones (company_id, title);
+-- Company names are looked up case-insensitively (ilike, exact); two rows differing only by case would make that ambiguous.
+create unique index if not exists companies_name_ci_uidx on companies (lower(name));
 create index if not exists role_corrections_user_idx on role_corrections (user_id);
 
 -- Views: the public column allowlists the signed-in app reads (never notes, fit_note, priority,

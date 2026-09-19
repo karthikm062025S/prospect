@@ -1,4 +1,4 @@
-import { Pool, types, type QueryResultRow } from "pg";
+import { Pool, types, type CustomTypesConfig, type QueryResultRow } from "pg";
 
 // Server-only. The one Postgres pool for every app table (Databricks Lakebase).
 // Supabase is auth only; nothing in this file knows about it.
@@ -9,11 +9,20 @@ if (typeof window !== "undefined") {
 // Rows keep the JSON shapes the app was written against (PostgREST returned
 // every date/timestamp as a string): `date` stays "YYYY-MM-DD" (pg's default
 // would be a JS Date at LOCAL midnight, the classic off-by-one), and
-// timestamptz becomes an ISO string. The pglite test helper installs the same
-// parsers so a test and production see identical rows.
+// timestamptz becomes an ISO string. POOL-LOCAL (the Pool's `types` option),
+// never `types.setTypeParser`: that mutates pg's process-wide registry and a
+// second evaluation would wrap the string parser again. The pglite test helper
+// installs the same parsers so a test and production see identical rows.
 const parseTimestamptz = types.getTypeParser(types.builtins.TIMESTAMPTZ);
-types.setTypeParser(types.builtins.DATE, (value) => value);
-types.setTypeParser(types.builtins.TIMESTAMPTZ, (value) => (parseTimestamptz(value) as Date).toISOString());
+const parseDate = (value: string) => value;
+const parseTimestamptzIso = (value: string) => (parseTimestamptz(value) as Date).toISOString();
+const rowTypes: CustomTypesConfig = {
+  getTypeParser: ((id: number, format?: "text" | "binary") => {
+    if (format !== "binary" && id === types.builtins.DATE) return parseDate;
+    if (format !== "binary" && id === types.builtins.TIMESTAMPTZ) return parseTimestamptzIso;
+    return types.getTypeParser(id, format as never);
+  }) as CustomTypesConfig["getTypeParser"],
+};
 
 /** The one query shape every query module takes as its first argument: production passes `query`
  *  (or a transaction's bound `q`), tests pass a pglite-backed one (tests/helpers/test-db.ts). */
@@ -36,6 +45,7 @@ export function db(): Pool {
     idleTimeoutMillis: 10_000,
     connectionTimeoutMillis: 10_000,
     options: "-c statement_timeout=30000",
+    types: rowTypes,
   });
   return pool;
 }
