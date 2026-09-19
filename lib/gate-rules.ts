@@ -6,7 +6,7 @@ import type { VisaClass } from "./types";
 // question. No model, no network, $0. Callers: the JD-capture hook in
 // lib/role-jd.ts and the sweep behind app/api/gate-sweep/route.ts, which both
 // receive this function injected (no static lib-to-lib value import: the
-// strip-types test runner cannot follow one, my_projects/CLAUDE.md).
+// strip-types test runner cannot follow one, the module-resolution rule).
 
 export type GateResult = { visa_class: VisaClass | null; note: string | null; matched: string | null };
 

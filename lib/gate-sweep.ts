@@ -8,7 +8,7 @@ import type { GateResult } from "./gate-rules";
 // is idempotent; a stored `visa_class` is never overwritten (a hand-set or
 // earlier value wins). $0: no model, no kill switch. No static lib-to-lib VALUE
 // import here on purpose (the strip-types runner cannot follow one,
-// my_projects/CLAUDE.md): the rules and the clock arrive in `deps` and
+// the module-resolution rule): the rules and the clock arrive in `deps` and
 // app/api/gate-sweep/route.ts wires the real ones.
 
 export type GateRow = { id: string; jd_snapshot: string; visa_class: string | null };

@@ -72,7 +72,7 @@ export async function postDailyIssue(opts: {
     authorization: `Bearer ${opts.token}`,
     accept: "application/vnd.github+json",
     "x-github-api-version": "2022-11-28",
-    "user-agent": "intern-hq-scout",
+    "user-agent": "scout-vthacks",
     "content-type": "application/json",
   };
   const call = async (path: string, init?: RequestInit) => {

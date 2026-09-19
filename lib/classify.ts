@@ -7,7 +7,7 @@ import type { Season } from "./season";
 // familySignals over the title); a DeepSeek call only where the rules still
 // cannot decide; the model may fill gaps and add families, never override a
 // rule (D7). No static lib-to-lib VALUE import here on purpose: the strip-types
-// test runner cannot follow one (my_projects/CLAUDE.md), so the rules, the
+// test runner cannot follow one (the module-resolution rule), so the rules, the
 // entity decoder and fetch arrive in `deps` and app/api/classify/route.ts wires
 // the real ones. Type-only imports are stripped and safe.
 

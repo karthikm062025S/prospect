@@ -34,7 +34,7 @@ export type RoleLevel = (typeof ROLE_LEVELS)[number];
 // file is imported DIRECTLY by tests/upsert-role.test.ts under
 // `node --experimental-strip-types`, which cannot resolve an extensionless
 // runtime *value* import between two lib/*.ts files (see CLAUDE.md's
-// intern-hq module-resolution mistake rule) — the same reason isTargetTitle
+// the module-resolution rule) — the same reason isTargetTitle
 // above is a standalone copy rather than a cross-import of scan-core.mjs.
 // tests/season.test.ts and tests/family.test.ts lock the canonical
 // lib/season.ts + lib/family.ts behavior this copy must track — keep both in

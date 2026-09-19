@@ -27,7 +27,7 @@ type CaptureFn = (
 // ERR_MODULE_NOT_FOUND the moment `node --experimental-strip-types --test`
 // loads a test that imports THIS file directly (proven; a `.ts`-extension
 // import fixes that but then breaks `tsc`/`next build`, TS5097 — see
-// my_projects/CLAUDE.md's test/app module-resolution gotcha). A dynamic
+// the module-resolution rule's test/app module-resolution gotcha). A dynamic
 // import is resolved lazily at CALL time instead of at module-load time;
 // every case in tests/role-jd.test.ts injects `opts.capture`, so this branch
 // is never reached under the test runner. Next's bundler (webpack/turbopack)

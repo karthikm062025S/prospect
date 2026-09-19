@@ -31,7 +31,7 @@ test("issueDay is the America/New_York calendar day, like scan.yml's `TZ=America
 
 // G1 L3: the repo is a parameter now (env `SCOUT_ISSUE_REPO`, read in
 // app/api/scan/route.ts), not a module const in lib/scan-notify.ts.
-const REPO = "karthikm062025S/intern-hq";
+const REPO = "karthikm062025S/scout";
 
 test("the @mention is derived from the repo owner", () => {
   assert.equal(issueMention(REPO), "@karthikm062025S");
@@ -89,8 +89,8 @@ test("comments on the open issue whose title is today's (first match wins; PRs i
   const out = await postDailyIssue({ fetch: gh.fetch, token: "tok", repo: REPO, inserted: [role], now });
   assert.deepEqual(out, { action: "commented", number: 41 });
   assert.equal(gh.calls.length, 2);
-  assert.equal(gh.calls[0].url, "https://api.github.com/repos/karthikm062025S/intern-hq/issues?state=open&per_page=100");
-  assert.equal(gh.calls[1].url, "https://api.github.com/repos/karthikm062025S/intern-hq/issues/41/comments");
+  assert.equal(gh.calls[0].url, "https://api.github.com/repos/karthikm062025S/scout/issues?state=open&per_page=100");
+  assert.equal(gh.calls[1].url, "https://api.github.com/repos/karthikm062025S/scout/issues/41/comments");
   assert.equal(gh.calls[1].init?.method, "POST");
   assert.deepEqual(JSON.parse(String(gh.calls[1].init?.body)), { body: buildIssueBody([role], REPO) });
   for (const c of gh.calls) {
@@ -105,7 +105,7 @@ test("creates the issue when no open issue carries today's title", async () => {
   const gh = ghFake([{ number: 39, title: "Scout: new drops — 2026-08-23" }]);
   const out = await postDailyIssue({ fetch: gh.fetch, token: "tok", repo: REPO, inserted: [role], now });
   assert.deepEqual(out, { action: "created", number: 99 });
-  assert.equal(gh.calls[1].url, "https://api.github.com/repos/karthikm062025S/intern-hq/issues");
+  assert.equal(gh.calls[1].url, "https://api.github.com/repos/karthikm062025S/scout/issues");
   assert.equal(gh.calls[1].init?.method, "POST");
   assert.deepEqual(JSON.parse(String(gh.calls[1].init?.body)), {
     title: "Scout: new drops — 2026-08-24",

@@ -11,7 +11,7 @@ import { makeTestDb, insertRow, truncateAll, uuid, type TestDb } from "./helpers
 // captureJobDescription/captureJobPosting path: a STATIC lib-to-lib import of
 // lib/jd-snapshot.ts would throw ERR_MODULE_NOT_FOUND the moment this file is
 // loaded directly by `node --experimental-strip-types --test` (the D6 gotcha,
-// my_projects/CLAUDE.md), so role-jd.ts resolves the real module lazily via a
+// the module-resolution rule), so role-jd.ts resolves the real module lazily via a
 // dynamic import that these tests never reach. The real path is proven by the
 // live proof against the dev server (MISSION validation item 7) and by
 // jd-snapshot's own certified test suite (tests/jd-snapshot.test.ts).

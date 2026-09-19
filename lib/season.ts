@@ -1,6 +1,6 @@
 // Season derivation (MISSION v7 D8, contract V4, 2026-09-02). Pure, no imports —
 // runs both server-side at ingest (lib/upsert-role.ts) and in the SQL backfill's
-// TypeScript-authored twin (db/migration-2026-09-v7-season-backfill.sql). Anchor
+// TypeScript-authored twin (the season backfill that ran before the Lakebase port). Anchor
 // date for "bare season word, no year" resolution is fixed at 2026-09-02 (the
 // mission's decision date), NOT "today" — so results are deterministic and never
 // drift as the calendar advances.

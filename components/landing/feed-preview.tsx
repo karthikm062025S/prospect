@@ -149,7 +149,7 @@ function Row({ row, delay, className = "" }: { row: FeedRow; delay: number; clas
 // v7 S4 LANDING-FLOW, persona blocker 1. Save used to be a bare
 // `<form action={signInWithGoogleAction}>`: one click and the whole tab left
 // the landing for a Google chooser that says "continue to
-// shoiroxacxkjwyfzjmgv.supabase.co", with no explanation anywhere. That is the
+// <a database host>", with no explanation anywhere. That is the
 // single biggest drop-off on the page.
 //
 // Now the click opens a small non-modal prompt anchored to the row that says

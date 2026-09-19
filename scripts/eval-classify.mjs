@@ -8,7 +8,7 @@
 //                        score primary family and season against Karthik's labels.
 //
 //   node --env-file=.env.local scripts/eval-classify.mjs --counts
-//   node --env-file=.env.local scripts/eval-classify.mjs --counts --labels planning/task-2-labels.csv --url https://scoutfeed.vercel.app/api/classify
+//   node --env-file=.env.local scripts/eval-classify.mjs --counts --labels planning/task-2-labels.csv --url https://<your-deployment>/api/classify
 //
 // Verdict (D9 + D9a): PASS = family agree >= 36/40 AND season agree >= 36/40
 // AND open "unspecified with a JD" <= 444 (D9a, re-pinned 2026-09-15 from a stale

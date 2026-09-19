@@ -19,7 +19,7 @@ import { decodeEntities } from "../lib/decode-entities.ts";
 
 // Task 2 L2 (MISSION D5-D8): the residue sweep behind POST /api/classify.
 // lib/classify.ts holds no static lib-to-lib VALUE import (the strip-types
-// runner cannot follow one, my_projects/CLAUDE.md), so every collaborator is
+// runner cannot follow one, the module-resolution rule), so every collaborator is
 // injected here: the real season/family/entity rules from their own modules,
 // a fake fetch (tests never hit the network) and an in-memory Db.
 

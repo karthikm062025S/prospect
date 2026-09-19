@@ -21,7 +21,7 @@ import path from "node:path";
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 // The icon pack lives outside the repo, in the workspace design folder.
 // Resolve it relative to the repo root first (works for any clone sitting at
-// <workspace>/my_projects/<repo>); the absolute path is the fallback only.
+// <workspace>/<folder>/<repo>); the absolute path is the fallback only.
 const WORKSPACE_PACK = path.resolve(rootDir, "../../design/icons/thesvg");
 const PACK = existsSync(WORKSPACE_PACK) ? WORKSPACE_PACK : "C:/My_WorkSpace/design/icons/thesvg";
 const OUT = path.join(rootDir, "public", "brand");

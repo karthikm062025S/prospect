@@ -1,4 +1,4 @@
-// intern-hq MCP server — single-user bearer auth (== env MCP_SECRET), no
+// Scout MCP server — single-user bearer auth (== env MCP_SECRET), no
 // per-token table (stripped from the filo/harloom reference: this app has
 // exactly one user and one static secret).
 //
@@ -501,7 +501,7 @@ const handler = createMcpHandler(
     );
   },
   {
-    serverInfo: { name: "intern-hq", version: "0.4.0" },
+    serverInfo: { name: "scout", version: "0.4.0" },
     capabilities: { tools: {} },
   },
   { basePath: "/api", maxDuration: 60 },
@@ -515,8 +515,8 @@ const verifyToken = async (
   if (!bearerToken || !expected || !isCorrectPassword(bearerToken, expected)) return undefined;
   return {
     token: bearerToken,
-    clientId: "intern-hq-single-user",
-    scopes: ["intern-hq"],
+    clientId: "scout-single-user",
+    scopes: ["scout"],
   };
 };
 

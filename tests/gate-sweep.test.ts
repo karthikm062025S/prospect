@@ -5,7 +5,7 @@ import { gateFromText } from "../lib/gate-rules.ts";
 
 // Task 3 L3 (MISSION T4): the rules-only sweep behind POST /api/gate-sweep.
 // lib/gate-sweep.ts holds no static lib-to-lib VALUE import (the strip-types
-// runner cannot follow one, my_projects/CLAUDE.md), so the rules arrive
+// runner cannot follow one, the module-resolution rule), so the rules arrive
 // injected and the Db is an in-memory stub shaped like the route's.
 
 type Stored = GateRow & { created_at: string; eligibility_note: string | null; gate_checked_at: string | null };

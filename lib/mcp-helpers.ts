@@ -3,7 +3,7 @@
 // imports) so `node --experimental-strip-types` can resolve them directly in
 // tests — importing route.ts itself would drag in its @/lib/* aliases, which
 // only the Next/tsc bundler (not plain node) knows how to resolve. See the
-// my_projects mistake note on this exact node/tsc extension gotcha.
+// the module-resolution rule.
 
 // "today" for roles_added_today is a calendar boundary in America/New York
 // (the owner applies from ET), computed here rather than trusting the DB
