@@ -65,27 +65,44 @@ interface FeedRoleRow {
  * `roles_public` rows, no ranking yet. L0 owns the Lakebase port of this
  * table; until it lands, this is a named empty state, never a crash.
  */
-async function loadCompactFeed(nowMs: number): Promise<HomeRow[] | null> {
-  let rows: FeedRoleRow[];
-  try {
-    rows = await query<FeedRoleRow>(
-      `select r.id, r.company_id, r.title, r.lifecycle, r.created_at, r.posted_at, r.deadline, r.location,
+async function loadCompactFeed(nowMs: number, userId: string): Promise<HomeRow[] | null> {
+  let rows: Array<FeedRoleRow & { match_score?: number | null }>;
+  const columns = `r.id, r.company_id, r.title, r.lifecycle, r.created_at, r.posted_at, r.deadline, r.location,
               r.visa_class, r.eligibility_note, r.link, r.source, r.season, r.family, r.families,
               r.repost_count, r.canonical_key,
-              c.name as company_name, c.tier as company_tier, c.careers_url as company_url, c.visa_note as company_visa_note
-       from roles_public r
+              c.name as company_name, c.tier as company_tier, c.careers_url as company_url, c.visa_note as company_visa_note`;
+  try {
+    // Ranked for this student when Match has run (same order as Home's "Best
+    // match"); the newest 30 open postings until then.
+    rows = await query<FeedRoleRow & { match_score: number }>(
+      `select ${columns}, m.score as match_score
+       from match_scores m
+       join roles_public r on r.id = m.role_id
        left join companies_public c on c.id = r.company_id
-       where r.lifecycle = 'open'
-       order by r.created_at desc
-       limit 30`,
-      [],
-      "roles_public",
+       where m.user_id = $1 and r.lifecycle = 'open'
+       order by m.score desc
+       limit 150`,
+      [userId],
+      "match_scores",
     );
+    if (rows.length === 0) {
+      rows = await query<FeedRoleRow>(
+        `select ${columns}
+         from roles_public r
+         left join companies_public c on c.id = r.company_id
+         where r.lifecycle = 'open'
+         order by r.created_at desc
+         limit 150`,
+        [],
+        "roles_public",
+      );
+    }
   } catch (error) {
-    if (/relation "roles_public" does not exist/.test((error as Error).message)) return null;
+    if (/relation "(roles_public|match_scores)" does not exist/.test((error as Error).message)) return null;
     throw error;
   }
   return rows.map((role) => ({
+    matchScore: role.match_score ?? null,
     id: role.id,
     company_id: role.company_id,
     company_name: role.company_name ?? "Unknown company",
@@ -161,17 +178,21 @@ export default async function JourneyPage() {
   }
 
   const nowMs = getNowMs(); // Date.now() kept out of the component body (react-hooks/purity)
-  const [nudges, feedRows] = await Promise.all([loadNudges(userId), loadCompactFeed(nowMs)]);
+  const [nudges, feedRows] = await Promise.all([loadNudges(userId), loadCompactFeed(nowMs, userId)]);
   const targetTerm = `${profile.profile.targetTerm.season} ${profile.profile.targetTerm.year}`;
 
   return (
     <div className="flex flex-col gap-6 py-4">
       <h1 className="sr-only">Journey</h1>
       <NudgesStrip nudges={nudges} />
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,7fr)_minmax(0,3fr)]">
+      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,7fr)_minmax(0,3fr)]">
         <RoadmapBoard roadmap={roadmap} nodes={nodes} targetTerm={targetTerm} />
-        <div className="flex flex-col gap-3">
-          <h2 className="font-label text-[11px] uppercase tracking-label text-text-dim">Live feed</h2>
+        {/* Sticky on desktop with its own scroll, so the feed stays beside the
+            roadmap however long the timeline gets (Karthik, judge test 18:20). */}
+        <div className="flex flex-col gap-3 lg:sticky lg:top-20 lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto">
+          <h2 className="font-label text-[11px] uppercase tracking-label text-text-dim">
+            {feedRows?.some((r) => r.matchScore != null) ? "Ranked for you" : "Live feed"}
+          </h2>
           <CompactFeed rows={feedRows} nowMs={nowMs} />
         </div>
       </div>
