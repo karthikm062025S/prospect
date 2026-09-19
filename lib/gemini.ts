@@ -7,8 +7,11 @@ if (typeof window !== "undefined") {
   throw new Error("lib/gemini.ts must never reach the client bundle");
 }
 
-export const MODEL_PARSE = "gemini-2.5-pro";
-export const MODEL_AGENT = "gemini-2.5-flash";
+// Model policy (Karthik 2026-09-19 16:00, SETUP-DONE §2): agents on 3.8 Flash, PDF parse on 3.1 Pro (preview id),
+// bulk labelling on 3.1 Flash-Lite with grounding OFF. gemini-2.5-* is refused for this key ("no longer available").
+export const MODEL_PARSE = "gemini-3.1-pro-preview";
+export const MODEL_AGENT = "gemini-3.8-flash";
+export const MODEL_LABEL = "gemini-3.1-flash-lite";
 
 let client: GoogleGenAI | undefined;
 
