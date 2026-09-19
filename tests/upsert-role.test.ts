@@ -65,6 +65,25 @@ test("update still self-heals an unspecified season and a null family from the t
   assert.equal(role.family, "swe");
 });
 
+// Addendum 2 (2026-09-19, "every major, every level"): the insert gate is WIDE.
+// These two lock the flip at the upsertRole level (tests/title-filter.test.ts
+// locks the predicate itself): a non-CS title INSERTS, a wrong-term title is
+// still skip_filtered.
+test("a non-CS internship title ('Marketing Intern') is INSERTED by the wide gate (was skip_filtered)", async () => {
+  await seedCompany();
+  const result = await upsertRole(db.q, { company: "Acme", title: "Marketing Intern", posted_at: "2026-08-01" });
+  assert.equal(result.action, "insert");
+  assert.equal((result.role as Row).level, null, "no level in the payload -> null, never guessed");
+  assert.equal(await rolesCount(), 1);
+});
+
+test("a wrong-term title is still skip_filtered by the wide gate", async () => {
+  await seedCompany();
+  const result = await upsertRole(db.q, { company: "Acme", title: "Software Engineer Intern - Fall 2026", posted_at: "2026-08-01" });
+  assert.equal(result.action, "skip_filtered");
+  assert.equal(await rolesCount(), 0);
+});
+
 test("inserts when no existing role", () => {
   assert.equal(resolveRoleUpsert(undefined, false), "insert");
 });

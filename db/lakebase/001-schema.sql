@@ -16,6 +16,8 @@
 --   * no pg_cron: the hot scan tier is scheduled from .github/workflows/heartbeat.yml.
 -- Addendum 2026-09-19 15:05: roles.source_posted_at (the board's own publish timestamp) for
 -- the drop-latency measurement (created_at - source_posted_at).
+-- Addendum 2026-09-19 16:45: roles.level (internship|coop|new_grad|full_time|research, nullable)
+-- for the widened "every major, every level" scan; the insert gate keeps every function/level.
 
 create table if not exists companies (
   id           uuid primary key default gen_random_uuid(),
@@ -69,9 +71,14 @@ create table if not exists roles (
   repost_count      integer not null default 0,
   canonical_key     text,
   gate_checked_at   timestamptz,
-  source_posted_at  timestamptz           -- addendum: the board's own publish time
+  source_posted_at  timestamptz,          -- addendum: the board's own publish time
+  level             text                  -- addendum 2: posting level, null when the source did not say
 );
 alter table roles add column if not exists source_posted_at timestamptz;
+alter table roles add column if not exists level text;
+alter table roles drop constraint if exists roles_level_check;
+alter table roles add constraint roles_level_check
+  check (level is null or level in ('internship', 'coop', 'new_grad', 'full_time', 'research'));
 alter table roles drop constraint if exists roles_lifecycle_check;
 alter table roles add constraint roles_lifecycle_check check (lifecycle in ('open', 'applied'));
 alter table roles drop constraint if exists roles_classified_by_check;
@@ -209,6 +216,7 @@ create index if not exists roles_classify_residue_idx on roles (created_at) wher
 create index if not exists roles_canonical_key_idx on roles (canonical_key) where canonical_key is not null;
 create index if not exists roles_gate_residue_idx on roles (created_at) where jd_snapshot is not null and gate_checked_at is null;
 create index if not exists roles_source_posted_idx on roles (source_posted_at desc) where source_posted_at is not null;
+create index if not exists roles_level_idx on roles (level) where lifecycle = 'open';
 create index if not exists applications_date_idx on applications (date_applied desc);
 create index if not exists applications_user_status_idx on applications (user_id, status, updated_at desc);
 create index if not exists user_roles_application_idx on user_roles (application_id) where application_id is not null;
@@ -231,7 +239,7 @@ create or replace view roles_public as
          jd_snapshot, jd_snapshot_at, created_at, updated_at,
          families, classified_at,
          last_seen_at, repost_count, canonical_key, gate_checked_at,
-         source_posted_at
+         source_posted_at, level
   from roles;
 
 create or replace view companies_public as

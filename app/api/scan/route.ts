@@ -88,7 +88,13 @@ export async function POST(request: Request) {
       const state: WatchState = await loadWatchState(query);
       const conditional = makeConditionalFetch(fetch, state);
 
-      const { roles } = await scanEndpoints(filtered, { sinceDays: SINCE_DAYS, concurrency: CONCURRENCY, fetch: conditional.fetch });
+      // Addendum 2 (2026-09-19): `wide: true` applies the L2 lane's widened
+      // eligibility (every major, every level) exactly like the CLI. The option
+      // is read by scripts/scan-core.mjs on the l2-lane branch; on a base without
+      // it the extra key is ignored (not a typed object literal, so no excess-
+      // property error either way).
+      const scanOptions = { sinceDays: SINCE_DAYS, concurrency: CONCURRENCY, fetch: conditional.fetch, wide: true };
+      const { roles } = await scanEndpoints(filtered, scanOptions);
       // Phase line: if the 300 s cap kills the upsert loop, the scan half is still legible.
       console.log(
         JSON.stringify({

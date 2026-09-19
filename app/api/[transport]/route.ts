@@ -22,7 +22,7 @@ import { setApplicationStatus } from "@/lib/application-details";
 import { applyToRole } from "@/lib/apply-role";
 import { tombstoneAndDeleteRoles } from "@/lib/delete-role";
 import { insertOutreach, setOutreachStatus } from "@/lib/outreach";
-import { upsertRole, ROLE_LIFECYCLES } from "@/lib/upsert-role";
+import { upsertRole, ROLE_LIFECYCLES, ROLE_LEVELS } from "@/lib/upsert-role";
 import { getDashboardSummary } from "@/lib/dashboard";
 import { OUTREACH_STATUSES, type AppStatus } from "@/lib/types";
 import { nyTodayStartIso, buildRoleFlagsPatch } from "@/lib/mcp-helpers";
@@ -329,6 +329,7 @@ const handler = createMcpHandler(
           fit_note: z.string().optional(),
           priority: z.string().optional(),
           notes: z.string().optional(),
+          level: z.enum(ROLE_LEVELS).optional(),
         },
       },
       (input) =>
