@@ -1,11 +1,11 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { QueryFn } from "./db";
 import type { Season } from "./season";
 import type { Family } from "./family";
 import type { VisaClass } from "./types";
 
 // T5 (K1): a per-user correction never touches the shared `roles` row. This
 // file owns validation (parseCorrection), the write (saveCorrection /
-// removeCorrection against public.role_corrections), and the pure read-time
+// removeCorrection against role_corrections), and the pure read-time
 // overlay (overlayCorrections) that applies a caller's corrections to their
 // own view only. Module rule: TYPE-only imports from lib/season.ts and
 // lib/family.ts; the allowed-value lists below are inlined `as const`
@@ -79,33 +79,23 @@ export function parseCorrection(input: {
   return { roleId, field: correctionField, value };
 }
 
-// T5: one row per (uid, role_id, field), never a write to public.roles.
-export async function saveCorrection(
-  supabase: SupabaseClient,
-  uid: string,
-  c: Correction,
-  nowIso: string,
-): Promise<void> {
-  const { error } = await supabase.from("role_corrections").upsert(
-    { user_id: uid, role_id: c.role_id, field: c.field, value: c.value, updated_at: nowIso },
-    { onConflict: "user_id,role_id,field" },
+// T5: one row per (uid, role_id, field), never a write to roles.
+export async function saveCorrection(q: QueryFn, uid: string, c: Correction, nowIso: string): Promise<void> {
+  await q(
+    `insert into role_corrections (user_id, role_id, field, value, updated_at)
+     values ($1, $2, $3, $4, $5)
+     on conflict (user_id, role_id, field) do update set value = excluded.value, updated_at = excluded.updated_at`,
+    [uid, c.role_id, c.field, c.value, nowIso],
+    "role_corrections",
   );
-  if (error) throw new Error(`correction save failed: ${error.message}`);
 }
 
-export async function removeCorrection(
-  supabase: SupabaseClient,
-  uid: string,
-  roleId: string,
-  field: CorrectionField,
-): Promise<void> {
-  const { error } = await supabase
-    .from("role_corrections")
-    .delete()
-    .eq("user_id", uid)
-    .eq("role_id", roleId)
-    .eq("field", field);
-  if (error) throw new Error(`correction remove failed: ${error.message}`);
+export async function removeCorrection(q: QueryFn, uid: string, roleId: string, field: CorrectionField): Promise<void> {
+  await q(
+    "delete from role_corrections where user_id = $1 and role_id = $2 and field = $3",
+    [uid, roleId, field],
+    "role_corrections",
+  );
 }
 
 // Pure. Applies the caller's own corrections onto their own row set, never

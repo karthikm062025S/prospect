@@ -1,4 +1,4 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { QueryFn } from "./db";
 import type { Application } from "./types";
 
 export type LogApplicationInput = {
@@ -22,7 +22,7 @@ export type LogApplicationInput = {
 // one-writer rule (TRD §3) stays honest: this is the only insert path, and
 // every later change still goes through setApplicationStatus.
 export async function logApplication(
-  supabase: SupabaseClient,
+  q: QueryFn,
   uid: string,
   input: LogApplicationInput,
   nowIso: string = new Date().toISOString(),
@@ -32,51 +32,47 @@ export async function logApplication(
   if (!name) throw new Error("company is required");
   if (!role) throw new Error("role is required");
 
-  // Escape LIKE metacharacters so "S&P_Global" style names match literally.
+  // Escape LIKE metacharacters so "S&P_Global" style names match literally
+  // (exact, case-insensitive match — never a substring search).
   const likeSafeName = name.replace(/[\\%_]/g, "\\$&");
-  const { data: existing, error: findError } = await supabase
-    .from("companies")
-    .select("id, watch_status, is_watched")
-    .ilike("name", likeSafeName)
-    .maybeSingle();
-  if (findError) throw new Error(`company lookup failed: ${findError.message}`);
+  const [existing] = await q<{ id: string; watch_status: string; is_watched: boolean }>(
+    "select id, watch_status, is_watched from companies where name ilike $1 limit 1",
+    [likeSafeName],
+    "companies",
+  );
 
   let companyId: string;
   if (existing) {
     companyId = existing.id;
     if (existing.is_watched && existing.watch_status !== "applied_lock") {
-      const { error: flipError } = await supabase
-        .from("companies")
-        .update({ watch_status: "applied_lock" })
-        .eq("id", companyId);
-      if (flipError) throw new Error(`applied_lock flip failed: ${flipError.message}`);
+      await q("update companies set watch_status = 'applied_lock' where id = $1", [companyId], "companies");
     }
   } else {
-    const { data: created, error: createError } = await supabase
-      .from("companies")
-      .insert({ name, is_watched: false })
-      .select("id")
-      .single();
-    if (createError) throw new Error(`company create failed: ${createError.message}`);
+    const [created] = await q<{ id: string }>(
+      "insert into companies (name, is_watched) values ($1, false) returning id",
+      [name],
+      "companies",
+    );
     companyId = created.id;
   }
 
-  const { data: application, error: insertError } = await supabase
-    .from("applications")
-    .insert({
-      user_id: uid,
-      company_id: companyId,
+  // An omitted date_applied takes the column default (today).
+  const [application] = await q<Application>(
+    `insert into applications (user_id, company_id, role, date_applied, resume_file, visa_flag, jd_link, notes, status_changed_at)
+     values ($1, $2, $3, coalesce($4::date, current_date), $5, $6, $7, $8, $9)
+     returning *`,
+    [
+      uid,
+      companyId,
       role,
-      date_applied: input.date_applied || undefined,
-      resume_file: input.resume_file || null,
-      visa_flag: input.visa_flag || null,
-      jd_link: input.jd_link || null,
-      notes: input.notes || null,
-      status_changed_at: nowIso,
-    })
-    .select("*")
-    .single();
-  if (insertError) throw new Error(`application create failed: ${insertError.message}`);
-
+      input.date_applied || null,
+      input.resume_file || null,
+      input.visa_flag || null,
+      input.jd_link || null,
+      input.notes || null,
+      nowIso,
+    ],
+    "applications",
+  );
   return application;
 }

@@ -1,17 +1,13 @@
-import { createServiceClient } from "@/lib/supabase/service";
+import type { QueryFn } from "./db";
 
-// Server-only: never import from a Client Component (mirrors the guard in
-// tests/no-service-in-app.test.ts). Legacy single-user column: roles.application_id
-// still carries a plain FK to applications with no ON DELETE rule, so deleting an
-// application fails with 23503 while a role points at it. Nothing writes that
-// column any more; this clears it for the ONE application whose ownership the
-// caller has already verified. Service role because roles is not user-writable.
-// ponytail: the durable fix is db/FIX-2026-09-05-roles-application-fk.sql
-// (ON DELETE SET NULL); remove this once Karthik has run it.
-export async function unlinkLegacyRolePointer(applicationId: string): Promise<string | null> {
-  const { error } = await createServiceClient()
-    .from("roles")
-    .update({ application_id: null })
-    .eq("application_id", applicationId);
-  return error ? error.message : null;
+// Server-only: never import from a Client Component. Legacy single-user column:
+// roles.application_id still points at applications (ON DELETE SET NULL in
+// db/lakebase/001-schema.sql, so the delete itself can no longer fail on it).
+// Nothing writes that column any more; this clears it for the ONE application
+// whose ownership the caller has already verified, inside the caller's delete
+// transaction. Service tier: `roles` has no user column (tests/user-scoping.test.ts
+// allowlist).
+// ponytail: remove once the legacy column is dropped.
+export async function unlinkLegacyRolePointer(q: QueryFn, applicationId: string): Promise<void> {
+  await q("update roles set application_id = null where application_id = $1", [applicationId], "roles");
 }

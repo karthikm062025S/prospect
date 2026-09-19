@@ -1,4 +1,4 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { QueryFn } from "./db";
 import type { Endpoint } from "./jd-snapshot";
 import type { GateResult } from "./gate-rules";
 import endpoints from "../scripts/endpoints.json" with { type: "json" };
@@ -89,17 +89,26 @@ export function readJdError(stored: string | null | undefined): { at: number | n
 export type RoleJd = { html: string | null; captured_at: string | null; error: string | null; location: string | null };
 
 export async function ensureRoleJd(
-  supabase: SupabaseClient,
+  q: QueryFn,
   roleId: string,
   opts?: { force?: boolean; capture?: CaptureFn; gate?: GateFn }, // `capture` and `gate` are test-only injection hooks (defaults = the real ATS/page capture path and lib/gate-rules.ts); production callers never pass them
 ): Promise<RoleJd> {
   try {
-    const { data: role, error: roleErr } = await supabase
-      .from("roles")
-      .select("id, link, source, location, jd_snapshot, jd_snapshot_at, jd_error, company_id, visa_class")
-      .eq("id", roleId)
-      .maybeSingle();
-    if (roleErr) return { html: null, captured_at: null, error: roleErr.message, location: null };
+    const [role] = await q<{
+      id: string;
+      link: string | null;
+      source: string | null;
+      location: string | null;
+      jd_snapshot: string | null;
+      jd_snapshot_at: string | null;
+      jd_error: string | null;
+      company_id: string;
+      visa_class: string | null;
+    }>(
+      "select id, link, source, location, jd_snapshot, jd_snapshot_at, jd_error, company_id, visa_class from roles where id = $1",
+      [roleId],
+      "roles",
+    );
     if (!role) return { html: null, captured_at: null, error: "role not found", location: null };
     const failure = readJdError(role.jd_error);
     // `force` is honoured only past the ceiling for whatever is stored: a day
@@ -119,11 +128,11 @@ export async function ensureRoleJd(
       return { html: role.jd_snapshot, captured_at: role.jd_snapshot_at ?? null, error: failure.message, location: role.location ?? null };
     }
 
-    const { data: company } = await supabase
-      .from("companies")
-      .select("name, ats, endpoint")
-      .eq("id", role.company_id)
-      .maybeSingle();
+    const [company] = await q<{ name: string | null; ats: string | null; endpoint: string | null }>(
+      "select name, ats, endpoint from companies where id = $1",
+      [role.company_id],
+      "companies",
+    );
 
     const capture = opts?.capture ?? defaultCapture;
     const result = await capture(
@@ -164,11 +173,22 @@ export async function ensureRoleJd(
       }
     }
 
-    const { error: updateErr } = await supabase.from("roles").update(patch).eq("id", roleId);
+    // Column names are the fixed keys assigned above, never caller input.
+    const keys = Object.keys(patch);
+    let storeError: string | null = null;
+    try {
+      await q(
+        `update roles set ${keys.map((key, i) => `${key} = $${i + 2}`).join(", ")} where id = $1`,
+        [roleId, ...keys.map((key) => patch[key])],
+        "roles",
+      );
+    } catch (e) {
+      storeError = `store failed: ${errMsg(e)}`;
+    }
     return {
       html: result.html,
       captured_at: (patch.jd_snapshot_at as string | null) ?? null,
-      error: updateErr ? `store failed: ${updateErr.message}` : failedWith,
+      error: storeError ?? failedWith,
       location,
     };
   } catch (e) {
@@ -186,7 +206,7 @@ const MAX_CONCURRENT = 5;
 const MAX_PER_REQUEST = 40;
 
 export async function captureInsertedRoleJds(
-  supabase: SupabaseClient,
+  q: QueryFn,
   roleIds: string[],
 ): Promise<{ captured: number; failed: number }> {
   const ids = roleIds.slice(0, MAX_PER_REQUEST);
@@ -196,7 +216,7 @@ export async function captureInsertedRoleJds(
   const workers = Array.from({ length: Math.min(MAX_CONCURRENT, ids.length) }, async () => {
     while (i < ids.length) {
       const id = ids[i++];
-      const res = await ensureRoleJd(supabase, id);
+      const res = await ensureRoleJd(q, id);
       if (res.html) captured += 1;
       else failed += 1;
     }

@@ -1,4 +1,4 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { QueryFn } from "./db";
 import type { Role } from "./types";
 
 export type ApplyControl = "idle" | "confirming";
@@ -25,43 +25,35 @@ export function nextApplyClickedAt(action: ApplyIntentAction, nowIso: string): s
 
 export type ApplyClickedResult = { ok: true } | { ok: false; reason: "not_found" };
 
+// One (user_id, role_id) row per user per role; a repeat write updates only
+// the columns it carries (the PostgREST partial-upsert semantics every
+// user_roles writer relied on).
+const STAMP_CLICK = `insert into user_roles (user_id, role_id, apply_clicked_at, updated_at)
+  values ($1, $2, $3, $4)
+  on conflict (user_id, role_id) do update set apply_clicked_at = excluded.apply_clicked_at, updated_at = excluded.updated_at`;
+
 // Single source of truth for "arm/clear the pending Applied? confirmation" on a
 // role (used by the RB-010/012 server action, slice 5 wires it). Convention:
-// a Supabase error throws; an update that touches no row (role missing, or no
-// longer open) returns ok:false with one generic reason — deliberately simpler
-// than apply-role.ts's two-reason split.
-export async function setApplyClicked(
-  supabase: SupabaseClient,
-  uid: string,
-  roleId: string,
-  nowIso: string,
-): Promise<ApplyClickedResult> {
-  const { data: role, error: roleError } = await supabase
-    .from("roles_public")
-    .select("id")
-    .eq("id", roleId)
-    .eq("lifecycle", "open")
-    .maybeSingle();
-  if (roleError) throw new Error(`role lookup failed: ${roleError.message}`);
-  if (!role) return { ok: false, reason: "not_found" };
-  const { error } = await supabase.from("user_roles").upsert(
-    { user_id: uid, role_id: roleId, apply_clicked_at: nowIso, updated_at: nowIso },
-    { onConflict: "user_id,role_id" },
+// a DB error throws; a role that is missing or no longer open returns ok:false
+// with one generic reason — deliberately simpler than apply-role.ts's
+// two-reason split.
+export async function setApplyClicked(q: QueryFn, uid: string, roleId: string, nowIso: string): Promise<ApplyClickedResult> {
+  const [role] = await q<{ id: string }>(
+    "select id from roles_public where id = $1 and lifecycle = 'open'",
+    [roleId],
+    "roles_public",
   );
-  if (error) throw new Error(`apply intent update failed: ${error.message}`);
+  if (!role) return { ok: false, reason: "not_found" };
+  await q(STAMP_CLICK, [uid, roleId, nowIso, nowIso], "user_roles");
   return { ok: true };
 }
 
 export async function clearApplyClicked(
-  supabase: SupabaseClient,
+  q: QueryFn,
   uid: string,
   roleId: string,
   nowIso: string = new Date().toISOString(),
 ): Promise<ApplyClickedResult> {
-  const { error } = await supabase.from("user_roles").upsert(
-    { user_id: uid, role_id: roleId, apply_clicked_at: null, updated_at: nowIso },
-    { onConflict: "user_id,role_id" },
-  );
-  if (error) throw new Error(`apply intent update failed: ${error.message}`);
+  await q(STAMP_CLICK, [uid, roleId, null, nowIso], "user_roles");
   return { ok: true };
 }

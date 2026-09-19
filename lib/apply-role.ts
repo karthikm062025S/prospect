@@ -1,4 +1,4 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { QueryFn } from "./db";
 import type { Application } from "./types";
 
 export type ApplyToRoleResult =
@@ -16,61 +16,58 @@ export function applyResultError(reason: "not_found" | "already_applied"): strin
 
 // A shared role stays untouched. Applying creates a row owned by uid and links
 // it through the uid+role_id user_roles row; other users keep seeing the role.
-export async function applyToRole(
-  supabase: SupabaseClient,
-  uid: string,
-  roleId: string,
-  resumeFile?: string,
-): Promise<ApplyToRoleResult> {
-  const { data: role, error: roleError } = await supabase
-    .from("roles_public")
-    .select("id, company_id, title, link, lifecycle, jd_snapshot, jd_snapshot_at")
-    .eq("id", roleId)
-    .maybeSingle();
-  if (roleError) throw new Error(`role lookup failed: ${roleError.message}`);
+// Callers run this inside lib/db.ts withTransaction (app/actions.ts,
+// app/role-actions.ts): the existing-link check, the insert and the link are
+// then one atomic unit, so two confirms on the same role can no longer both
+// pass the check (the L8 race). The link row is locked `for update` so the
+// second transaction waits, re-reads, and sees the first one's application_id.
+export async function applyToRole(q: QueryFn, uid: string, roleId: string, resumeFile?: string): Promise<ApplyToRoleResult> {
+  const [role] = await q<{
+    id: string;
+    company_id: string;
+    title: string;
+    link: string | null;
+    lifecycle: string;
+    jd_snapshot: string | null;
+    jd_snapshot_at: string | null;
+  }>(
+    "select id, company_id, title, link, lifecycle, jd_snapshot, jd_snapshot_at from roles_public where id = $1",
+    [roleId],
+    "roles_public",
+  );
   if (!role || role.lifecycle !== "open") return { ok: false, reason: "not_found" };
 
-  const { data: existing, error: existingError } = await supabase
-    .from("user_roles")
-    .select("application_id")
-    .eq("user_id", uid)
-    .eq("role_id", roleId)
-    .maybeSingle();
-  if (existingError) throw new Error(`user role lookup failed: ${existingError.message}`);
+  const [existing] = await q<{ application_id: string | null }>(
+    "select application_id from user_roles where user_id = $1 and role_id = $2 for update",
+    [uid, roleId],
+    "user_roles",
+  );
   if (existing?.application_id) return { ok: false, reason: "already_applied" };
 
   const now = new Date().toISOString();
-  const { data: application, error: insertError } = await supabase
-    .from("applications")
-    .insert({
-      user_id: uid,
-      role_id: roleId,
-      company_id: role.company_id,
-      role: role.title,
-      resume_file: resumeFile || null,
-      jd_link: role.link,
-      jd_snapshot: role.jd_snapshot,
-      jd_snapshot_at: role.jd_snapshot_at,
-      status_changed_at: now,
-    })
-    .select("*")
-    .single();
-  if (insertError) throw new Error(`application create failed: ${insertError.message}`);
-
-  const { error: linkError } = await supabase.from("user_roles").upsert(
-    {
-      user_id: uid,
-      role_id: roleId,
-      application_id: application.id,
-      apply_clicked_at: null,
-      updated_at: now,
-    },
-    { onConflict: "user_id,role_id" },
+  const [application] = await q<Application>(
+    `insert into applications (user_id, role_id, company_id, role, resume_file, jd_link, jd_snapshot, jd_snapshot_at, status_changed_at)
+     values ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+     returning *`,
+    [uid, roleId, role.company_id, role.title, resumeFile || null, role.link, role.jd_snapshot, role.jd_snapshot_at, now],
+    "applications",
   );
-  if (linkError) {
-    await supabase.from("applications").delete().eq("id", application.id).eq("user_id", uid);
-    throw new Error(`user role link failed: ${linkError.message}`);
-  }
 
-  return { ok: true, application: application as Application };
+  // The `where` on the conflict branch is the atomic half of the race fix: a link
+  // row that already carries an application_id is never overwritten, so a
+  // concurrent second confirm links nothing, throws, and (inside withTransaction)
+  // rolls back the application it just inserted instead of orphaning ours.
+  const linked = await q<{ application_id: string }>(
+    `insert into user_roles (user_id, role_id, application_id, apply_clicked_at, updated_at)
+     values ($1, $2, $3, null, $4)
+     on conflict (user_id, role_id) do update
+       set application_id = excluded.application_id, apply_clicked_at = null, updated_at = excluded.updated_at
+       where user_roles.application_id is null
+     returning application_id`,
+    [uid, roleId, application.id, now],
+    "user_roles",
+  );
+  if (linked.length !== 1) throw new Error("user role link failed: already linked to another application");
+
+  return { ok: true, application };
 }
