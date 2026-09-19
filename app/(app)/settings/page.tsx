@@ -6,6 +6,7 @@ import { signOutAction } from "@/app/auth/actions";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { FeedbackTrigger } from "@/components/feedback-box";
 import { ChangePassword } from "@/components/change-password";
+import { StudentProfileCard } from "@/components/student-profile-card";
 import { ProfileForm, TargetForm } from "./forms";
 
 export const dynamic = "force-dynamic";
@@ -16,7 +17,7 @@ const label = "font-label text-[11px] uppercase tracking-label text-text-dim";
 const linkClass = "underline underline-offset-2 hover:text-sage";
 
 export default async function SettingsPage() {
-  await requireUser();
+  const uid = await requireUser();
   const supabase = await createClient();
   const {
     data: { user },
@@ -41,6 +42,8 @@ export default async function SettingsPage() {
           gradTerm={profile.gradTerm ?? ""}
         />
       </section>
+
+      <StudentProfileCard userId={uid} />
 
       <section id="account" className={card} aria-labelledby="account-heading">
         <h2 id="account-heading" className={heading}>

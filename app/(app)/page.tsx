@@ -15,7 +15,10 @@ import { deriveSeason } from "@/lib/season";
 import { overlayCorrections, parseCorrection, type Correction } from "@/lib/corrections";
 import { HomeList } from "@/components/home-list";
 import type { HomeCompany } from "@/lib/sort";
-import type { HomeRowLite } from "@/components/role-row";
+import type { HomeRowLite, BeforeYouApplyNode } from "@/components/role-row";
+import { getProfile as getStudentProfile } from "@/lib/student-profile";
+import { listScores, type MatchScore } from "@/lib/match-scores";
+import { summarizeLabels, type Label } from "@/lib/exposure";
 
 export const dynamic = "force-dynamic";
 
@@ -35,31 +38,72 @@ export default async function HomePage() {
   // D9 (build/MISSION.md): fail-loud. Any failed read throws a named
   // DB_QUERY_FAILED (<table>) into the route's error boundary; nothing here
   // catches and renders a partial feed. No paging: Postgres has no 1,000-row cap.
-  const [roleRows, userRows, appRows, recentRows, companyRows, correctionRows] = await Promise.all([
-    query<Role>(
-      `select ${ROLE_COLUMNS} from roles_public where lifecycle = 'open' order by created_at desc`,
-      [],
-      "roles_public",
-    ),
-    query<UserRoleState>(
-      "select role_id, saved_at, hidden_at, apply_clicked_at, deleted_at, application_id from user_roles where user_id = $1",
-      [uid],
-      "user_roles",
-    ),
-    query<{ date_applied: string | null }>("select date_applied from applications where user_id = $1", [uid], "applications"),
-    query<{ created_at: string }>("select created_at from roles_public where created_at >= $1", [recentSince], "roles_public"),
-    query<Company>("select id, name, tier, careers_url, link, visa_note from companies_public order by id", [], "companies_public"),
-    // T5 (K1): the caller's own corrections, scoped explicitly to the owner.
-    query<{ role_id: string; field: string; value: string }>(
-      "select role_id, field, value from role_corrections where user_id = $1",
-      [uid],
-      "role_corrections",
-    ),
-  ]);
+  const [roleRows, userRows, appRows, recentRows, companyRows, correctionRows, studentProfile, matchScores] =
+    await Promise.all([
+      query<Role>(
+        `select ${ROLE_COLUMNS} from roles_public where lifecycle = 'open' order by created_at desc`,
+        [],
+        "roles_public",
+      ),
+      query<UserRoleState>(
+        "select role_id, saved_at, hidden_at, apply_clicked_at, deleted_at, application_id from user_roles where user_id = $1",
+        [uid],
+        "user_roles",
+      ),
+      query<{ date_applied: string | null }>("select date_applied from applications where user_id = $1", [uid], "applications"),
+      query<{ created_at: string }>("select created_at from roles_public where created_at >= $1", [recentSince], "roles_public"),
+      query<Company>("select id, name, tier, careers_url, link, visa_note from companies_public order by id", [], "companies_public"),
+      // T5 (K1): the caller's own corrections, scoped explicitly to the owner.
+      query<{ role_id: string; field: string; value: string }>(
+        "select role_id, field, value from role_corrections where user_id = $1",
+        [uid],
+        "role_corrections",
+      ),
+      // L2c: the Match agent's own profile (resume + transcript + goal), NOT
+      // lib/profile.ts's D9 preferences read above. null = no profile yet.
+      getStudentProfile(uid, query),
+      // L2c: this caller's full ranked feed, best match first (empty = no
+      // profile, or a profile that hasn't been ranked yet).
+      listScores(query, uid),
+    ]);
+
+  const hasProfile = studentProfile !== null;
+  const hasScores = matchScores.length > 0;
+  const scoreByRoleId = new Map<string, MatchScore>(matchScores.map((s) => [s.role_id, s]));
 
   const pace = velocity(appRows, now, profile?.monthlyTarget ?? null);
   const merged = mergeUserRoles(roleRows, userRows);
   const inPlay = merged.rows.filter((role) => isInPlay(role, now));
+
+  // L2c: archetype + role_tasks label data, scoped to the roles actually on
+  // this page (never a full-table scan) and skipped entirely when nothing
+  // has been scored yet -- these tables are only worth reading once the
+  // Match agent has run at least once for someone.
+  const archetypeByRoleId = new Map<string, string>();
+  const labelCountsByRoleId = new Map<string, Record<Label, number>>();
+  if (hasScores && inPlay.length > 0) {
+    const roleIds = inPlay.map((role) => role.id);
+    const [archetypeRows, taskRows] = await Promise.all([
+      query<{ role_id: string; name: string }>(
+        "select ra.role_id, a.name from role_archetypes ra join archetypes a on a.id = ra.archetype_id where ra.role_id = any($1::uuid[])",
+        [roleIds],
+        "role_archetypes",
+      ),
+      query<{ role_id: string; label: Label }>(
+        "select role_id, label from role_tasks where role_id = any($1::uuid[])",
+        [roleIds],
+        "role_tasks",
+      ),
+    ]);
+    for (const row of archetypeRows) archetypeByRoleId.set(row.role_id, row.name);
+    const labelsByRoleId = new Map<string, Label[]>();
+    for (const row of taskRows) {
+      const list = labelsByRoleId.get(row.role_id) ?? [];
+      list.push(row.label);
+      labelsByRoleId.set(row.role_id, list);
+    }
+    for (const [roleId, labels] of labelsByRoleId) labelCountsByRoleId.set(roleId, summarizeLabels(labels));
+  }
 
   const companyById = new Map(companyRows.map((company) => [company.id, company]));
   const companies: Record<string, HomeCompany> = {};
@@ -113,6 +157,17 @@ export default async function HomePage() {
     // HomeRowLite now carries it (satisfied here exactly like `corrected: []`
     // above — this literal is otherwise untouched).
     shared: null,
+    // L2c: everything below is undefined until this user has a match_scores
+    // row for this posting -- role-row.tsx/role-detail-pane.tsx render
+    // nothing for those fields rather than a placeholder.
+    matchScore: scoreByRoleId.get(role.id)?.score ?? null,
+    matchReasons: scoreByRoleId.get(role.id)?.reasons ?? null,
+    archetypeName: archetypeByRoleId.get(role.id) ?? null,
+    requirementsMet: scoreByRoleId.get(role.id)?.requirements_met ?? null,
+    requirementsUnknown: scoreByRoleId.get(role.id)?.requirements_unknown ?? null,
+    requirementsChecked: scoreByRoleId.get(role.id)?.requirements_checked ?? false,
+    beforeYouApply: (scoreByRoleId.get(role.id)?.before_you_apply as BeforeYouApplyNode[] | undefined) ?? null,
+    taskLabelCounts: labelCountsByRoleId.get(role.id) ?? null,
   }));
 
   // T5 (K1): overlay the caller's own corrections onto their own rows only.
@@ -124,18 +179,26 @@ export default async function HomePage() {
     .filter((c): c is NonNullable<typeof c> => c !== null)
     .map((c) => ({ role_id: c.roleId, field: c.field, value: c.value }));
   const correctedRows = overlayCorrections(rows, corrections);
+  // L2c: the server-side pre-sort ("Home = the live feed ranked best-to-least
+  // for this profile", CONTEXT Layout) -- lib/sort.ts's client "best_match"
+  // default re-applies the identical order, never a different one.
+  const finalRows = hasScores
+    ? [...correctedRows].sort((a, b) => (b.matchScore ?? -Infinity) - (a.matchScore ?? -Infinity))
+    : correctedRows;
 
   return (
     <>
       {profile && !profile.fullName ? <ProfileBanner uid={uid} /> : null}
       <HomeList
-        rows={correctedRows}
+        rows={finalRows}
         companies={companies}
         recentCreatedAt={recentRows.map((row) => row.created_at)}
         pace={pace}
         serverNowMs={now}
         getStartedEligible={userRows.length === 0 && appRows.length === 0}
         userId={uid}
+        hasProfile={hasProfile}
+        hasScores={hasScores}
       />
     </>
   );

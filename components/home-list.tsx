@@ -122,13 +122,15 @@ export function HomeList({
   serverNowMs,
   getStartedEligible,
   userId,
+  hasProfile,
+  hasScores,
 }: {
   rows: HomeRowLite[];
   // A15: the per-company fields arrive ONCE here, keyed by company_id, instead
   // of four columns duplicated onto every role. hydrateHomeRows puts the full
   // HomeRow back together below, so nothing downstream changes.
   companies: Record<string, HomeCompany>;
-  // created_at of every role Scout added since midnight ET — hidden, applied
+  // created_at of every role Prospect added since midnight ET — hidden, applied
   // and deleted-from-view ones included. "Added today" counts raw drops, and
   // the boundary is the SAME fixed America/New_York one the server query used,
   // so the client recount can never disagree with the server render.
@@ -140,10 +142,17 @@ export function HomeList({
   // to this account (components/get-started.tsx), so a shared browser never
   // shows one user the checklist state of the last one.
   userId: string;
+  // L2c: whether this caller has a Match agent profile / a ranked feed yet --
+  // decides both the default sort below and which GetStarted nudge renders.
+  hasProfile: boolean;
+  hasScores: boolean;
 }) {
   const nowMs = useClientNow(serverNowMs);
   const fullRows: HomeRow[] = useMemo(() => hydrateHomeRows(rows, companies), [rows, companies]);
-  const [sort, setSort] = useHomeSort();
+  // L2c: "best_match" only wins as the NEVER-TOUCHED-sort default once the
+  // Match agent has scored the feed -- an explicit past choice (recent/company/
+  // title, or best_match itself) always overrides this (useHomeSort's fallback).
+  const [sort, setSort] = useHomeSort(hasScores ? "best_match" : "recent");
   const [query, setQuery] = useState("");
   // A15 render cap: only the first HOME_GROUP_CAP company groups are put in the
   // DOM until this flips. Nothing is filtered out of the DATA — every count,
@@ -740,6 +749,8 @@ export function HomeList({
 
           <GetStarted
             userId={userId}
+            hasProfile={hasProfile}
+            hasScores={hasScores}
             eligible={getStartedEligible}
             filtersDone={season !== ALL_HOME_FILTER || family !== ALL_HOME_FILTER}
             savedDone={optimisticRows.some((row) => row.saved_at !== null)}
@@ -961,7 +972,7 @@ export function HomeList({
         className={`m-auto w-full max-w-sm border border-hairline bg-raised p-5 text-text ${dialogMotion}`}
       >
         <p id="home-remove-title" className="text-[15px]">
-          Remove {pendingDelete?.label}? This removes the role from your Scout feed only.
+          Remove {pendingDelete?.label}? This removes the role from your Prospect feed only.
           To keep it available under Hidden, hide it instead.
         </p>
         <div className="mt-4 flex justify-end gap-2">
