@@ -1,0 +1,21 @@
+{
+  "name": "scout-sync-lakebase-to-delta",
+  "max_concurrent_runs": 1,
+  "tasks": [
+    {
+      "task_key": "sync_lakebase_to_delta",
+      "notebook_task": {
+        "notebook_path": "/Workspace/Users/<user>/scout/sync/sync_lakebase_to_delta",
+        "base_parameters": {
+          "catalog": "scout",
+          "schema": "core"
+        }
+      }
+    }
+  ],
+  "schedule": {
+    "quartz_cron_expression": "0 0 * * * ?",
+    "timezone_id": "America/New_York",
+    "pause_status": "UNPAUSED"
+  }
+}
