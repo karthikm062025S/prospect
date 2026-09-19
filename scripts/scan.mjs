@@ -13,8 +13,10 @@
 // make with certainty (obvious wrong term, clearly-foreign-only location) drop
 // a candidate outright.
 //
-// Env: WATCHER_SECRET (required to POST), SCOUT_WEBHOOK (optional, defaults to
-// prod). Flags: --dry-run (no POST), --since-days N (recency window, default 3),
+// Env: WATCHER_SECRET + SCOUT_WEBHOOK (both required to POST — SCOUT_WEBHOOK has
+// NO default; this is a hackathon repo and must never silently fall back to the
+// old Scout production URL, 2026-09-19 16:45 fix). Flags: --dry-run (no POST),
+// --since-days N (recency window, default 3),
 // --concurrency N (default 8), --strict (MISSION L2, 2026-09-19: opt back into
 // the old CS-intern-only filter; the coverage-widened filter — every function,
 // every level — is the DEFAULT now). --dry-run without --strict also prints a
@@ -54,7 +56,9 @@ const num = (v, def) => {
 };
 const SINCE_DAYS = num(opt("since-days", "3"), 3);
 const CONCURRENCY = num(opt("concurrency", "8"), 8);
-const WEBHOOK = process.env.SCOUT_WEBHOOK || "https://intern-hq-inky.vercel.app/api/watcher";
+// No default — a hackathon repo must never silently fall back to the old
+// Scout production URL (2026-09-19 16:45 fix). Checked before any fetch, below.
+const WEBHOOK = process.env.SCOUT_WEBHOOK || "";
 const SECRET = process.env.WATCHER_SECRET || "";
 // The canary's "0 raw postings ⇒ broken" invariant only holds for adapters that
 // fetch the WHOLE board (a live board always has some postings). The others filter
@@ -69,6 +73,14 @@ function withinDaysAgo(iso, days) {
 }
 
 async function main() {
+  // Checked before any fetch (2026-09-19 16:45 fix): SCOUT_WEBHOOK has no
+  // default, so a live run with it unset must fail loud, not silently target
+  // nothing / the wrong app.
+  if (!DRY_RUN && !WEBHOOK) {
+    console.error("SCOUT_WEBHOOK is not set");
+    process.exit(1);
+  }
+
   const endpoints = JSON.parse(await readFile(process.env.ENDPOINTS_FILE || join(__dirname, "endpoints.json"), "utf8"));
   console.log(
     `scan: ${endpoints.length} endpoints · since-days=${SINCE_DAYS} · concurrency=${CONCURRENCY} · ${WIDE ? "WIDE (all functions/levels)" : "STRICT (CS-intern-only)"} · ${DRY_RUN ? "DRY-RUN" : "LIVE"} → ${WEBHOOK}`,

@@ -17,7 +17,9 @@
 // scanner dates them; we'd null the date → a duplicate dedup bucket), so this
 // focuses on the no-API gap, exactly like read-alerts.
 //
-// Env: WATCHER_SECRET (required to POST), SCOUT_WEBHOOK (optional, defaults prod).
+// Env: WATCHER_SECRET + SCOUT_WEBHOOK (both required to POST — SCOUT_WEBHOOK has
+// NO default; this is a hackathon repo and must never silently fall back to the
+// old Scout production URL, 2026-09-19 16:45 fix).
 // Flags: --dry-run (parse + print, no POST), --since-days N (recency window,
 // default 2).
 //
@@ -49,7 +51,9 @@ const num = (v, def) => {
   return Number.isFinite(n) && n > 0 ? n : def;
 };
 const SINCE_DAYS = num(opt("since-days", "2"), 2);
-const WEBHOOK = process.env.SCOUT_WEBHOOK || "https://intern-hq-inky.vercel.app/api/watcher";
+// No default — a hackathon repo must never silently fall back to the old
+// Scout production URL (2026-09-19 16:45 fix). Checked before any fetch, below.
+const WEBHOOK = process.env.SCOUT_WEBHOOK || "";
 const SECRET = process.env.WATCHER_SECRET || "";
 const FETCH_TIMEOUT_MS = 30000;
 
@@ -378,6 +382,13 @@ async function fetchText(url) {
 }
 
 async function main() {
+  // Checked before any fetch (2026-09-19 16:45 fix): SCOUT_WEBHOOK has no
+  // default, so a live run with it unset must fail loud, not silently target
+  // nothing / the wrong app.
+  if (!DRY_RUN && !WEBHOOK) {
+    console.error("SCOUT_WEBHOOK is not set");
+    process.exit(1);
+  }
   if (!DRY_RUN && !SECRET) {
     await writeFile(join(__dirname, "last-feeds.json"), JSON.stringify([], null, 2));
     console.error("WATCHER_SECRET not set — cannot POST. Set it or use --dry-run.");

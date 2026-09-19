@@ -9,7 +9,9 @@ name: read-alerts
 # daily-digest; see ALERT-SETUP-CHECKLIST.md).
 #
 # Requires repo secrets: GMAIL_USER, GMAIL_APP_PASSWORD, WATCHER_SECRET.
-# Optional repo variables: SCOUT_WEBHOOK (prod default), GMAIL_LABEL (default job-alerts).
+# Required repo variable SCOUT_WEBHOOK (no default — this is a hackathon repo
+# and must never silently fall back to the old Scout production URL,
+# 2026-09-19 16:45 fix). Optional repo variable GMAIL_LABEL (default job-alerts).
 
 on:
   schedule:

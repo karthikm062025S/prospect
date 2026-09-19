@@ -14,8 +14,10 @@
 // job turns those emails into app rows the ToS-safe way (we consume only the mail
 // they choose to send — never scrape LinkedIn/Indeed/Handshake).
 //
-// Env: GMAIL_USER, GMAIL_APP_PASSWORD (IMAP login), WATCHER_SECRET (POST auth).
-//   GMAIL_LABEL (default "job-alerts"), SCOUT_WEBHOOK (default prod).
+// Env: GMAIL_USER, GMAIL_APP_PASSWORD (IMAP login), WATCHER_SECRET + SCOUT_WEBHOOK
+//   (both required to POST — SCOUT_WEBHOOK has NO default; this is a hackathon
+//   repo and must never silently fall back to the old Scout production URL,
+//   2026-09-19 16:45 fix). GMAIL_LABEL (default "job-alerts").
 // Flags: --dry-run (parse + print, no POST, no \Seen), --limit N (cap emails).
 //
 // Idempotency: processed mail is marked with a custom IMAP KEYWORD (not \Seen) and
@@ -54,7 +56,9 @@ const GMAIL_LABEL = process.env.GMAIL_LABEL || "job-alerts";
 // keyword Gmail persists server-side; fetching `unKeyword` gives exactly the mail
 // this job hasn't ingested yet, regardless of whether Karthik has read it.
 const PROCESSED_KEYWORD = "scoutprocessed";
-const WEBHOOK = process.env.SCOUT_WEBHOOK || "https://intern-hq-inky.vercel.app/api/watcher";
+// No default — a hackathon repo must never silently fall back to the old
+// Scout production URL (2026-09-19 16:45 fix). Checked before any fetch, below.
+const WEBHOOK = process.env.SCOUT_WEBHOOK || "";
 const SECRET = process.env.WATCHER_SECRET || "";
 
 // ---------------------------------------------------------------------------
@@ -401,6 +405,13 @@ async function markProcessed(client, uids) {
 async function runAlertsLane() {
   if (!GMAIL_USER || !GMAIL_PASS) {
     console.error("GMAIL_USER / GMAIL_APP_PASSWORD not set — cannot read the label.");
+    process.exit(1);
+  }
+  // Checked before any fetch (2026-09-19 16:45 fix): SCOUT_WEBHOOK has no
+  // default, so a live run with it unset must fail loud, not silently target
+  // nothing / the wrong app.
+  if (!DRY_RUN && !WEBHOOK) {
+    console.error("SCOUT_WEBHOOK is not set");
     process.exit(1);
   }
   if (!DRY_RUN && !SECRET) {

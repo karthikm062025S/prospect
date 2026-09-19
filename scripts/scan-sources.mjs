@@ -10,10 +10,11 @@
 // POSTs whatever the other sources found, then exits non-zero if any source
 // failed.
 //
-// Env: WATCHER_SECRET (required to POST), SCOUT_WEBHOOK (optional, defaults
-// prod), USAJOBS_API_KEY + USAJOBS_USER_AGENT, ADZUNA_APP_ID + ADZUNA_APP_KEY
-// (workday needs no key). Flags: --dry-run, --limit N (per-source cap,
-// default 100).
+// Env: WATCHER_SECRET + SCOUT_WEBHOOK (both required to POST — SCOUT_WEBHOOK
+// has NO default; this is a hackathon repo and must never silently fall back
+// to the old Scout production URL, 2026-09-19 16:45 fix), USAJOBS_API_KEY +
+// USAJOBS_USER_AGENT, ADZUNA_APP_ID + ADZUNA_APP_KEY (workday needs no key).
+// Flags: --dry-run, --limit N (per-source cap, default 100).
 
 import { writeFile } from "node:fs/promises";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -33,7 +34,9 @@ const opt = (name, def) => {
 };
 const DRY_RUN = flag("dry-run");
 const LIMIT = Number(opt("limit", "100")) || 100;
-const WEBHOOK = process.env.SCOUT_WEBHOOK || "https://intern-hq-inky.vercel.app/api/watcher";
+// No default — a hackathon repo must never silently fall back to the old
+// Scout production URL (2026-09-19 16:45 fix). Checked before any fetch, below.
+const WEBHOOK = process.env.SCOUT_WEBHOOK || "";
 const SECRET = process.env.WATCHER_SECRET || "";
 
 const SOURCES = [
@@ -43,6 +46,14 @@ const SOURCES = [
 ];
 
 async function main() {
+  // Checked before any fetch (2026-09-19 16:45 fix): SCOUT_WEBHOOK has no
+  // default, so a live run with it unset must fail loud, not silently target
+  // nothing / the wrong app — checked before even the source fetches below.
+  if (!DRY_RUN && !WEBHOOK) {
+    console.error("SCOUT_WEBHOOK is not set");
+    process.exit(1);
+  }
+
   const allRows = [];
   let anyFailed = false;
   for (const src of SOURCES) {

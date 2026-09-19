@@ -7,7 +7,9 @@ name: scan
 # the environment egress policy broke.
 #
 # Requires repo secret WATCHER_SECRET (Settings → Secrets and variables →
-# Actions). Optional repo variable SCOUT_WEBHOOK overrides the prod URL.
+# Actions). Required repo variable SCOUT_WEBHOOK (no default — this is a
+# hackathon repo and must never silently fall back to the old Scout production
+# URL, 2026-09-19 16:45 fix).
 
 on:
   schedule:
