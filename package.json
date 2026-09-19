@@ -10,6 +10,7 @@
     "test": "node --experimental-strip-types --test \"tests/**/*.test.ts\""
   },
   "dependencies": {
+    "@google/genai": "^2.23.0",
     "@modelcontextprotocol/sdk": "^1.26.0",
     "@paper-design/shaders-react": "^0.0.80",
     "@supabase/ssr": "^0.12.5",

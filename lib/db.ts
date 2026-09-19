@@ -22,8 +22,9 @@ export async function query<T extends QueryResultRow = QueryResultRow>(
   params: readonly unknown[] = [],
   table?: string,
 ): Promise<T[]> {
+  const pool = db(); // config errors surface unwrapped
   try {
-    const result = await db().query<T>(text, params as unknown[]);
+    const result = await pool.query<T>(text, params as unknown[]);
     return result.rows;
   } catch (error) {
     const where = table ? ` (${table})` : "";
