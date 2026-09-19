@@ -86,6 +86,7 @@ jobs:
       - name: notify on new drops
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SCOUT_WEBHOOK: ${{ vars.SCOUT_WEBHOOK }}
         run: |
           file=scripts/last-drops.json
           if [ ! -s "$file" ]; then echo "no drops file"; exit 0; fi
@@ -116,6 +117,7 @@ jobs:
         if: always()
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SCOUT_WEBHOOK: ${{ vars.SCOUT_WEBHOOK }}
         run: |
           file=scripts/canary.json
           if [ ! -s "$file" ]; then echo "no canary file"; exit 0; fi

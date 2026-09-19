@@ -205,21 +205,33 @@ async function main() {
     return;
   }
 
-  const res = await fetch(WEBHOOK, {
-    method: "POST",
-    headers: { "content-type": "application/json", "X-Watcher-Secret": SECRET },
-    body: JSON.stringify({ roles: uniq }),
-    signal: AbortSignal.timeout(30000),
-  });
-  const bodyText = await res.text();
-  if (!res.ok) {
-    console.error(`\nPOST failed HTTP ${res.status}: ${bodyText}`);
-    process.exit(1);
+  // Wide mode posts thousands of roles; one POST would outlive the webhook's
+  // function timeout (the 2026-09-19 Actions run aborted at 30 s). Post in
+  // batches, each with its own timeout, and aggregate the webhook's counts.
+  const BATCH = 150;
+  const r = { inserted: 0, updated: 0, skipped_applied: 0, skipped_tombstoned: 0, skipped_filtered: 0, errors: [], inserted_roles: [] };
+  for (let i = 0; i < uniq.length; i += BATCH) {
+    const batch = uniq.slice(i, i + BATCH);
+    const res = await fetch(WEBHOOK, {
+      method: "POST",
+      headers: { "content-type": "application/json", "X-Watcher-Secret": SECRET },
+      body: JSON.stringify({ roles: batch }),
+      signal: AbortSignal.timeout(55000),
+    });
+    const bodyText = await res.text();
+    if (!res.ok) {
+      console.error(`\nPOST failed HTTP ${res.status} on batch ${i / BATCH + 1} (${batch.length} roles): ${bodyText}`);
+      process.exit(1);
+    }
+    const part = JSON.parse(bodyText).roles || {};
+    for (const k of ["inserted", "updated", "skipped_applied", "skipped_tombstoned", "skipped_filtered"]) r[k] += part[k] || 0;
+    r.errors.push(...(part.errors || []));
+    if (Array.isArray(part.inserted_roles)) r.inserted_roles.push(...part.inserted_roles);
+    console.log(`POST batch ${i / BATCH + 1}/${Math.ceil(uniq.length / BATCH)} ok: +${part.inserted || 0} inserted`);
   }
-  const out = JSON.parse(bodyText);
-  const r = out.roles || {};
-  console.log(`\nPOST ok: inserted ${r.inserted} · updated ${r.updated} · skipped_applied ${r.skipped_applied} · errors ${(r.errors || []).length}`);
-  if ((r.errors || []).length) console.log(r.errors.join("\n"));
+  const out = { roles: r };
+  console.log(`\nPOST ok: inserted ${r.inserted} · updated ${r.updated} · skipped_applied ${r.skipped_applied} · errors ${r.errors.length}`);
+  if (r.errors.length) console.log(r.errors.join("\n"));
 
   // Notify layer: source last-drops.json from the webhook's true "genuinely new"
   // set (inserted_roles) so an `updated` re-find never re-notifies and a

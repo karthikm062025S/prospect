@@ -48,6 +48,20 @@ export const TABLES = {
       { name: "degree", type: "string" },
     ],
   },
+  vt_checksheets: {
+    // Degree checksheets: one row per course line (required + elective) per major (Karthik 2026-09-19 17:05).
+    file: "vt_checksheets.csv",
+    columns: [
+      { name: "major", type: "string" },
+      { name: "college", type: "string" },
+      { name: "catalog_year", type: "string" },
+      { name: "requirement_group", type: "string" },
+      { name: "course_code", type: "string" },
+      { name: "course_title", type: "string" },
+      { name: "credits", type: "string" },
+      { name: "notes", type: "string", optional: true },
+    ],
+  },
   onet_tasks: {
     file: "onet_tasks.csv",
     columns: [
