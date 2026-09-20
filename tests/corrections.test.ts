@@ -67,10 +67,10 @@ test("parseCorrection accepts each field with a valid value", () => {
     field: "season",
     value: "fall_2027",
   });
-  assert.deepEqual(parseCorrection({ roleId: VALID_ROLE_ID, field: "family", value: "ai_ml" }), {
+  assert.deepEqual(parseCorrection({ roleId: VALID_ROLE_ID, field: "family", value: "data_ai" }), {
     roleId: VALID_ROLE_ID,
     field: "family",
-    value: "ai_ml",
+    value: "data_ai",
   });
   assert.deepEqual(parseCorrection({ roleId: VALID_ROLE_ID, field: "visa_class", value: "no_sponsors" }), {
     roleId: VALID_ROLE_ID,
@@ -118,7 +118,12 @@ test("the database itself rejects a value outside the field's allowed list (defe
 
 test("removeCorrection deletes only the matching (uid, role, field) row", async () => {
   await insertRow(db.q, "role_corrections", { user_id: UID, role_id: VALID_ROLE_ID, field: "season", value: "fall_2027" });
-  await insertRow(db.q, "role_corrections", { user_id: UID, role_id: VALID_ROLE_ID, field: "family", value: "swe" });
+  // "other" (not a new-taxonomy value like "software"): db/lakebase/001-schema.sql's
+  // role_corrections_allowed_value_check still lists the OLD family taxonomy
+  // — a real, out-of-fence gap the VTHacks speed pass flags but does not fix
+  // (see the build handoff). "other" is valid under both taxonomies, so this
+  // deletion-scoping test is unaffected by that pending migration.
+  await insertRow(db.q, "role_corrections", { user_id: UID, role_id: VALID_ROLE_ID, field: "family", value: "other" });
   await insertRow(db.q, "role_corrections", { user_id: OTHER_UID, role_id: VALID_ROLE_ID, field: "season", value: "coop" });
 
   await removeCorrection(db.q, UID, VALID_ROLE_ID, "season");
@@ -164,10 +169,10 @@ test("overlayCorrections: season override", () => {
 
 test("overlayCorrections: family override sets both family and families", () => {
   const rows = [row(VALID_ROLE_ID)];
-  const corrections: Correction[] = [{ role_id: VALID_ROLE_ID, field: "family", value: "ai_ml" }];
+  const corrections: Correction[] = [{ role_id: VALID_ROLE_ID, field: "family", value: "data_ai" }];
   const [out] = overlayCorrections(rows, corrections);
-  assert.equal(out.family, "ai_ml");
-  assert.deepEqual(out.families, ["ai_ml"]);
+  assert.equal(out.family, "data_ai");
+  assert.deepEqual(out.families, ["data_ai"]);
 });
 
 test("overlayCorrections: visa_class override nulls eligibility_note", () => {
@@ -209,7 +214,7 @@ test("overlayCorrections: an uncorrected row gets shared: null", () => {
 
 test("overlayCorrections: shared is a fresh object — mutating it never touches the input row", () => {
   const rows = [row(VALID_ROLE_ID)];
-  const corrections: Correction[] = [{ role_id: VALID_ROLE_ID, field: "family", value: "ai_ml" }];
+  const corrections: Correction[] = [{ role_id: VALID_ROLE_ID, field: "family", value: "data_ai" }];
   const [out] = overlayCorrections(rows, corrections);
   assert.notEqual(out.shared, null);
   const shared = out.shared!;
@@ -221,7 +226,7 @@ test("overlayCorrections: multiple corrections on one row still carry ONE shared
   const rows = [row(VALID_ROLE_ID)];
   const corrections: Correction[] = [
     { role_id: VALID_ROLE_ID, field: "season", value: "fall_2027" },
-    { role_id: VALID_ROLE_ID, field: "family", value: "ai_ml" },
+    { role_id: VALID_ROLE_ID, field: "family", value: "data_ai" },
   ];
   const [out] = overlayCorrections(rows, corrections);
   assert.deepEqual(out.shared, {
@@ -238,7 +243,7 @@ test("overlayCorrections: input rows are unchanged afterwards (deep-equal snapsh
   const before = structuredClone(rows);
   const corrections: Correction[] = [
     { role_id: VALID_ROLE_ID, field: "season", value: "fall_2027" },
-    { role_id: VALID_ROLE_ID, field: "family", value: "ai_ml" },
+    { role_id: VALID_ROLE_ID, field: "family", value: "data_ai" },
     { role_id: VALID_ROLE_ID, field: "visa_class", value: "no_sponsors" },
   ];
   overlayCorrections(rows, corrections);

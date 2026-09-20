@@ -103,12 +103,12 @@ test("requireOwnerScope passes for a scout authInfo", () => {
 // test instantly instead of surviving until a judge finds it live. Also
 // pins the TOTAL tool count at 19: a silently DROPPED tool (not just a
 // missing scope check) fails this too.
-test("every registered MCP tool not on the owner/judge allowlist calls requireOwnerScope, and there are exactly 19 tools", () => {
+test("every registered MCP tool not on the owner/judge allowlist calls requireOwnerScope, and there are exactly 16 tools", () => {
   const routeSource = readFileSync(new URL("app/api/[transport]/route.ts", root), "utf8");
   const OWNER_SCOPE_ALLOWLIST = new Set(["whoami", "plan_next_steps"]);
 
   const toolNames = [...routeSource.matchAll(/server\.registerTool\(\s*\n\s*"([^"]+)"/g)].map((m) => m[1]);
-  assert.equal(toolNames.length, 19, `expected 19 registered tools, found ${toolNames.length}: ${toolNames.join(", ")}`);
+  assert.equal(toolNames.length, 16, `expected 16 registered tools, found ${toolNames.length}: ${toolNames.join(", ")}`);
 
   for (const name of toolNames) {
     if (OWNER_SCOPE_ALLOWLIST.has(name)) continue;

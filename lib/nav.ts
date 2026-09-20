@@ -9,7 +9,6 @@ export const NAV: NavItem[] = [
   { label: "Home", href: "/" },
   { label: "Journey", href: "/journey" },
   { label: "Applications", href: "/applications" },
-  { label: "Outreach", href: "/outreach" },
 ];
 
 // Root "/" is active only on an exact match; every other tab matches its

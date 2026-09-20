@@ -42,6 +42,7 @@ import { SearchInput } from "@/components/search-input";
 import { VelocityStrip } from "@/components/velocity-strip";
 import { FileTextIcon } from "@/components/icons";
 import { FAMILY_LABEL, FAMILY_ORDER, type Family } from "@/lib/family";
+import { TIER_LABEL, TIER_ORDER, type TierTag } from "@/lib/company-tier";
 import { ALL_HOME_FILTER, applyFilters, filterCounts } from "@/lib/home-filters";
 import { SEASON_LABEL, SEASON_ORDER, type Season } from "@/lib/season";
 import styles from "./applications-split.module.css";
@@ -206,6 +207,7 @@ export function HomeList({
   const paramView = searchParams.get("v");
   const paramSeason = searchParams.get("season");
   const paramFamily = searchParams.get("family");
+  const paramTier = searchParams.get("tier");
   const [view, setView] = useState<HomeView>(
     VIEWS.includes(paramView as HomeView) ? (paramView as HomeView) : "all",
   );
@@ -215,6 +217,9 @@ export function HomeList({
   const [family, setFamily] = useState<string>(
     FAMILY_ORDER.includes(paramFamily as Family) ? (paramFamily as Family) : ALL_HOME_FILTER,
   );
+  const [tier, setTier] = useState<string>(
+    TIER_ORDER.includes(paramTier as TierTag) ? (paramTier as TierTag) : ALL_HOME_FILTER,
+  );
 
   // A15: a chip switch or a new search is a NEW list, so it starts capped
   // again — carrying an expansion into a 3-result search makes the cap feel
@@ -222,7 +227,7 @@ export function HomeList({
   // stale optimistic override: NOT an effect and NOT a wrapper around
   // SearchInput's onQuery, whose debounce effect lists that callback in its
   // deps and needs the stable state-setter identity.
-  const listKey = `${view} | ${season} | ${family} | ${query}`;
+  const listKey = `${view} | ${season} | ${family} | ${tier} | ${query}`;
   const [seenListKey, setSeenListKey] = useState(listKey);
   if (listKey !== seenListKey) {
     setSeenListKey(listKey);
@@ -234,6 +239,7 @@ export function HomeList({
     r?: string | null;
     season?: string;
     family?: string;
+    tier?: string;
   }) => {
     const url = new URL(window.location.href);
     if (next.v !== undefined) {
@@ -251,6 +257,10 @@ export function HomeList({
     if (next.family !== undefined) {
       if (next.family === ALL_HOME_FILTER) url.searchParams.delete("family");
       else url.searchParams.set("family", next.family);
+    }
+    if (next.tier !== undefined) {
+      if (next.tier === ALL_HOME_FILTER) url.searchParams.delete("tier");
+      else url.searchParams.set("tier", next.tier);
     }
     window.history.replaceState(null, "", url);
   }, []);
@@ -275,8 +285,8 @@ export function HomeList({
   );
 
   const dropdownCounts = useMemo(
-    () => filterCounts(viewRows, { season, family }),
-    [viewRows, season, family],
+    () => filterCounts(viewRows, { season, family, tier }),
+    [viewRows, season, family, tier],
   );
   const seasonOptions: PillDropdownOption[] = useMemo(
     () => [
@@ -300,9 +310,20 @@ export function HomeList({
     ],
     [dropdownCounts.family, optimisticRows],
   );
+  const tierOptions: PillDropdownOption[] = useMemo(
+    () => [
+      { key: ALL_HOME_FILTER, label: "All", count: dropdownCounts.tier[ALL_HOME_FILTER] },
+      ...TIER_ORDER.filter((key) => optimisticRows.some((row) => row.tierTags.includes(key))).map((key) => ({
+        key,
+        label: TIER_LABEL[key],
+        count: dropdownCounts.tier[key] ?? 0,
+      })),
+    ],
+    [dropdownCounts.tier, optimisticRows],
+  );
   const inView = useMemo(
-    () => applyFilters(viewRows, { season, family }),
-    [viewRows, season, family],
+    () => applyFilters(viewRows, { season, family, tier }),
+    [viewRows, season, family, tier],
   );
 
   // The chip row itself (pill, measurement, both themes, a11y) lives in
@@ -377,6 +398,11 @@ export function HomeList({
   function switchFamily(next: string) {
     setFamily(next);
     writeUrl({ family: next });
+  }
+
+  function switchTier(next: string) {
+    setTier(next);
+    writeUrl({ tier: next });
   }
 
   // D27.4 guided actions for the GetStarted checklist (get-started.tsx does
@@ -744,7 +770,8 @@ export function HomeList({
             <div ref={seasonPillRef} className="contents">
               <PillDropdown label="Season" value={season} options={seasonOptions} onSelect={switchSeason} />
             </div>
-            <PillDropdown label="Role" value={family} options={familyOptions} onSelect={switchFamily} />
+            <PillDropdown label="Field" value={family} options={familyOptions} onSelect={switchFamily} />
+            <PillDropdown label="Tier" value={tier} options={tierOptions} onSelect={switchTier} />
           </div>
 
           <GetStarted

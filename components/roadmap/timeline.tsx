@@ -1,6 +1,7 @@
 "use client";
 
 import type { RoadmapNode } from "@/lib/roadmaps";
+import { XIcon } from "@/components/icons";
 
 const KIND_LABEL: Record<RoadmapNode["kind"], string> = {
   course: "Course",
@@ -24,6 +25,7 @@ export function RoadmapTimeline({
   onReplanFrom,
   replanPending,
   onAddNode,
+  onRemoveNode,
 }: {
   semesters: string[];
   nodesBySemester: Map<string, RoadmapNode[]>;
@@ -32,6 +34,7 @@ export function RoadmapTimeline({
   onReplanFrom: (semester: string) => void;
   replanPending: string | null;
   onAddNode: (semester: string) => void;
+  onRemoveNode: (id: string) => void;
 }) {
   return (
     <div className="flex gap-4 overflow-x-auto pb-2" role="list" aria-label="Semester roadmap">
@@ -63,7 +66,12 @@ export function RoadmapTimeline({
               <ul className="flex flex-col gap-2">
                 {nodes.map((node) => (
                   <li key={node.id}>
-                    <NodeCard node={node} selected={node.id === selectedNodeId} onSelect={() => onSelectNode(node.id)} />
+                    <NodeCard
+                      node={node}
+                      selected={node.id === selectedNodeId}
+                      onSelect={() => onSelectNode(node.id)}
+                      onRemove={() => onRemoveNode(node.id)}
+                    />
                   </li>
                 ))}
               </ul>
@@ -87,34 +95,54 @@ export function NodeCard({
   node,
   selected,
   onSelect,
+  onRemove,
 }: {
   node: RoadmapNode;
   selected: boolean;
   onSelect: () => void;
+  onRemove: () => void;
 }) {
   return (
-    <button
-      type="button"
-      onClick={onSelect}
-      aria-current={selected ? "true" : undefined}
-      className={`flex min-h-11 w-full flex-col items-start gap-1 border-l-2 px-2 py-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage ${
+    // A <button> can't nest another <button> (the × below), so the card
+    // itself is a div and the select button covers its content, pr-8 leaving
+    // room for the × that sits on top of it, absolutely positioned.
+    <div
+      className={`relative flex min-h-11 w-full flex-col items-start gap-1 border-l-2 ${
         selected ? "border-sage bg-bg" : "border-transparent hover:bg-bg"
       }`}
     >
-      <span className="flex w-full items-center justify-between gap-2">
-        <span className="font-label text-[11px] uppercase tracking-label text-text-dim">{KIND_LABEL[node.kind]}</span>
-        <span
-          className={`font-label text-[11px] uppercase tracking-label ${
-            node.status === "done" ? "text-sage" : node.status === "planned" ? "text-text" : "text-text-dim"
-          }`}
-        >
-          {STATUS_LABEL[node.status]}
+      <button
+        type="button"
+        onClick={onSelect}
+        aria-current={selected ? "true" : undefined}
+        className="flex w-full flex-col items-start gap-1 px-2 py-2 pr-11 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage"
+      >
+        <span className="flex w-full items-center justify-between gap-2">
+          <span className="font-label text-[11px] uppercase tracking-label text-text-dim">{KIND_LABEL[node.kind]}</span>
+          <span
+            className={`font-label text-[11px] uppercase tracking-label ${
+              node.status === "done" ? "text-sage" : node.status === "planned" ? "text-text" : "text-text-dim"
+            }`}
+          >
+            {STATUS_LABEL[node.status]}
+          </span>
         </span>
-      </span>
-      <span className="text-[15px] font-medium text-text">{node.title}</span>
-      {node.ref_code || node.ref_name ? (
-        <span className="font-mono text-[12px] text-text-dim">{node.ref_code ?? node.ref_name}</span>
-      ) : null}
-    </button>
+        <span className="text-[15px] font-medium text-text">{node.title}</span>
+        {node.ref_code || node.ref_name ? (
+          <span className="font-mono text-[12px] text-text-dim">{node.ref_code ?? node.ref_name}</span>
+        ) : null}
+      </button>
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          onRemove();
+        }}
+        aria-label={`Remove ${node.title}`}
+        className="absolute right-0 top-0 flex min-h-11 min-w-11 items-center justify-center text-text-dim hover:text-danger focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage"
+      >
+        <XIcon />
+      </button>
+    </div>
   );
 }

@@ -17,7 +17,7 @@ import { mkdir } from "node:fs/promises";
 import path from "node:path";
 
 const BASE_URL = process.env.BASE_URL ?? "http://localhost:3000";
-const PATHS = ["/welcome", "/", "/applications", "/outreach"];
+const PATHS = ["/welcome", "/", "/applications"];
 const WIDTHS = [320, 390, 768, 1024, 1440, 1920, 2560];
 const SCREEN_DIR = path.join(".claude", "screens");
 
