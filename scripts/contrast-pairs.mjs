@@ -193,25 +193,6 @@ function alphaAt(stops, t) {
   return stops.at(-1)[1];
 }
 
-// .scout-hero-scrim: horizontal veil over a bottom-up veil.
-const HERO_H = [
-  [0, 0.4],
-  [0.6, 0.3],
-  [1, 0],
-];
-const HERO_V = [
-  [0, 0.76],
-  [0.55, 0.68],
-  [1, 0.06],
-];
-// Below 640px the copy runs the full width, so the horizontal veil (which
-// fades to 0 on the right) cannot be relied on. The narrow media query in
-// app/globals.css replaces both veils with one heavier bottom-up gradient.
-const HERO_NARROW_V = [
-  [0, 0.86],
-  [0.55, 0.82],
-  [1, 0.24],
-];
 // .scout-sky-scrim (redesign 2026-09-19): one bottom-up veil in every
 // viewport; the wordmark sits in open sky at mid-frame, the marks at the foot.
 const SKY_V = [
