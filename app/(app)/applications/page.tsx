@@ -18,7 +18,10 @@ type LinkedRoleRow = { id: string; posted_at: string | null; deadline: string | 
 
 export default async function ApplicationsPage() {
   const uid = await requireUser();
-  await requireProfile(uid);
+  // Same call, same argument as before — only the return value (already
+  // fetched by requireProfile) is now kept instead of discarded, to thread
+  // the real target_term into the header eyebrow (no new query).
+  const profile = await requireProfile(uid);
   // Every read throws (named) into the route's error boundary on failure.
   const [appRows, eventRows, companyRows] = await Promise.all([
     query<ApplicationRow>(
@@ -63,5 +66,7 @@ export default async function ApplicationsPage() {
     company_name: event.company_id ? companyById.get(event.company_id)?.name ?? null : null,
   }));
 
-  return <ApplicationsSplit applications={applications} events={events} nowMs={nowMs()} />;
+  return (
+    <ApplicationsSplit applications={applications} events={events} nowMs={nowMs()} targetTerm={profile.target_term} />
+  );
 }

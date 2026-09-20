@@ -10,25 +10,39 @@ export default function ApplicationsLoading() {
       aria-label="Loading applications"
       className="grid gap-6 md:h-full md:min-h-0 md:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] md:grid-rows-[minmax(0,1fr)] md:overflow-hidden"
     >
-      <div className="flex min-w-0 flex-col gap-4 pb-6 pt-4 md:-mx-1 md:min-h-0 md:overflow-hidden md:px-1 md:pr-2">
-        <div className="flex h-4 items-center">
-          <div className="h-3 w-24 rounded bg-hairline" />
+      <div className="flex min-w-0 flex-col gap-6 pb-6 pt-4 md:-mx-1 md:min-h-0 md:overflow-hidden md:px-1 md:pr-2">
+        {/* mocks/applications.html header footprint: eyebrow + h1 + stat trio. */}
+        <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+          <div className="flex flex-col gap-2">
+            <div className="h-3 w-32 rounded bg-hairline" />
+            <div className="h-8 w-64 max-w-full rounded bg-hairline" />
+          </div>
+          <div className="flex gap-6">
+            <div className="h-6 w-10 rounded bg-hairline" />
+            <div className="h-6 w-10 rounded bg-hairline" />
+            <div className="h-6 w-14 rounded bg-hairline" />
+          </div>
         </div>
-        <div className="flex items-center gap-1">
-          <div className="h-11 w-16 rounded-full border border-hairline" />
-          <div className="h-11 w-24 rounded-full border border-hairline" />
-          <div className="h-11 w-24 rounded-full border border-hairline" />
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-1">
+            <div className="h-11 w-16 rounded-full border border-hairline" />
+            <div className="h-11 w-24 rounded-full border border-hairline" />
+            <div className="h-11 w-24 rounded-full border border-hairline" />
+          </div>
+          <div className="h-11 w-40 rounded-pill border border-hairline" />
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <div className="h-11 w-full max-w-xs rounded border border-hairline" />
-          <div className="h-11 w-40 rounded border border-hairline" />
+          <div className="h-11 w-40 rounded-pill border border-hairline" />
         </div>
-        <ul>
+        <ul className="overflow-hidden rounded-card border border-hairline bg-raised">
           {Array.from({ length: 8 }, (_, i) => (
-            <li key={i} className="flex min-h-11 items-center gap-3 border-b border-hairline px-2 py-1.5">
-              <div className="h-4 w-24 rounded bg-hairline" />
-              <div className="h-4 w-56 max-w-[45%] rounded bg-hairline" />
-              <div className="ml-auto h-4 w-28 rounded bg-hairline" />
+            <li key={i} className="flex items-center gap-3 border-b border-hairline px-4 py-3 last:border-b-0">
+              <div className="h-10 w-10 shrink-0 rounded-full bg-hairline" />
+              <div className="flex min-w-0 flex-1 flex-col gap-2">
+                <div className="h-4 w-40 max-w-[60%] rounded bg-hairline" />
+                <div className="h-3 w-56 max-w-[80%] rounded bg-hairline" />
+              </div>
             </li>
           ))}
         </ul>
