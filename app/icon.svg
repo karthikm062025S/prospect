@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" fill="none" role="img" aria-label="Prospect">
   <title>Prospect</title>
-  <style>.ink{fill:#18181b}.sq{fill:#2d5a43}</style>
-  <style>@media (prefers-color-scheme: dark){ .ink{fill:#b9c2bd} .sq{fill:#6f9c8c} }</style>
+  <style>.ink{fill:#18181b}.sq{fill:#861F41}</style>
+  <style>@media (prefers-color-scheme: dark){ .ink{fill:#b9c2bd} .sq{fill:#e79aae} }</style>
   <path class="ink" d="M54.5 9.5H13.5V34.5H45.5V49.5H9.5V54.5H50.5V29.5H18.5V14.5H54.5Z"/>
   <rect class="sq" x="45.5" y="17.5" width="9" height="9"/>
 </svg>

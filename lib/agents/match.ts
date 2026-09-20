@@ -355,15 +355,6 @@ export function encodeStepLine(step: MatchStep): string {
 
 export interface MatchAgentInput {
   userId: string;
-  /**
-   * "interactive" = the onboarding stream (app/api/profile/route.ts): skips the
-   * two feed-wide cache-warming jobs (vector archetype assignment of every
-   * unassigned posting; posting-task mapping of uncached top-40 postings) that
-   * the hourly Orchestrator (`/api/match?all=1`) runs for everyone. Measured
-   * 2026-09-19: 6,176 unassigned postings and 0 cached role_tasks rows, which
-   * no 20-second flow can absorb. "full" (default) runs everything.
-   */
-  mode?: "interactive" | "full";
 }
 
 export interface MatchAgentResult {
