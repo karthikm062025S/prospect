@@ -138,7 +138,7 @@ export function TabBar({ weekCount, profile }: { weekCount: number; profile: Pro
     // (mark / tabs / you) instead of the old left-packed row of controls.
     <header className="relative z-40 flex w-full shrink-0 justify-center px-gutter py-2">
       <div className="flex w-full max-w-[min(100%,940px)] items-center gap-3 rounded-pill border border-hairline bg-raised/80 px-2 backdrop-blur">
-        <Logo href="/welcome?view=landing" size={24} className="shrink-0 px-1" />
+        <Logo href="/welcome?view=landing" className="shrink-0 px-1" />
 
         {/* The tabs own the middle: flex-1 between two shrink-0 zones centres
             them in the capsule; `safe center` degrades to flex-start the moment
