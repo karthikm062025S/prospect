@@ -166,11 +166,18 @@ for (const [theme, themeTokens] of Object.entries(themes)) {
 // the x axis (a 10 degree tilt over a 16:9 box moves the sampled alpha by
 // under 0.02), and object-cover cropping is ignored, which samples MORE of the
 // poster than any viewport actually shows.
-// The scrim gradients in app/globals.css are hardcoded rgb(34 47 48) in BOTH
-// themes (they sit over the art posters, not over the --ink token), so v8 D13's
-// darker dark-theme --ink does not move them and this constant still mirrors
-// the CSS.
-const INK = "rgb(34 47 48)";
+// The scrim gradients in app/globals.css are one hardcoded ink in BOTH themes
+// (they sit over the art posters, not over the themed --ink token), so this
+// constant mirrors the CSS rather than reading a token.
+// Lane C, 2026-09-19: that ink moved from the retired sage-ink rgb(34 47 48) to
+// the maroon rgb(31 14 20) (= --ink #1f0e14) in the same commit that retinted
+// the posters into the VT ramp, so the CSS override at the end of globals.css
+// and this constant stay one number.
+// KNOWN GAP (not this lane's fence): INK_TEXT below is still #e8e4df, the
+// pre-Prospect ink text. The live token is #f5efec, which is LIGHTER, so every
+// ratio this script prints is a lower bound on the real one. Conservative, so
+// it is reported rather than quietly improved.
+const INK = "rgb(31 14 20)";
 const INK_TEXT = "#e8e4df";
 
 /** Interpolates a CSS gradient's alpha stops. `t` is 0 at the first stop. */

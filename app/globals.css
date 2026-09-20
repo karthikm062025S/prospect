@@ -591,3 +591,71 @@ html {
 .scout-reveal[data-revealed] > span > span {
   color: var(--reveal-to);
 }
+
+/* landing (ui/c) ------------------------------------------------------------
+   Everything below this marker is landing-only and is appended, never merged
+   into the token blocks above (lane C fence).
+
+   2026-09-19 22:30, Karthik: "use my design system". The landing carries NO
+   type overrides at all — headings are `font-display` at a ladder step, the
+   display face and its -0.02em tracking come from design/SYSTEM.md through the
+   existing tokens, and nothing here redefines either. An earlier revision of
+   this block added a -0.04em `.landing-tight` class sampled off the reference;
+   it is removed, not left dead, because the reference governs layout and
+   motion, never type. */
+
+/* Scrims, retargeted to the maroon ink (lane C).
+   The three `.scout-*` scrim rules above this marker hardcode rgb(34 47 48),
+   the old sage-ink, because the posters they sat over were teal/apricot. The
+   posters are now dithered into the VT ramp (scripts/art-assets.mjs) and the
+   band ink is --ink #1f0e14 = rgb(31 14 20), so the veils move with them.
+   Redefined HERE rather than edited in place: this lane may only append to
+   globals.css, and a later rule of equal specificity wins on source order.
+   rgb(31 14 20) is DARKER than the colour it replaces (relative luminance
+   0.0066 against 0.0258), so every over-scrim pair can only improve; the real
+   numbers are re-measured against the new poster pixels by
+   `node scripts/contrast-pairs.mjs`, whose INK constant changed in the same
+   commit. Alpha stops are unchanged. */
+.scout-hero-scrim {
+  background:
+    linear-gradient(
+      100deg,
+      rgb(31 14 20 / 0.4) 0%,
+      rgb(31 14 20 / 0.3) 60%,
+      rgb(31 14 20 / 0) 100%
+    ),
+    linear-gradient(
+      to top,
+      rgb(31 14 20 / 0.76) 0%,
+      rgb(31 14 20 / 0.68) 55%,
+      rgb(31 14 20 / 0.06) 100%
+    );
+}
+@media (max-width: 639px) {
+  .scout-hero-scrim {
+    background: linear-gradient(
+      to top,
+      rgb(31 14 20 / 0.86) 0%,
+      rgb(31 14 20 / 0.82) 55%,
+      rgb(31 14 20 / 0.24) 100%
+    );
+  }
+}
+.scout-scrim {
+  background: linear-gradient(
+    to top,
+    rgb(31 14 20 / 0.8) 0%,
+    rgb(31 14 20 / 0.74) 46%,
+    rgb(31 14 20 / 0.3) 80%,
+    rgb(31 14 20 / 0.14) 100%
+  );
+}
+.scout-scrim-even {
+  background: linear-gradient(
+    to top,
+    rgb(31 14 20 / 0.82) 0%,
+    rgb(31 14 20 / 0.72) 35%,
+    rgb(31 14 20 / 0.72) 75%,
+    rgb(31 14 20 / 0.66) 100%
+  );
+}
