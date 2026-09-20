@@ -1,5 +1,9 @@
 import type { query } from "./db";
 import type { ProfileOutput } from "./agents/profile";
+// Node's test runner loads this file directly (tests/student-profile.test.ts,
+// tests/ans-gate.test.ts) and needs the explicit extension to resolve it;
+// allowImportingTsExtensions (tsconfig.json) makes tsc accept the suffix.
+import { assertVerifiedAgent } from "./ans-verify.ts";
 
 // ponytail: "./db" is imported as a TYPE only above (erased at runtime, so it
 // never trips the node --experimental-strip-types cross-lib import gotcha).
@@ -70,6 +74,9 @@ export async function getProfile(userId: string, runQuery?: QueryFn): Promise<St
 }
 
 export async function startAgentRun(agent: string, userId: string, runQuery?: QueryFn): Promise<string> {
+  // L5 D21: the ANS gate runs before any write.
+  await assertVerifiedAgent(agent);
+
   const q = runQuery ?? (await realQuery());
   const rows = await q<{ id: string }>(
     "insert into agent_runs (agent, user_id, status) values ($1, $2, 'running') returning id",

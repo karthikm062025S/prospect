@@ -1,0 +1,13 @@
+{
+  "tl_url_default": "http://localhost:18081",
+  "agents": {
+    "profile": { "ans_name": "ans://v1.0.0.profile.prospect.courses", "agent_id": null },
+    "match": { "ans_name": "ans://v1.0.0.match.prospect.courses", "agent_id": null },
+    "roadmap": { "ans_name": "ans://v1.0.0.roadmap.prospect.courses", "agent_id": null }
+  },
+  "impostor": {
+    "ans_name": "ans://v1.0.0.roadmap-agent.prospect.courses",
+    "agent_id": null,
+    "note": "look-alike; never completes verify-dns"
+  }
+}
