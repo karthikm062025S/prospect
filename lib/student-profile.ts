@@ -1,5 +1,10 @@
+import { createRequire } from "node:module";
 import type { query } from "./db";
 import type { ProfileOutput } from "./agents/profile";
+import type * as AnsVerify from "./ans-verify";
+
+// require(), not import(): see the ponytail comment on startAgentRun below.
+const ansVerifyRequire = createRequire(import.meta.url);
 
 // ponytail: "./db" is imported as a TYPE only above (erased at runtime, so it
 // never trips the node --experimental-strip-types cross-lib import gotcha).
@@ -70,6 +75,17 @@ export async function getProfile(userId: string, runQuery?: QueryFn): Promise<St
 }
 
 export async function startAgentRun(agent: string, userId: string, runQuery?: QueryFn): Promise<string> {
+  // ponytail: NOT the "./db" pattern above (an extensionless `await import(...)`
+  // that tests skip by always injecting a fake) -- this check always runs, so
+  // that lazy resolution would throw ERR_MODULE_NOT_FOUND the moment a test
+  // calls startAgentRun directly under `node --experimental-strip-types`
+  // (extensionless and ".ts"-suffixed `import()` were both proven to fail
+  // here; `require("./ans-verify.ts")` is the one form Node resolves AND tsc
+  // accepts, since a require() argument is a plain string, not a
+  // TS5097-checked import specifier). The type import above keeps this typed.
+  const { assertVerifiedAgent } = ansVerifyRequire("./ans-verify.ts") as typeof AnsVerify;
+  await assertVerifiedAgent(agent);
+
   const q = runQuery ?? (await realQuery());
   const rows = await q<{ id: string }>(
     "insert into agent_runs (agent, user_id, status) values ($1, $2, 'running') returning id",
