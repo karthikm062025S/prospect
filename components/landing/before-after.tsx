@@ -199,7 +199,7 @@ function RecordPane({
           ))}
         </ul>
         <p className="mt-3 max-w-[54ch] text-pretty text-step-xs leading-body text-text-dim">
-          Once your profile is in, every task on this posting carries one of those three labels.{" "}
+          Once your profile is in, every measured task on this posting carries one of those three labels, and the rest say not measured.{" "}
           {LABEL_SOURCE}
         </p>
       </motion.div>

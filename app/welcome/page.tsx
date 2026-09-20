@@ -69,7 +69,7 @@ const FEED_POINTS = [
 ] as const;
 
 const ROADMAP_POINTS = [
-  "Every task on a role is labelled Human-led, AI-assisted or Automatable.",
+  "Every measured task on a role is labelled Human-led, AI-assisted or Automatable, and the rest say not measured.",
   "What is missing becomes a semester plan of real courses, clubs, projects and certifications.",
   "Each step says why it is there and which roles it moves you toward.",
 ] as const;

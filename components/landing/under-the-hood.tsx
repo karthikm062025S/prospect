@@ -23,6 +23,7 @@ const AGENTS = [
   "Roadmap turns the gaps into a semester plan built from the datasets.",
   "Orchestrator re-scores every profile when new postings land.",
   "Temperature zero, schema-validated output, and a timeout per step that fails by name.",
+  "A rejected answer goes back to the model once with the reason, a roadmap step that is not in the catalog is dropped by name, and Match links the postings it ranks to your roadmap steps.",
   "Document and posting text is treated as data, never as instructions.",
 ] as const;
 

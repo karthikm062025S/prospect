@@ -1,6 +1,6 @@
 # Prospect
 
-**The career journey for every Virginia Tech student, all majors.** Upload a resume and a transcript, write your goal in one sentence, and four agents build your journey: a live feed of open postings ranked for you, a Human Edge label on every posting, and a semester roadmap of real VT courses and clubs.
+**The career journey for every Virginia Tech student, all majors.** Upload a resume and a transcript, write your goal in one sentence, and four agents build your journey: a live feed of open postings ranked for you, Human Edge labels on the duties of your top postings, and a semester roadmap of real VT courses and clubs.
 
 **Live: https://prospect.courses** · Built at VTHacks 14, September 18 to 20, 2026.
 
@@ -36,7 +36,7 @@ Editable sources for each picture are in [`docs/diagrams/`](docs/diagrams/). Ope
 ## What you get
 
 - **A live feed, ranked for you.** GitHub Actions scan about a thousand public company job boards every 30 minutes. Every role says in plain words why it fits, which requirements you meet, and which ones the posting never states. Apply opens the employer's real page and only logs it after you confirm.
-- **Human Edge labels.** Each posting is split into duties, each duty is matched to its nearest O*NET task, and each task is labeled Human-led, AI-assisted or Automatable from the Anthropic Economic Index. Unmeasured tasks say "not measured".
+- **Human Edge labels.** Your top postings are split into duties, each duty is matched to its nearest O*NET task, and each task is labeled Human-led, AI-assisted or Automatable from the Anthropic Economic Index. Unmeasured tasks say "not measured".
 - **A semester roadmap.** Real VT courses and clubs from the catalog, projects marked "suggested", certifications with a source link. Mark steps done, add notes, re-plan later terms.
 
 ## Four agents that check their own work

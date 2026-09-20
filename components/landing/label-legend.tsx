@@ -27,7 +27,7 @@ export const LABELS = [
 ] as const;
 
 export const LABEL_SOURCE =
-  "Scores come from published task-exposure tables, O*NET tasks joined to published economic and academic exposure scores, never from a model's guess.";
+  "Scores come from published task-exposure tables, O*NET tasks joined to the Anthropic Economic Index's published exposure scores, never from a model's guess.";
 
 export function LabelLegend({ className = "" }: { className?: string }) {
   return (
