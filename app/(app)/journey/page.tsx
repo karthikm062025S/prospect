@@ -165,7 +165,7 @@ export default async function JourneyPage() {
   }
   if (!profile) {
     return (
-      <div className="mx-auto flex w-full max-w-lg flex-col items-center gap-4 py-16 text-center">
+      <div className="mx-auto flex w-full max-w-lg flex-col items-center gap-6 py-16 text-center">
         <h1 className="font-display text-step-3 text-text">Set up your profile first</h1>
         <p className="text-[15px] text-text-dim">
           The Roadmap agent needs your courses, goal and target term before it can plan a journey.
@@ -197,11 +197,16 @@ export default async function JourneyPage() {
     <div className="flex flex-col gap-6 py-4">
       <h1 className="sr-only">Journey</h1>
       <NudgesStrip nudges={nudges} />
-      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,7fr)_minmax(0,3fr)]">
+      {/* Baseline defect 2: every column here is `min-w-0`. A grid item
+          defaults to min-width:auto, so the roadmap's own horizontal scroller
+          could never shrink below its content and pushed the PAGE into a
+          horizontal scroll at 390 (SYSTEM.md Breakpoints: no horizontal scroll
+          at 320-2560). */}
+      <div className="grid min-w-0 items-start gap-6 lg:grid-cols-[minmax(0,7fr)_minmax(0,3fr)]">
         <RoadmapBoard roadmap={roadmap} nodes={nodes} targetTerm={targetTerm} />
         {/* Sticky on desktop with its own scroll, so the feed stays beside the
             roadmap however long the timeline gets (Karthik, judge test 18:20). */}
-        <div className="flex flex-col gap-3 lg:sticky lg:top-20 lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto">
+        <div className="flex min-w-0 flex-col gap-3 lg:sticky lg:top-20 lg:max-h-[calc(100dvh-6rem)] lg:overflow-y-auto">
           <h2 className="font-label text-[11px] uppercase tracking-label text-text-dim">
             {feedRows?.some((r) => r.matchScore != null) ? "Ranked for you" : "Live feed"}
           </h2>

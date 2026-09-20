@@ -21,6 +21,7 @@
 
 import { useEffect } from "react";
 import { motion, useSpring, useTransform, type MotionValue } from "motion/react";
+import { useSettled } from "@/components/motion/settled";
 
 const TRANSITION = { stiffness: 280, damping: 18, mass: 0.3 } as const;
 
@@ -72,9 +73,15 @@ export type SlidingNumberProps = {
  * every column paints all ten digits, so the caller owns the readable text.
  */
 export function SlidingNumber({ value, digits }: SlidingNumberProps) {
+  const settled = useSettled();
   const safe = Math.max(0, Math.floor(value));
   const text = String(safe).padStart(digits ?? 1, "0");
   const places = text.split("").map((_, i) => 10 ** (text.length - 1 - i));
+
+  // prefers-reduced-motion / the in-app Settled setting: the final value as
+  // plain text, with no spring and no ten-digit column — an instant state, not
+  // a slowed-down odometer (km-ui accessibility floor).
+  if (settled) return <span className="tabular-nums">{text}</span>;
 
   return (
     <span className="inline-flex items-center">

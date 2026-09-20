@@ -48,7 +48,7 @@ export function SearchInput({ onQuery }: { onQuery: (query: string) => void }) {
   }
 
   return (
-    <div className="relative inline-flex min-h-11 flex-1 items-center gap-1.5 border border-hairline px-2 text-text-dim focus-within:ring-2 focus-within:ring-sage sm:max-w-xs">
+    <div className="relative inline-flex min-h-11 flex-1 items-center gap-2 rounded-pill border border-hairline px-4 text-text-dim focus-within:ring-2 focus-within:ring-sage sm:max-w-xs">
       <MagnifyingGlassIcon />
       <input
         ref={inputRef}
@@ -76,6 +76,7 @@ export function SearchInput({ onQuery }: { onQuery: (query: string) => void }) {
           type="button"
           onClick={clear}
           aria-label="Clear search"
+          title="Clear search"
           className="flex min-h-11 min-w-11 items-center justify-center rounded-sm text-text-dim hover:bg-raised hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage"
         >
           <XIcon />

@@ -2,6 +2,7 @@
 
 import type { RoadmapNode } from "@/lib/roadmaps";
 import { XIcon } from "@/components/icons";
+import { Rise } from "@/components/motion/rise";
 
 const KIND_LABEL: Record<RoadmapNode["kind"], string> = {
   course: "Course",
@@ -37,7 +38,17 @@ export function RoadmapTimeline({
   onRemoveNode: (id: string) => void;
 }) {
   return (
-    <div className="flex gap-4 overflow-x-auto pb-2" role="list" aria-label="Semester roadmap">
+    // Baseline defect 2: the semester columns scroll INSIDE their own
+    // horizontal scroller, never the page. `min-w-0` lets this flex/grid child
+    // shrink below its content (min-width defaults to auto, which is what
+    // pushed the whole page wide at 390); `snap-x` + `snap-start` makes a
+    // touch swipe land on a whole column; `overscroll-x-contain` stops the
+    // swipe chaining out to the page.
+    <div
+      className="-mx-1 flex min-w-0 snap-x snap-mandatory gap-6 overflow-x-auto overscroll-x-contain px-1 pb-3"
+      role="list"
+      aria-label="Semester roadmap"
+    >
       {semesters.map((semester) => {
         const nodes = nodesBySemester.get(semester) ?? [];
         return (
@@ -45,8 +56,7 @@ export function RoadmapTimeline({
             key={semester}
             role="listitem"
             aria-label={semester}
-            className="flex w-72 shrink-0 flex-col gap-3 border border-hairline bg-raised p-3"
-            style={{ borderRadius: "var(--radius-card, 16px)" }}
+            className="flex w-72 shrink-0 snap-start flex-col gap-3 rounded-card border border-hairline bg-raised p-4"
           >
             <header className="flex items-center justify-between gap-2">
               <h3 className="font-display text-step-1 text-text">{semester}</h3>
@@ -63,16 +73,18 @@ export function RoadmapTimeline({
             {nodes.length === 0 ? (
               <p className="py-4 text-[13px] text-text-dim">No nodes yet for this semester.</p>
             ) : (
-              <ul className="flex flex-col gap-2">
-                {nodes.map((node) => (
-                  <li key={node.id}>
+              <ul className="flex flex-col gap-3">
+                {/* SYSTEM.md Motion grammar: roadmap nodes Rise with the same
+                    0.04-0.06s stagger the feed rows use. */}
+                {nodes.map((node, index) => (
+                  <Rise as="li" key={node.id} index={index}>
                     <NodeCard
                       node={node}
                       selected={node.id === selectedNodeId}
                       onSelect={() => onSelectNode(node.id)}
                       onRemove={() => onRemoveNode(node.id)}
                     />
-                  </li>
+                  </Rise>
                 ))}
               </ul>
             )}
@@ -80,7 +92,7 @@ export function RoadmapTimeline({
             <button
               type="button"
               onClick={() => onAddNode(semester)}
-              className="min-h-11 border border-dashed border-hairline px-2 font-sans text-sm text-text-dim hover:bg-bg hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage"
+              className="min-h-11 rounded-card border border-dashed border-hairline px-4 font-sans text-sm text-text-dim hover:bg-bg hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage"
             >
               + Add a course or club
             </button>
@@ -104,7 +116,7 @@ export function NodeCard({
 }) {
   return (
     // A <button> can't nest another <button> (the × below), so the card
-    // itself is a div and the select button covers its content, pr-8 leaving
+    // itself is a div and the select button covers its content, pr-11 leaving
     // room for the × that sits on top of it, absolutely positioned.
     <div
       className={`relative flex min-h-11 w-full flex-col items-start gap-1 border-l-2 ${
@@ -115,7 +127,7 @@ export function NodeCard({
         type="button"
         onClick={onSelect}
         aria-current={selected ? "true" : undefined}
-        className="flex w-full flex-col items-start gap-1 px-2 py-2 pr-11 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage"
+        className="flex w-full flex-col items-start gap-1 py-3 pl-4 pr-11 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage"
       >
         <span className="flex w-full items-center justify-between gap-2">
           <span className="font-label text-[11px] uppercase tracking-label text-text-dim">{KIND_LABEL[node.kind]}</span>

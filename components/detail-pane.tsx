@@ -651,6 +651,7 @@ function EventItem({
             type="button"
             onClick={onDelete}
             aria-label={`Delete entry "${event.subject}"`}
+            title="Delete entry"
             className="ml-auto inline-flex min-h-11 min-w-11 items-center justify-center rounded-sm text-text-dim hover:bg-raised hover:text-danger focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage"
           >
             <TrashIcon />
