@@ -64,9 +64,9 @@ const NOT_LOADED = {
 // verbatim") instead of being relabeled as "catalog not loaded".
 const ENV_ERROR = /^(DATABRICKS_HOST|DATABRICKS_TOKEN|DATABRICKS_WAREHOUSE_PATH)( is not set| is malformed)/;
 
-/** SQL-escapes a string literal for inline use in a Databricks statement (doubles single quotes). */
+/** SQL-escapes a string literal for inline use in a Databricks statement (backslashes first, then doubles single quotes). */
 export function sqlEscape(value: string): string {
-  return value.replace(/'/g, "''");
+  return value.replace(/\\/g, "\\\\").replace(/'/g, "''");
 }
 
 async function assertLoaded(exec: ExecuteFn, table: string, kind: keyof typeof NOT_LOADED): Promise<void> {

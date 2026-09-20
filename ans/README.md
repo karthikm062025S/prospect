@@ -1,7 +1,7 @@
 # ans/ — ANS agent passport (L5.1)
 
-Registers Prospect's three real agents (profile, match, roadmap) plus one
-deliberate impostor (`roadmap-agent`) against the LOCAL ANS registry.
+Registers Prospect's four real agents (profile, match, roadmap, orchestrator)
+plus one deliberate impostor (`roadmap-agent`) against the LOCAL ANS registry.
 
 ## 1. Start the local registry (if not already running)
 ```
@@ -12,6 +12,8 @@ cd ../ans-upstream && docker compose up -d   # ans-ra :18080, ans-tl :18081
 ```
 node ans/register.mjs
 ```
+Pass `--reset` to revoke every registered id as SUPERSEDED and re-register
+all five with STREAMABLE_HTTP transports (one-time L5.6 migration off SSE).
 Generates keys/CSRs under `ans/keys/<name>/` (gitignored, never committed),
 drives each real agent to ACTIVE (register → verify-acme → verify-dns),
 writes `agent_id` into `ans/registry.json`, and appends each agent's DNS

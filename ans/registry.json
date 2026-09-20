@@ -2,25 +2,29 @@
   "tl_url_default": "http://localhost:18081",
   "agents": {
     "profile": {
-      "ans_name": "ans://v1.0.0.profile.prospect.courses",
-      "agent_id": "6fd1291a-6d41-4786-bd7b-ca05eb46d160"
+      "ans_name": "ans://v1.0.1.profile.prospect.courses",
+      "agent_id": "cc9d18c3-56a8-4207-a636-025f9f9f782f"
     },
     "match": {
-      "ans_name": "ans://v1.0.0.match.prospect.courses",
-      "agent_id": "9f186966-0a4a-41a3-8f42-983b1197034f"
+      "ans_name": "ans://v1.0.1.match.prospect.courses",
+      "agent_id": "dd66adc3-3043-4c7a-9290-b003f84d2104"
     },
     "roadmap": {
-      "ans_name": "ans://v1.0.0.roadmap.prospect.courses",
-      "agent_id": "bf518653-effb-4601-8204-45ea08e9fd01"
+      "ans_name": "ans://v1.0.1.roadmap.prospect.courses",
+      "agent_id": "373e41f3-4458-416f-83d4-228c16cf4468"
+    },
+    "orchestrator": {
+      "ans_name": "ans://v1.0.0.orchestrator.prospect.courses",
+      "agent_id": "ef9669ca-aeae-42e1-bd5d-e516fe0a958c"
     },
     "roadmap-agent": {
-      "ans_name": "ans://v1.0.0.roadmap-agent.prospect.courses",
-      "agent_id": "c77cb034-9b96-4590-8c4c-0159e5588881"
+      "ans_name": "ans://v1.0.1.roadmap-agent.prospect.courses",
+      "agent_id": "55514d08-8b32-40ee-979c-e8186b8b9c4b"
     }
   },
   "impostor": {
-    "ans_name": "ans://v1.0.0.roadmap-agent.prospect.courses",
-    "agent_id": "c77cb034-9b96-4590-8c4c-0159e5588881",
+    "ans_name": "ans://v1.0.1.roadmap-agent.prospect.courses",
+    "agent_id": "55514d08-8b32-40ee-979c-e8186b8b9c4b",
     "note": "look-alike; never completes verify-dns"
   }
 }

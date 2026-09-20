@@ -2,6 +2,7 @@ import { test, after } from "node:test";
 import assert from "node:assert/strict";
 import { register } from "node:module";
 import { pathToFileURL } from "node:url";
+import { readFileSync } from "node:fs";
 
 // route.ts imports its dependencies through the "@/*" tsconfig path alias,
 // which only the Next/tsc bundler resolves — plain `node --experimental-strip-types`
@@ -95,4 +96,26 @@ test("requireOwnerScope throws FORBIDDEN_SCOPE when there is no authInfo at all"
 
 test("requireOwnerScope passes for a scout authInfo", () => {
   assert.doesNotThrow(() => requireOwnerScope({ authInfo: { scopes: ["scout"] } }, "list_roles"));
+});
+
+// L5.6 FOLD #7: a static-scan gate, not a runtime one -- a tool whose
+// requireOwnerScope call is silently dropped in a future edit fails this
+// test instantly instead of surviving until a judge finds it live. Also
+// pins the TOTAL tool count at 19: a silently DROPPED tool (not just a
+// missing scope check) fails this too.
+test("every registered MCP tool not on the owner/judge allowlist calls requireOwnerScope, and there are exactly 19 tools", () => {
+  const routeSource = readFileSync(new URL("app/api/[transport]/route.ts", root), "utf8");
+  const OWNER_SCOPE_ALLOWLIST = new Set(["whoami", "plan_next_steps"]);
+
+  const toolNames = [...routeSource.matchAll(/server\.registerTool\(\s*\n\s*"([^"]+)"/g)].map((m) => m[1]);
+  assert.equal(toolNames.length, 19, `expected 19 registered tools, found ${toolNames.length}: ${toolNames.join(", ")}`);
+
+  for (const name of toolNames) {
+    if (OWNER_SCOPE_ALLOWLIST.has(name)) continue;
+    assert.match(
+      routeSource,
+      new RegExp(`requireOwnerScope\\(extra, "${name}"\\)`),
+      `${name} is missing its requireOwnerScope(extra, "${name}") call`,
+    );
+  }
 });

@@ -1,7 +1,7 @@
 [
   {
     "agent": "profile",
-    "ansName": "ans://v1.0.0.profile.prospect.courses",
+    "ansName": "ans://v1.0.1.profile.prospect.courses",
     "dnsRecords": [
       {
         "name": "profile.prospect.courses",
@@ -14,7 +14,7 @@
       {
         "name": "_ans-badge.profile.prospect.courses",
         "type": "TXT",
-        "value": "v=ans-badge1; version=v1.0.0; url=https://localhost:18081/v1/agents/6fd1291a-6d41-4786-bd7b-ca05eb46d160",
+        "value": "v=ans-badge1; version=v1.0.1; url=https://localhost:18081/v1/agents/cc9d18c3-56a8-4207-a636-025f9f9f782f",
         "purpose": "BADGE",
         "required": true,
         "ttl": 3600
@@ -22,7 +22,7 @@
       {
         "name": "_443._tcp.profile.prospect.courses",
         "type": "TLSA",
-        "value": "3 0 1 aff3feb0639b7fd1f3e30bc8502804dbfae2f0a1533201b0d3e2cff7e737b632",
+        "value": "3 0 1 57e20e3e7caaae4b832aa5d39e8f60545479568b7e38b77c2d061882736b5586",
         "purpose": "CERTIFICATE_BINDING",
         "required": false,
         "ttl": 3600
@@ -31,7 +31,7 @@
   },
   {
     "agent": "match",
-    "ansName": "ans://v1.0.0.match.prospect.courses",
+    "ansName": "ans://v1.0.1.match.prospect.courses",
     "dnsRecords": [
       {
         "name": "match.prospect.courses",
@@ -44,7 +44,7 @@
       {
         "name": "_ans-badge.match.prospect.courses",
         "type": "TXT",
-        "value": "v=ans-badge1; version=v1.0.0; url=https://localhost:18081/v1/agents/9f186966-0a4a-41a3-8f42-983b1197034f",
+        "value": "v=ans-badge1; version=v1.0.1; url=https://localhost:18081/v1/agents/dd66adc3-3043-4c7a-9290-b003f84d2104",
         "purpose": "BADGE",
         "required": true,
         "ttl": 3600
@@ -52,7 +52,7 @@
       {
         "name": "_443._tcp.match.prospect.courses",
         "type": "TLSA",
-        "value": "3 0 1 e441b09dc71e695e61513e8e24a6c81fdedd84d7afde23a4047f75e4e33cfc56",
+        "value": "3 0 1 f396d67c14a4af06ac07ffa8bf11825b718182983178bc4522e034bcd12542d8",
         "purpose": "CERTIFICATE_BINDING",
         "required": false,
         "ttl": 3600
@@ -61,7 +61,7 @@
   },
   {
     "agent": "roadmap",
-    "ansName": "ans://v1.0.0.roadmap.prospect.courses",
+    "ansName": "ans://v1.0.1.roadmap.prospect.courses",
     "dnsRecords": [
       {
         "name": "roadmap.prospect.courses",
@@ -74,7 +74,7 @@
       {
         "name": "_ans-badge.roadmap.prospect.courses",
         "type": "TXT",
-        "value": "v=ans-badge1; version=v1.0.0; url=https://localhost:18081/v1/agents/bf518653-effb-4601-8204-45ea08e9fd01",
+        "value": "v=ans-badge1; version=v1.0.1; url=https://localhost:18081/v1/agents/373e41f3-4458-416f-83d4-228c16cf4468",
         "purpose": "BADGE",
         "required": true,
         "ttl": 3600
@@ -82,7 +82,37 @@
       {
         "name": "_443._tcp.roadmap.prospect.courses",
         "type": "TLSA",
-        "value": "3 0 1 9b9bb4a286bf2d8101ed8ff6f5ce1bd7bc8263adab9b369ca8013212b82b1324",
+        "value": "3 0 1 bcf1449b3856a1d06dbcac991796b6e22497b7df9bad7265a169d38f341b7063",
+        "purpose": "CERTIFICATE_BINDING",
+        "required": false,
+        "ttl": 3600
+      }
+    ]
+  },
+  {
+    "agent": "orchestrator",
+    "ansName": "ans://v1.0.0.orchestrator.prospect.courses",
+    "dnsRecords": [
+      {
+        "name": "orchestrator.prospect.courses",
+        "type": "SVCB",
+        "value": "1 . alpn=mcp port=443 key65400=https://orchestrator.prospect.courses/.well-known/mcp/server-card.json key65402=mcp",
+        "purpose": "DISCOVERY",
+        "required": true,
+        "ttl": 3600
+      },
+      {
+        "name": "_ans-badge.orchestrator.prospect.courses",
+        "type": "TXT",
+        "value": "v=ans-badge1; version=v1.0.0; url=https://localhost:18081/v1/agents/ef9669ca-aeae-42e1-bd5d-e516fe0a958c",
+        "purpose": "BADGE",
+        "required": true,
+        "ttl": 3600
+      },
+      {
+        "name": "_443._tcp.orchestrator.prospect.courses",
+        "type": "TLSA",
+        "value": "3 0 1 73eabd52b5894f5923889e23c39992edabcbf604bed2638257b6b30ea38648bf",
         "purpose": "CERTIFICATE_BINDING",
         "required": false,
         "ttl": 3600
@@ -91,7 +121,7 @@
   },
   {
     "agent": "roadmap-agent",
-    "ansName": "ans://v1.0.0.roadmap-agent.prospect.courses",
+    "ansName": "ans://v1.0.1.roadmap-agent.prospect.courses",
     "dnsRecords": [
       {
         "name": "roadmap-agent.prospect.courses",
@@ -104,7 +134,7 @@
       {
         "name": "_ans-badge.roadmap-agent.prospect.courses",
         "type": "TXT",
-        "value": "v=ans-badge1; version=v1.0.0; url=https://localhost:18081/v1/agents/c77cb034-9b96-4590-8c4c-0159e5588881",
+        "value": "v=ans-badge1; version=v1.0.1; url=https://localhost:18081/v1/agents/55514d08-8b32-40ee-979c-e8186b8b9c4b",
         "purpose": "BADGE",
         "required": true,
         "ttl": 3600
@@ -112,7 +142,7 @@
       {
         "name": "_443._tcp.roadmap-agent.prospect.courses",
         "type": "TLSA",
-        "value": "3 0 1 45787680ffef9a211ea04497c211269c6b914bdb44295b15178ef27db3d4881c",
+        "value": "3 0 1 29e75c5e80fd4a2df43e5d1b440350f89ab660b257b64ba3b92591ce6a65baf7",
         "purpose": "CERTIFICATE_BINDING",
         "required": false,
         "ttl": 3600

@@ -27,6 +27,12 @@ import { getDashboardSummary } from "@/lib/dashboard";
 import { OUTREACH_STATUSES, type AppStatus } from "@/lib/types";
 import { nyTodayStartIso, buildRoleFlagsPatch } from "@/lib/mcp-helpers";
 import { loadCourseCandidates } from "@/lib/catalog";
+// L5.6 FOLD #6: whoami answers from the committed registry, never env vars
+// (the same `with { type: "json" }` pattern lib/brand-mark.ts uses for
+// public/brand/index.json). A relative path, not the "@/" alias: the "@/"
+// alias is remapped by tests/mcp-judge.test.ts's loader hook to "<file>.ts",
+// which does not exist for a .json target.
+import ansRegistry from "../../../ans/registry.json" with { type: "json" };
 
 // Only the 5 statuses with a PIPELINE column are settable/filterable — a value
 // with no column (e.g. the removed 'withdrawn') would render nowhere, the
@@ -554,11 +560,13 @@ const handler = createMcpHandler(
           async () =>
             json({
               server: "prospect",
-              ans_name: process.env.ANS_SERVER_NAME ?? null,
-              ans_agent_id: process.env.ANS_SERVER_AGENT_ID ?? null,
-              transparency_log: process.env.ANS_TL_URL ?? null,
-              server_card: "https://prospect.courses/.well-known/mcp/server-card.json",
               domain: "prospect.courses",
+              server_card: "https://prospect.courses/.well-known/mcp/server-card.json",
+              transparency_log:
+                process.env.ANS_TL_URL ?? "not configured (ANS_TL_URL unset; local demo uses http://localhost:18081)",
+              agents: Object.entries(ansRegistry.agents)
+                .filter(([name]) => name !== "roadmap-agent")
+                .map(([name, entry]) => ({ name, ans_name: entry.ans_name, agent_id: entry.agent_id })),
             }),
           "whoami failed",
         ),
@@ -577,11 +585,13 @@ const handler = createMcpHandler(
       },
       ({ goal, limit }) =>
         tool(async () => {
-          const words = goal
-            .trim()
-            .split(/\s+/)
-            .filter(Boolean)
-            .map((word) => word.replace(/[\\%_]/g, "\\$&"));
+          // L5.6 FOLD #8: the ILIKE-wildcard escaping below is only for the
+          // Postgres ILIKE clause -- lib/catalog.ts's likeClause calls its own
+          // sqlEscape on each keyword, so handing it a pre-escaped word would
+          // double-escape. rawWords (unescaped) goes to loadCourseCandidates;
+          // the escaped `words` stay Postgres-only.
+          const rawWords = goal.trim().split(/\s+/).filter(Boolean);
+          const words = rawWords.map((word) => word.replace(/[\\%_]/g, "\\$&"));
           const take = limit ?? 5;
           const params: unknown[] = [];
           const wordClauses = words.map((word) => {
@@ -608,7 +618,7 @@ const handler = createMcpHandler(
           );
 
           try {
-            const courses = await loadCourseCandidates({ keywords: words, limit: 5 });
+            const courses = await loadCourseCandidates({ keywords: rawWords, limit: 5 });
             return json({ postings, courses });
           } catch (err) {
             return json({
