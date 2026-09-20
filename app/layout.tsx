@@ -15,9 +15,9 @@ const satoshi = localFont({
   display: "swap",
 });
 
-// Mono: the ONE mono face. Prospect 2026-09-19 (CONTEXT 20:30) gives it TWO
-// roles, both uppercase-micro-labels (--font-label) and code-like data
-// (--font-mono), because the second mono face is retired and three is the cap.
+// Mono for all data values: counts, dates, statuses, tickers, caps labels.
+// v7 D12 asked whether Departure Mono should take this role. It does NOT —
+// see the measured verdict in app/globals.css (@theme inline). Plex stays.
 const plexMono = localFont({
   src: [
     { path: "../public/fonts/IBMPlexMono-Regular.woff2", weight: "400", style: "normal" },
@@ -27,18 +27,25 @@ const plexMono = localFont({
   display: "swap",
 });
 
-// Display role: hero, section titles, card titles, the Prospect wordmark.
-// Prospect 2026-09-19 (CONTEXT 20:30) retires the old serif display face: the
-// wishlabs reference is all-sans with heavy black headings, so DM Sans
-// variable takes --font-display at 800-900 with tight tracking. One localFont
-// call carries both the upright and the italic variable file, so this is
-// still ONE face. tests/fonts.test.ts pins the count at three.
-const dmSans = localFont({
-  src: [
-    { path: "../public/fonts/DMSans-Variable.ttf", weight: "100 1000", style: "normal" },
-    { path: "../public/fonts/DMSans-Italic-Variable.ttf", weight: "100 1000", style: "italic" },
-  ],
-  variable: "--font-dm-sans",
+// ---- v8 D1 locked display/label faces (design/FONTS.md); reverted onto
+// Prospect's VT palette by mission D-UI12 after T0's sans-weight display face
+// was rejected on sight ("use my design system") ----
+
+// Display role for the hero, section titles, and Scout wordmark.
+const instrumentSerif = localFont({
+  src: "../public/fonts/InstrumentSerif-Regular.ttf",
+  weight: "400",
+  style: "normal",
+  variable: "--font-instrument-serif",
+  display: "swap",
+});
+
+// Uppercase labels / eyebrows / nav only (NOT data values — see the verdict).
+const departure = localFont({
+  src: "../public/fonts/DepartureMono-Regular.woff2",
+  weight: "400",
+  style: "normal",
+  variable: "--font-departure",
   display: "swap",
 });
 
@@ -84,7 +91,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html
       lang="en"
-      className={`${satoshi.variable} ${plexMono.variable} ${dmSans.variable}`}
+      className={`${satoshi.variable} ${plexMono.variable} ${instrumentSerif.variable} ${departure.variable}`}
       suppressHydrationWarning
     >
       <head>
