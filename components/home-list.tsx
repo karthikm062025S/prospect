@@ -472,6 +472,16 @@ export function HomeList({
     [shownGroups, expanded],
   );
   const selectedIds = visibleIds.filter((id) => selectedForDelete.has(id));
+  // SYSTEM.md Motion grammar: feed rows Rise with a 0.04-0.06s stagger.
+  // The position is taken across the WHOLE rendered list (visibleIds is
+  // already exactly the rows in the DOM), not per company group, so the
+  // cascade reads as one list arriving; rise.tsx caps the delay so row 100
+  // is not still waiting seconds later. A row behind a collapsed "show N
+  // more" is not in this map and simply rises at index 0 when revealed.
+  const riseIndexById = useMemo(
+    () => new Map(visibleIds.map((id, index) => [id, index] as const)),
+    [visibleIds],
+  );
 
   const toggleSelect = useCallback((id: string) => {
     setSelectedForDelete((prev) => {
@@ -703,7 +713,7 @@ export function HomeList({
   );
 
   return (
-    <div className="flex flex-col gap-4 md:h-full">
+    <div className="flex flex-col gap-6 md:h-full">
       {/* D32: the row→pane morph runs on the shared name "role-card". A morph
           needs ONE name on both ends by definition, so the pane wears the row's
           name rather than a second one. Scoped here (globals.css belongs to
@@ -729,12 +739,12 @@ export function HomeList({
           Below md nothing here applies: <main> scrolls the page and the pane
           is the fixed slide-over (DX4). */}
       <div className={`grid gap-6 md:-mx-1 md:h-full md:min-h-0 md:grid-rows-[minmax(0,1fr)] md:overflow-hidden md:px-1 ${selected ? "md:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]" : "md:grid-cols-1"}`}>
-        <section aria-label="Roles" className="flex min-w-0 flex-col gap-3 pt-4 pb-6 md:-mx-1 md:min-h-0 md:overflow-y-auto md:px-1 md:pr-2">
+        <section aria-label="Roles" className="flex min-w-0 flex-col gap-6 pt-4 pb-6 md:-mx-1 md:min-h-0 md:overflow-y-auto md:px-1 md:pr-2">
           <h1 className="sr-only">Home</h1>
 
           <VelocityStrip added={added} today={pace.today} week={pace.week} month={pace.month} target={pace.target} />
 
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-3">
             <FilterChips
               items={chipItems}
               active={view}
@@ -765,7 +775,7 @@ export function HomeList({
               -mx-1/px-1 and this pt-1 are a 4px bleed so ring-2 + offset-2
               focus rings are not clipped by the column's overflow. */}
           <div className="contents md:sticky md:top-0 md:z-10 md:flex md:flex-col md:gap-3 md:border-b md:border-hairline md:bg-bg md:pb-3 md:pt-1">
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap items-center gap-3">
               <SearchInput onQuery={setQuery} />
               <SortControl value={sort} onChange={setSort} />
               <button
@@ -850,6 +860,7 @@ export function HomeList({
                   return (
                     <RoleRow
                       key={row.id}
+                      riseIndex={riseIndexById.get(row.id)}
                       row={row}
                       showCompany={showCompany}
                       nowMs={nowMs}

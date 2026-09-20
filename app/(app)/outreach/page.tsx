@@ -8,9 +8,9 @@ export const dynamic = "force-dynamic";
 
 const dimLine = "py-1.5 text-text-dim";
 const inputClass =
-  "min-h-11 border border-hairline bg-raised px-2 text-sm text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage";
+  "min-h-11 rounded-card border border-hairline bg-raised px-4 text-sm text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage";
 const addBtn =
-  "inline-flex min-h-11 items-center border border-hairline bg-raised px-3 font-sans text-sm font-medium text-text hover:bg-bg hover:text-sage focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage";
+  "inline-flex min-h-11 items-center rounded-pill border border-hairline bg-raised px-5 font-sans text-sm font-medium text-text hover:bg-bg hover:text-sage focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage";
 
 const STATUS_ORDER: Record<string, number> = { drafted: 0, replied: 1, call: 2, sent: 3, dead: 4 };
 // drafted/replied/call need the user's attention outright; a "sent" row whose
@@ -69,8 +69,8 @@ export default async function OutreachPage() {
         </p>
       </header>
 
-      <form action={addOutreachAction} className="flex flex-col gap-2 border border-hairline bg-raised p-3">
-        <div className="flex flex-wrap gap-2">
+      <form action={addOutreachAction} className="flex flex-col gap-3 rounded-card border border-hairline bg-raised p-4">
+        <div className="flex flex-wrap gap-3">
           <input name="company_name" aria-label="Company" placeholder="Company" className={inputClass} />
           <input name="role_label" aria-label="Role" placeholder="Role" className={`${inputClass} flex-1`} />
           <select name="channel" aria-label="Channel" className={inputClass} defaultValue="linkedin">
@@ -78,7 +78,7 @@ export default async function OutreachPage() {
             <option value="email">email</option>
           </select>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-3">
           <input name="contact_name" aria-label="Contact name" placeholder="Contact name" className={inputClass} />
           <input name="contact_title" aria-label="Contact title" placeholder="Title" className={`${inputClass} flex-1`} />
           <input name="contact_handle" aria-label="Profile URL or email" placeholder="Profile URL / email" className={`${inputClass} flex-1`} />

@@ -18,6 +18,7 @@ import type { CorrectionField, SharedLabels } from "@/lib/corrections";
 import { VISA_LABELS } from "@/components/correction-control";
 import { CompanyAvatar } from "@/components/company-avatar";
 import { LabelsBar, type LabelCounts } from "@/components/labels-bar";
+import { Rise } from "@/components/motion/rise";
 import {
   ArrowSquareOutIcon,
   BookmarkIcon,
@@ -142,6 +143,18 @@ function relativeDayLabel(text: string): React.ReactNode {
       {match[2]}
     </>
   );
+}
+
+// Baseline defect 1 (build/ui-baseline/home-1440-before.png): every row printed
+// "SEEN TODAY TODAY". lib/liveness.ts's label already CARRIES the day ("seen
+// today", "last seen 2 days ago"), and the "added" label beside it was
+// independently rendering the same calendar day ("Today"). D28 keeps
+// posted/added/liveness distinct signals, so nothing is dropped when they
+// genuinely differ — the added label is only suppressed when it would repeat
+// the day the liveness label just said. The absolute stamp stays on the
+// liveness label's `title` so the exact time is never lost.
+export function addedRepeatsLiveness(liveness: string, added: string): boolean {
+  return liveness.toLowerCase().endsWith(` ${added.toLowerCase()}`);
 }
 
 export function absoluteDateTime(iso: string | null): string {
@@ -275,6 +288,7 @@ function RoleRowBase({
   onHide,
   onRequestDelete,
   confirmError,
+  riseIndex,
 }: {
   row: HomeRow;
   showCompany: boolean;
@@ -294,6 +308,10 @@ function RoleRowBase({
   // Set by HomeList when confirmAppliedAction failed after the optimistic
   // exit — the row is back (RB error scenario: no phantom applied state).
   confirmError: string | null;
+  // SYSTEM.md Motion grammar: feed rows Rise in with a 0.04-0.06s stagger.
+  // Position among the rendered rows; undefined = no entrance (the row's own
+  // exit animation and the row→pane morph are unaffected either way).
+  riseIndex?: number;
 }) {
   const flow = useApplyFlow(row, onConfirmApplied);
   const [exiting, setExiting] = useState(false);
@@ -325,9 +343,12 @@ function RoleRowBase({
         transition: `grid-template-rows ${EXIT_MS}ms cubic-bezier(0.4,0,1,1), opacity ${EXIT_MS}ms cubic-bezier(0.4,0,1,1)`,
       }}
     >
-      <div className="overflow-hidden">
+      {/* Rise sits on the row BODY, not the <li>: the li owns the exit
+          animation (grid-template-rows 0fr) and the row→pane morph, and
+          stacking an entrance transform on the same element fought both. */}
+      <Rise as="div" index={riseIndex ?? 0} className="overflow-hidden">
         <div
-          className={`flex flex-wrap items-center gap-x-2 border-l-2 pr-1 ${
+          className={`flex flex-wrap items-center gap-x-2 border-l-2 pr-2 ${
             active ? "border-sage bg-raised" : "border-transparent hover:bg-raised"
           }`}
           style={morphing ? { viewTransitionName: "role-card" } : undefined}
@@ -350,7 +371,7 @@ function RoleRowBase({
             type="button"
             onClick={() => onSelect(row.id)}
             aria-current={active ? "true" : undefined}
-            className="flex min-h-12 min-w-0 flex-1 items-center gap-2 py-2 pl-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage md:min-w-[16rem]"
+            className="flex min-h-12 min-w-0 flex-1 items-center gap-2 py-3 pl-4 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage md:min-w-[16rem]"
           >
             {showCompany ? <CompanyAvatar name={row.company_name} url={row.company_url} size={28} /> : null}
             {showCompany ? <span className="max-w-[40%] shrink-0 truncate text-[13px] text-text-dim">{row.company_name}</span> : null}
@@ -371,7 +392,10 @@ function RoleRowBase({
                 {/* Task 3 T2/FR-003 (lane L5): liveness, information not alarm
                     (text-dim, never red). Sits beside "Added" — a distinct
                     signal (D28: posted/added/liveness are never conflated). */}
-                <span className="font-label text-[11px] tracking-label uppercase text-text-dim">
+                <span
+                  title={`Added ${absoluteDateTime(row.created_at)}`}
+                  className="font-label text-[11px] tracking-label uppercase text-text-dim"
+                >
                   {row.liveness}
                 </span>
                 {row.repost_count > 0 ? (
@@ -382,12 +406,14 @@ function RoleRowBase({
                     reposted <span className="font-sans tabular-nums">{row.repost_count}</span>x
                   </span>
                 ) : null}
-                <span
-                  title={`Added ${absoluteDateTime(row.created_at)}`}
-                  className="font-label text-[11px] tracking-label uppercase text-text-dim"
-                >
-                  {relativeDayLabel(relativeDay(row.created_at, nowMs))}
-                </span>
+                {addedRepeatsLiveness(row.liveness, relativeDay(row.created_at, nowMs)) ? null : (
+                  <span
+                    title={`Added ${absoluteDateTime(row.created_at)}`}
+                    className="font-label text-[11px] tracking-label uppercase text-text-dim"
+                  >
+                    {relativeDayLabel(relativeDay(row.created_at, nowMs))}
+                  </span>
+                )}
                 {row.href ? (
                   <a href={row.href} target="_blank" rel="noreferrer" onClick={flow.arm} className={actionButton}>
                     Apply <ArrowSquareOutIcon />
@@ -452,7 +478,7 @@ function RoleRowBase({
           // FR-007 (lane L5): the plain-words flag, never hiding the row or
           // disabling Apply (K2) — this paragraph is purely informational,
           // text-dim, and sits below the row's main line.
-          <p className="pb-1.5 pl-2 text-[13px] text-text-dim">
+          <p className="pb-3 pl-4 text-[13px] text-text-dim">
             {row.eligibility_note ??
               `${VISA_LABELS[row.visa_class] ?? row.visa_class}${row.corrected.includes("visa_class") ? " (your correction)" : ""}`}
           </p>
@@ -461,7 +487,7 @@ function RoleRowBase({
         {/* L2c: only a scored row gets a match line -- an unscored row (no
             profile yet, or ranked before the agent ran) shows nothing here. */}
         {row.matchScore != null ? (
-          <div className="flex flex-wrap items-center gap-2 pb-1.5 pl-2">
+          <div className="flex flex-wrap items-center gap-2 pb-3 pl-4">
             {row.archetypeName ? (
               <span className="border border-hairline px-1.5 py-0.5 font-label text-[10px] uppercase tracking-label text-text-dim">
                 {row.archetypeName}
@@ -472,7 +498,7 @@ function RoleRowBase({
         ) : null}
 
         {flow.localError ? (
-          <p role="alert" className="pb-1.5 pl-2 text-[13px] text-danger">
+          <p role="alert" className="pb-3 pl-4 text-[13px] text-danger">
             {flow.localError.message}{" "}
             <button
               type="button"
@@ -484,7 +510,7 @@ function RoleRowBase({
           </p>
         ) : null}
         {confirmError && !leaving ? (
-          <p role="alert" className="pb-1.5 pl-2 text-[13px] text-danger">
+          <p role="alert" className="pb-3 pl-4 text-[13px] text-danger">
             {confirmError}{" "}
             <button
               type="button"
@@ -495,7 +521,7 @@ function RoleRowBase({
             </button>
           </p>
         ) : null}
-      </div>
+      </Rise>
     </li>
   );
 }
