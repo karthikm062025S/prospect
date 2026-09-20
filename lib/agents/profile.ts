@@ -135,10 +135,15 @@ export async function runProfileAgent(
   const runId = await startAgentRun("profile", input.userId);
 
   try {
-    const courses = await extractCourses(gemini, MODEL_PARSE, input.transcriptPdf, input.typedCourses);
-    onStep({ step: "transcript", label: courseCountLabel(courses.length), count: courses.length });
-
-    const { skills: parsedSkills, experiences } = await extractResume(gemini, MODEL_PARSE, input.resumePdf);
+    // The two PDF parses are independent: run them at once (measured 2026-09-20:
+    // sequential = 47-70 s per profile, both on the Pro parse model).
+    const [courses, { skills: parsedSkills, experiences }] = await Promise.all([
+      extractCourses(gemini, MODEL_PARSE, input.transcriptPdf, input.typedCourses).then((result) => {
+        onStep({ step: "transcript", label: courseCountLabel(result.length), count: result.length });
+        return result;
+      }),
+      extractResume(gemini, MODEL_PARSE, input.resumePdf),
+    ]);
     // Onboarding's skills typeahead lets a student add skills the resume parse
     // missed; merged and deduped here rather than dropped on the floor.
     const skills = Array.from(new Set([...parsedSkills, ...(input.form.skills ?? [])]));
