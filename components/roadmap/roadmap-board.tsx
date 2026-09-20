@@ -136,6 +136,19 @@ export function RoadmapBoard({
       .finally(() => setNodePending(false));
   }
 
+  // VTHacks speed pass: the × on a roadmap pill (timeline.tsx NodeCard) —
+  // same deleteNodeAction the detail pane's "Delete node" already uses, no
+  // local node list to optimistically drop from (the board renders server
+  // props), so a refresh is enough.
+  function removeNode(id: string) {
+    deleteNodeAction(id).then((res) => {
+      if (res.ok) {
+        if (selectedNodeId === id) setSelectedNodeId(null);
+        router.refresh();
+      }
+    });
+  }
+
   async function search(kind: "course" | "club", keyword: string) {
     const res = kind === "course" ? await searchCoursesAction(keyword) : await searchClubsAction(keyword);
     if (!res.ok) return { ok: false as const, error: res.error };
@@ -216,6 +229,7 @@ export function RoadmapBoard({
         onReplanFrom={runAgent}
         replanPending={isAgentPending ? replanPending : null}
         onAddNode={(semester) => setAddingSemester(semester)}
+        onRemoveNode={removeNode}
       />
 
       {addingSemester ? (
