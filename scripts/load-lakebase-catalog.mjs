@@ -93,7 +93,7 @@ export function upsertSql(name, table, count) {
 }
 
 function parseArgs(argv) {
-  const args = { dir: path.resolve(import.meta.dirname, "..", "..", "datasets"), only: null };
+  const args = { dir: path.resolve(import.meta.dirname, "..", "datasets"), only: null };
   for (let i = 0; i < argv.length; i++) {
     if (argv[i] === "--dir") args.dir = argv[++i];
     else if (argv[i] === "--only") args.only = argv[++i].split(",").map((s) => s.trim());

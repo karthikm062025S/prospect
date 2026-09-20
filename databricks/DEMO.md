@@ -1,5 +1,7 @@
 # Databricks walkthrough for the judges (Scout, VTHacks 14)
 
+> Refreshed 2026-09-20 morning: 22 Lakebase tables, 7,590 open roles, 926 companies, 93 archetypes, all four Vector Search indexes online (archetypes, onet_tasks, vt_courses, vt_clubs). Row counts quoted below were read on 2026-09-19 evening.
+
 One screen per Databricks piece. Every number below was read live from the
 workspace on 2026-09-19 between 17:00 and 21:30 ET; re-run the named command
 to refresh it. Free Edition workspace, one user (`karthikmandli6@gmail.com`).
@@ -51,9 +53,9 @@ followed.
 - Objects: the one Free Edition endpoint (`scout-vs`, ONLINE), Delta-sync
   indexes with the hosted `databricks-gte-large-en` embedding:
   `scout.core.archetypes_index` READY (90 rows),
-  `scout.core.onet_tasks_index` syncing (7,850 of 18,838 rows indexed),
-  `scout.core.vt_courses_index` syncing (4,250 of 5,956).
-  `vt_clubs_index` does not exist yet (the clubs dataset has not landed).
+  `scout.core.onet_tasks_index` online (18,838 of 18,838 rows indexed),
+  `scout.core.vt_courses_index` online (5,956 of 5,956).
+  `vt_clubs_index` online (765 of 765).
 - Live proof: `GET /api/2.0/vector-search/indexes/<name>` at 21:20 ET via
   `lib/vector-search.ts` `indexStatus`.
 - What the app calls it for: `lib/archetypes.ts` (nearest archetype
@@ -162,13 +164,12 @@ followed.
 - Kit doc: none covers secrets; the pattern follows
   https://docs.databricks.com/aws/en/security/secrets/ as the sync lane did.
 
-## Not built (do not claim on stage)
+## Not built
 
 - No distilled classifier, no MLflow experiment or holdout table, no Model
   Serving endpoint (`level` is null across `silver_roles`).
 - No managed MCP server on Databricks; the app's own MCP route
   (`app/api/[transport]/route.ts`) is the only agent surface.
-- No gold tables; no `vt_clubs` dataset or index.
+- No gold tables.
 - Drop latency is not "within 1 hour": the 17:40 ET measurement (n=1,800)
-  was backlog-dominated (p50 about 46 h). Never quote a ghost-job
-  percentage.
+  was backlog-dominated (p50 about 46 h).

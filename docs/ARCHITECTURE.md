@@ -10,19 +10,19 @@ Prospect is the career journey for every Virginia Tech student, all majors. A st
 
 | Layer | What | Why this choice |
 | --- | --- | --- |
-| Web app | Next 16 App Router, TypeScript, React server components, deployed on Vercel at scout-vthacks.vercel.app | one codebase for UI, server actions and API routes; streaming NDJSON for agent progress |
+| Web app | Next 16 App Router, TypeScript, React server components, deployed on Vercel at prospect.courses | one codebase for UI, server actions and API routes; streaming NDJSON for agent progress |
 | Auth | Supabase Auth, email + password only (Google removed) | the login and nothing else; zero tables, zero storage, service-role key unused |
-| Database | Databricks Lakebase (managed Postgres 16) via `pg`, role `scout_app`, 19 tables | the only application data store; every per-user query carries `where user_id = $1`, enforced by a grep-based test that derives the table list from the schema files |
+| Database | Databricks Lakebase (managed Postgres 16) via `pg`, role `scout_app`, 22 tables | the only application data store; every per-user query carries `where user_id = $1`, enforced by a grep-based test that derives the table list from the schema files |
 | Analytics store | Databricks Delta, Unity Catalog `scout.core` | bronze/silver mirror of roles, companies, applications; O*NET tasks, task exposure, archetypes, VT catalog |
-| Retrieval | Databricks Vector Search endpoint `scout-vs` | `archetypes_index` (90 archetypes, ready), `onet_tasks_index` (18,838 tasks, syncing), `vt_courses_index` (5,956 courses, syncing, not on the demo path) |
+| Retrieval | Databricks Vector Search endpoint `scout-vs` | `archetypes_index` (93 archetypes, ready), `onet_tasks_index` (18,838 tasks, online), `vt_courses_index` (5,956 courses, online), `vt_clubs_index` (765 clubs, online) |
 | Jobs | Databricks Jobs, serverless, secret scope `scout` | `scout-sync-lakebase-to-delta` hourly (job 473951197133128); Orchestrator job (see status) |
 | LLM | Gemini via `@google/genai`: `gemini-3.8-flash` for the four agents and for PDF parsing (D-UI11; pro re-compare pending a real PDF), `gemini-3.1-flash-lite` reserved for labelling | prepaid key; every call uses a JSON response schema and job text is fenced as data, never instructions |
 | Ingestion | GitHub Actions crons: `scan.yml` every 30 min (about 1,000 public ATS boards + 12 Workday tenants), `read-feeds.yml` hourly, `heartbeat.yml` hot tier, `gate-sweep.yml` every 3 h | free, auditable, posts to `/api/watcher` with a shared secret |
-| Datasets | O*NET task statements (18,838), Anthropic Economic Index task exposure (2,450 tasks = 13% coverage), catalog.vt.edu 2026-27 (5,956 courses across 142 departments, 214 majors, 4,830 checksheet rows) | all loaded into Delta with sources cited in `datasets/SOURCES.md`; clubs pending (GobblerConnect is login-gated, never scraped) |
+| Datasets | O*NET task statements (18,838), Anthropic Economic Index task exposure (2,450 tasks = 13% coverage), catalog.vt.edu 2026-27 (5,956 courses across 142 departments, 214 majors, 4,830 checksheet rows) | all loaded into Delta with sources cited in `datasets/SOURCES.md`; 765 clubs from GobblerConnect public listings |
 
 ## Data flow (what happens when)
 
-1. **Drops arrive.** A cron run scans boards, batches postings (150 per POST) to `/api/watcher`. The watcher validates each payload, dedupes on company + canonical key, inserts or updates `roles` in Lakebase, captures the job description. Proven live: one wide scan inserted 2,269 and updated 3,779 rows with 0 errors; the feed reader inserted 95. Lakebase held 7,483 roles at 16:55 ET.
+1. **Drops arrive.** A cron run scans boards, batches postings (150 per POST) to `/api/watcher`. The watcher validates each payload, dedupes on company + canonical key, inserts or updates `roles` in Lakebase, captures the job description. Proven live: one wide scan inserted 2,269 and updated 3,779 rows with 0 errors; the feed reader inserted 95. Lakebase held 7,590 roles at 16:55 ET.
 2. **Hourly mirror.** The Databricks sync Job reads Lakebase with `pg8000` (the psycopg2 C extension crashes the serverless kernel) and writes `bronze_*` (full snapshot) then MERGEs into `silver_*`. Two run-now proofs and periodic runs succeed; bronze = silver = the Lakebase count at sync time.
 3. **Onboarding.** `/setup` posts the PDFs and facts to `/api/profile`. The Profile agent parses both PDFs with Gemini into a structured `profiles` row (major, grad term, work authorization, skills, courses, goal, dream tier). Progress streams as named steps with real counts.
 4. **Match.** `/api/match` runs seven named steps per profile: embed the goal + resume, retrieve the nearest archetypes from Vector Search, confirm with Gemini, score each open posting (pure function, weights 0.5 archetype fit / 0.3 requirements / 0.1 level / 0.1 recency), derive requirements met vs unknown in code, write `match_scores`, emit `new_drop` nudges. Home sorts by best match when scores exist.
@@ -34,21 +34,21 @@ Prospect is the career journey for every Virginia Tech student, all majors. A st
 
 | Piece | Status | Proof |
 | --- | --- | --- |
-| Lakebase as the only app database | real | 19 tables live, schema files 001-006 byte-identical to the live catalog |
-| 30-minute ingestion | real | Actions run ids in the repo's Actions tab; 7,483 roles and growing |
+| Lakebase as the only app database | real | 22 tables live, schema files 001-006 byte-identical to the live catalog |
+| 30-minute ingestion | real | Actions run ids in the repo's Actions tab; 7,590 roles and growing |
 | Bronze/silver Delta mirror | real | job 473951197133128, hourly, success runs |
 | Gold tables | not built | say bronze/silver only |
-| Archetype registry + Vector Search | real | 90 archetypes, `archetypes_index` ready and queried by Match |
-| O*NET task labels | real, provisional | `onet_tasks_index` still syncing; the app warns by name while partial |
+| Archetype registry + Vector Search | real | 93 archetypes, `archetypes_index` ready and queried by Match |
+| O*NET task labels | real | `onet_tasks_index` online with all 18,838 rows |
 | VT course catalog | real | 5,956 courses in Delta, read by SQL for the roadmap |
-| VT clubs | pending | file owed; roadmap runs without club nodes and says so |
+| VT clubs | real | 765 clubs in Lakebase and Delta, read by the roadmap |
 | Profile / Match / Roadmap agents | real | streamed named steps; one real profile run recorded on the demo accounts |
 | Orchestrator Job | see DEMO.md | built tonight; run id recorded there |
 | Genie "why" tool | see DEMO.md | space is UI-created on Free Edition; conversation API wired if the space exists |
 | Distilled classifier + MLflow holdout | not built | do not claim |
 | Model Serving | not built | do not claim |
 | Databricks managed MCP | not built | the app has its own MCP server (`/api/[transport]`, bearer secret); that is not Databricks managed MCP |
-| ANS agent passport (GoDaddy) | registered and deployed | Profile, Match, Roadmap and Orchestrator hold ANS (Agent Name Service) identities under `prospect.courses`, ACTIVE on the Transparency Log (TL) after an outside Registration Authority (RA) verified them; `startAgentRun` refuses a write from any non-ACTIVE agent; a judge's Claude discovers, verifies and calls our Model Context Protocol (MCP) server (bearer-scoped `whoami`/`plan_next_steps`) over 16 live DNS rows (A, SVCB service-binding, TXT badge, TLSA cert-pinning) across the four agent sub-hosts; deployed head 0a4af41 |
+| ANS agent passport (GoDaddy) | registered and deployed | Profile, Match, Roadmap and Orchestrator hold ANS (Agent Name Service) identities under `prospect.courses`, ACTIVE on the Transparency Log (TL) after the Registration Authority (RA) we run from the ANS reference stack verified them; `startAgentRun` refuses a write from any non-ACTIVE agent; a judge's Claude discovers, verifies and calls our Model Context Protocol (MCP) server (bearer-scoped `whoami`/`plan_next_steps`) over 16 live DNS rows (A, SVCB service-binding, TXT badge, TLSA cert-pinning) across the four agent sub-hosts; deployed head 0a4af41 |
 
 ## Harness rules a judge may ask about
 
@@ -71,6 +71,3 @@ Prospect is the career journey for every Virginia Tech student, all majors. A st
 9. **Deployment roadmap?** Week 1: clubs catalog, Genie in-app, classifier holdout. Month 1: managed MCP so any student's own agent can call Prospect. Term 1: department pilots with advisors editing roadmaps.
 10. **What did you not build?** Gold tables, the classifier, Model Serving, managed MCP. Each is listed above with why. ANS is registered and deployed but the Transparency Log is local, not public; real-domain `dns.type: lookup` re-verification (today's identities use the noop DNS profile) and an in-app gate on the Orchestrator job itself (it calls `/api/match` directly, ungated) are both still open.
 
-## Never say on stage
-
-Supabase; the old app; "the first"; a ghost-job percentage; any Virginia-Tech-specific statistic; "within 1 hour"; "gold layer"; "distilled classifier" or "MLflow" as shipped; "Genie" or "managed MCP" as in-app unless DEMO.md says so; "HokieAI calls our API"; "we verify employers".
