@@ -26,14 +26,17 @@ const SEASON_VALUES = [
 ] as const satisfies readonly Season[];
 
 const FAMILY_VALUES = [
-  "swe",
-  "ai_ml",
-  "data",
-  "quant",
-  "product",
-  "security",
-  "hardware",
-  "design",
+  "engineering",
+  "software",
+  "data_ai",
+  "business_finance",
+  "consulting",
+  "sales_marketing",
+  "product_design",
+  "health_science",
+  "operations_supply",
+  "people_legal",
+  "education_research",
   "other",
 ] as const satisfies readonly Family[];
 

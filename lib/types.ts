@@ -153,31 +153,6 @@ export type ApplicationDetailRow = Omit<Application, "jd_snapshot" | "user_id"> 
 };
 export type EventRow = Omit<ApplicationEvent, "user_id"> & { company_name: string | null };
 
-export const OUTREACH_STATUSES = ["drafted", "sent", "replied", "call", "dead"] as const;
-export type OutreachStatus = (typeof OUTREACH_STATUSES)[number];
-export const OUTREACH_CHANNELS = ["linkedin", "email"] as const;
-export type OutreachChannel = (typeof OUTREACH_CHANNELS)[number];
-
-export type Outreach = {
-  id: string;
-  user_id: string;
-  company_id: string | null;
-  role_id: string | null;
-  company_name: string;
-  role_label: string | null;
-  contact_name: string;
-  contact_title: string | null;
-  channel: string;
-  contact_handle: string | null;
-  message: string | null;
-  status: string;
-  sent_at: string | null;
-  follow_up_at: string | null;
-  notes: string | null;
-  created_at: string;
-  updated_at: string;
-};
-
 export function isNoSponsorship(visaFlag: string | null): boolean {
   return !!visaFlag && /no\s*spons/i.test(visaFlag);
 }

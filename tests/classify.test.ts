@@ -36,32 +36,32 @@ test("postingText caps the text at 6,000 characters", () => {
 // ---- needsModel: tier 2 fires only where the rules could not decide ----
 
 test("needsModel is true when the season is unspecified or the families are only other", () => {
-  assert.equal(needsModel({ season: "unspecified", families: ["swe"] }), true);
+  assert.equal(needsModel({ season: "unspecified", families: ["software"] }), true);
   assert.equal(needsModel({ season: "summer_2027", families: ["other"] }), true);
-  assert.equal(needsModel({ season: "summer_2027", families: ["swe"] }), false);
+  assert.equal(needsModel({ season: "summer_2027", families: ["software"] }), false);
 });
 
 // ---- mergeModel: rules win, the model only fills gaps or adds ----
 
-const accepted: ModelResult = { season: "fall_2027", families: ["ai_ml"], confidence: 0.95, is_internship: true };
+const accepted: ModelResult = { season: "fall_2027", families: ["data_ai"], confidence: 0.95, is_internship: true };
 
 test("mergeModel keeps the rules season and adds the model family", () => {
-  const out = mergeModel({ season: "summer_2027", families: ["swe"] }, accepted);
+  const out = mergeModel({ season: "summer_2027", families: ["software"] }, accepted);
   assert.equal(out.season, "summer_2027");
-  assert.deepEqual(out.families, ["swe", "ai_ml"]);
+  assert.deepEqual(out.families, ["software", "data_ai"]);
   assert.equal(out.by, "llm");
 });
 
 test("mergeModel fills an unspecified season and replaces an other-only family list", () => {
   const out = mergeModel({ season: "unspecified", families: ["other"] }, accepted);
   assert.equal(out.season, "fall_2027");
-  assert.deepEqual(out.families, ["ai_ml"]);
+  assert.deepEqual(out.families, ["data_ai"]);
   assert.equal(out.by, "llm");
 });
 
 test("mergeModel never removes a rules family and never adds other", () => {
-  const out = mergeModel({ season: "unspecified", families: ["swe", "data"] }, { ...accepted, families: ["swe", "other"] });
-  assert.deepEqual(out.families, ["swe", "data"]);
+  const out = mergeModel({ season: "unspecified", families: ["software", "data_ai"] }, { ...accepted, families: ["software", "other"] });
+  assert.deepEqual(out.families, ["software", "data_ai"]);
 });
 
 test("mergeModel below the confidence bar returns the rules values stamped rules", () => {
@@ -76,14 +76,14 @@ test("mergeModel with is_internship false returns the rules values stamped rules
 
 // Fold 2 MINOR 3: the audit column claims the model only when it changed something.
 test("mergeModel stamps rules when an accepted model answer changes nothing", () => {
-  const out = mergeModel({ season: "summer_2027", families: ["swe"] }, { ...accepted, season: "summer_2027", families: ["swe"] });
-  assert.deepEqual(out, { season: "summer_2027", families: ["swe"], by: "rules" });
+  const out = mergeModel({ season: "summer_2027", families: ["software"] }, { ...accepted, season: "summer_2027", families: ["software"] });
+  assert.deepEqual(out, { season: "summer_2027", families: ["software"], by: "rules" });
 });
 
 // Fold 2 NIT 9: the bar is >= 0.8, exactly 0.8 passes.
 test("mergeModel accepts confidence exactly 0.8", () => {
   const out = mergeModel({ season: "unspecified", families: ["other"] }, { ...accepted, confidence: 0.8 });
-  assert.deepEqual(out, { season: "fall_2027", families: ["ai_ml"], by: "llm" });
+  assert.deepEqual(out, { season: "fall_2027", families: ["data_ai"], by: "llm" });
 });
 
 // ---- classifyWithModel: the DeepSeek call, one retry, never throws ----
@@ -99,13 +99,13 @@ function llmFake(contents: (string | null)[]) {
   return { fetch, calls };
 }
 const llmDeps = { apiKey: "k", baseUrl: "https://llm.example", model: "m" };
-const good = JSON.stringify({ is_internship: true, families: ["swe"], season: "summer_2027", confidence: 0.9 });
+const good = JSON.stringify({ is_internship: true, families: ["software"], season: "summer_2027", confidence: 0.9 });
 
 test("classifyWithModel retries once on empty content and returns the parsed result", async () => {
   const llm = llmFake(["", good]);
   const out = await classifyWithModel({ title: "SDE Intern", text: "Summer 2027" }, { ...llmDeps, fetch: llm.fetch });
   assert.equal(llm.calls.length, 2);
-  assert.deepEqual(out, { is_internship: true, families: ["swe"], season: "summer_2027", confidence: 0.9 });
+  assert.deepEqual(out, { is_internship: true, families: ["software"], season: "summer_2027", confidence: 0.9 });
 });
 
 test("classifyWithModel returns confidence 0 after two invalid answers and never throws", async () => {
@@ -184,7 +184,7 @@ test("runSweep dry run writes nothing and returns one proposal per row", async (
   assert.equal(out.dry_run, true);
   assert.equal(out.processed, 3);
   assert.equal(out.rows.length, 3);
-  assert.deepEqual(out.rows[0].after, { season: "summer_2027", family: "swe", families: ["swe"] });
+  assert.deepEqual(out.rows[0].after, { season: "summer_2027", family: "software", families: ["software"] });
   assert.equal(out.rows[0].by, "rules");
   assert.equal(out.rows[1].by, "llm");
   assert.equal(out.rows[1].after.season, "summer_2027");
@@ -234,7 +234,7 @@ test("runSweep with no API key never calls fetch and stamps every row rules", as
 
 test("runSweep low confidence stamps rules, keeps the rules values and logs the model result", async () => {
   const { db, updates } = fakeDb([noTerm]);
-  const low = JSON.stringify({ is_internship: true, families: ["swe"], season: "fall_2027", confidence: 0.4 });
+  const low = JSON.stringify({ is_internship: true, families: ["software"], season: "fall_2027", confidence: 0.4 });
   const llm = llmFake([low]);
   const out = await runSweep({ limit: 20, dryRun: false }, db, deps(llm.fetch));
   assert.equal(out.llm_called, 1);
@@ -246,7 +246,11 @@ test("runSweep low confidence stamps rules, keeps the rules values and logs the 
 });
 
 test("runSweep never overwrites a stored non-unspecified season with unspecified", async () => {
-  const stored = row("r-9", "Engineering Intern", "<p>No term here.</p>", { season: "fall_2027" });
+  // VTHacks taxonomy swap: "Mechanical" (not bare "Engineering") so the
+  // title-derived family is decided too (no generic engineer/engineering
+  // catch-all any more, see lib/family.ts) — this test is about the season
+  // overwrite rule, so the family axis must not force an unwanted LLM call.
+  const stored = row("r-9", "Mechanical Engineering Intern", "<p>No term here.</p>", { season: "fall_2027" });
   const { db, updates } = fakeDb([stored]);
   const llm = llmFake([good]);
   const out = await runSweep({ limit: 20, dryRun: false }, db, deps(llm.fetch));

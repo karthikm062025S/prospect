@@ -11,6 +11,8 @@ import { mergeUserRoles, type UserRoleState } from "@/lib/user-roles";
 import { velocity } from "@/lib/velocity";
 import { safeHttpUrl, type Company, type Role } from "@/lib/types";
 import { deriveFamily, familySignals } from "@/lib/family";
+import { deriveTierTags } from "@/lib/company-tier";
+import { isUsLocation } from "@/lib/us-location";
 import { deriveSeason } from "@/lib/season";
 import { overlayCorrections, parseCorrection, type Correction } from "@/lib/corrections";
 import { HomeList } from "@/components/home-list";
@@ -81,7 +83,9 @@ export default async function HomePage() {
 
   const pace = velocity(appRows, now, profile?.monthlyTarget ?? null);
   const merged = mergeUserRoles(roleRows, userRows);
-  const inPlay = merged.rows.filter((role) => isInPlay(role, now));
+  // VTHacks speed pass: "change the location to only united states"
+  // (Karthik) — a read-time filter (lib/us-location.ts), ambiguous/blank kept.
+  const inPlay = merged.rows.filter((role) => isInPlay(role, now) && isUsLocation(role.location));
 
   // L2c: archetype + role_tasks label data, scoped to the roles actually on
   // this page (never a full-table scan) and skipped entirely when nothing
@@ -150,10 +154,13 @@ export default async function HomePage() {
     // when it is MORE specific than the title (it can come from posting text,
     // which the title-only call cannot see).
     season: role.season && role.season !== "unspecified" ? role.season : deriveSeason(role.title),
-    // Task 2 / D4: trust a stored multi-family classification when the
-    // scanner wrote one, else derive from the title exactly like season does.
-    families: role.families ?? familySignals(role.title),
-    family: role.families?.[0] ?? deriveFamily(role.title),
+    // VTHacks speed pass D7: ALWAYS derive from the title — roles.families/
+    // roles.family were written by the OLD tech-only taxonomy scanner and are
+    // never trusted here any more.
+    families: familySignals(role.title),
+    family: deriveFamily(role.title),
+    // VTHacks speed pass: dream-tier tags for the TIER pill ("big 4" etc.).
+    tierTags: deriveTierTags(companyById.get(role.company_id)?.name ?? "", companyById.get(role.company_id)?.tier ?? null),
     apply_clicked_at: role.apply_clicked_at,
     // Task 3 T2/T3 (lane L2): derived at read time, never stored.
     liveness: liveness(role, now).label,

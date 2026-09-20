@@ -6,6 +6,8 @@ import { query } from "@/lib/db";
 import { safeHttpUrl } from "@/lib/types";
 import { deriveSeason } from "@/lib/season";
 import { deriveFamily, familySignals, type Family } from "@/lib/family";
+import { deriveTierTags } from "@/lib/company-tier";
+import { isUsLocation } from "@/lib/us-location";
 import type { Season } from "@/lib/season";
 import { liveness } from "@/lib/liveness";
 import { nowMs as getNowMs } from "@/lib/dashboard";
@@ -80,6 +82,7 @@ async function loadCompactFeed(nowMs: number, userId: string): Promise<HomeRow[]
        join roles_public r on r.id = m.role_id
        left join companies_public c on c.id = r.company_id
        where m.user_id = $1 and r.lifecycle = 'open'
+         and coalesce(r.source_posted_at, r.created_at) > now() - interval '30 days'
        order by m.score desc
        limit 150`,
       [userId],
@@ -91,6 +94,7 @@ async function loadCompactFeed(nowMs: number, userId: string): Promise<HomeRow[]
          from roles_public r
          left join companies_public c on c.id = r.company_id
          where r.lifecycle = 'open'
+           and coalesce(r.source_posted_at, r.created_at) > now() - interval '30 days'
          order by r.created_at desc
          limit 150`,
         [],
@@ -101,6 +105,9 @@ async function loadCompactFeed(nowMs: number, userId: string): Promise<HomeRow[]
     if (/relation "(roles_public|match_scores)" does not exist/.test((error as Error).message)) return null;
     throw error;
   }
+  // VTHacks speed pass: "change the location to only united states"
+  // (Karthik) — a read-time filter (lib/us-location.ts), ambiguous/blank kept.
+  rows = rows.filter((role) => isUsLocation(role.location));
   return rows.map((role) => ({
     matchScore: role.match_score ?? null,
     id: role.id,
@@ -119,8 +126,12 @@ async function loadCompactFeed(nowMs: number, userId: string): Promise<HomeRow[]
     href: safeHttpUrl(role.link) ?? null,
     source: role.source,
     season: role.season && role.season !== "unspecified" ? role.season : deriveSeason(role.title),
-    families: role.families ?? familySignals(role.title),
-    family: role.families?.[0] ?? deriveFamily(role.title),
+    // VTHacks speed pass D7: ALWAYS derive from the title (never trust the
+    // old tech-only taxonomy's stored family/families columns).
+    families: familySignals(role.title),
+    family: deriveFamily(role.title),
+    // VTHacks speed pass: same dream-tier tags Home computes.
+    tierTags: deriveTierTags(role.company_name ?? "", role.company_tier),
     apply_clicked_at: null,
     company_tier: role.company_tier,
     company_url: role.company_url,

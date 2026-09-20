@@ -2,10 +2,10 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { NAV, isActive } from "../lib/nav.ts";
 
-test("NAV lists the four shell tabs in order, Journey right after Home", () => {
+test("NAV lists the three shell tabs in order, Journey right after Home", () => {
   assert.deepEqual(
     NAV.map((item) => item.href),
-    ["/", "/journey", "/applications", "/outreach"],
+    ["/", "/journey", "/applications"],
   );
 });
 

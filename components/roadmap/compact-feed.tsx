@@ -6,11 +6,13 @@
 // handler is a local no-op, since this is a passive display, not the
 // interactive Home list (save/hide/apply live only there).
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { RoleRow, type HomeRow } from "@/components/role-row";
 
 const noop = () => {};
 
 export function CompactFeed({ rows, nowMs }: { rows: HomeRow[] | null; nowMs: number }) {
+  const router = useRouter();
   // ponytail: one text filter over title/company/family; Home's full filter
   // bar is the upgrade path if the compact column ever needs facets.
   const [filter, setFilter] = useState("");
@@ -59,7 +61,7 @@ export function CompactFeed({ rows, nowMs }: { rows: HomeRow[] | null; nowMs: nu
           active={false}
           morphing={false}
           saveExits={false}
-          onSelect={noop}
+          onSelect={(id) => router.push(`/?r=${id}`)}
           onToggleSelect={noop}
           onConfirmApplied={noop}
           onSave={noop}

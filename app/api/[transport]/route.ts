@@ -21,10 +21,9 @@ import { logApplication } from "@/lib/log-application";
 import { setApplicationStatus } from "@/lib/application-details";
 import { applyToRole } from "@/lib/apply-role";
 import { tombstoneAndDeleteRoles } from "@/lib/delete-role";
-import { insertOutreach, setOutreachStatus } from "@/lib/outreach";
 import { upsertRole, ROLE_LIFECYCLES, ROLE_LEVELS } from "@/lib/upsert-role";
 import { getDashboardSummary } from "@/lib/dashboard";
-import { OUTREACH_STATUSES, type AppStatus } from "@/lib/types";
+import type { AppStatus } from "@/lib/types";
 import { nyTodayStartIso, buildRoleFlagsPatch } from "@/lib/mcp-helpers";
 import { loadCourseCandidates } from "@/lib/catalog";
 // L5.6 FOLD #6: whoami answers from the committed registry, never env vars
@@ -469,80 +468,6 @@ const handler = createMcpHandler(
           if (!row) return json({ error: "not found" });
           return json(row);
         }, "update_company_notes failed"),
-    );
-
-    server.registerTool(
-      "log_outreach",
-      {
-        title: "Log outreach",
-        description:
-          "Record an outreach contact into the OUTREACH tab. Minimum is company_name + contact_name; channel defaults to 'linkedin'. Pass status 'drafted' for a message not yet sent. Returns the created row.",
-        inputSchema: {
-          company_name: z.string().min(1),
-          contact_name: z.string().min(1),
-          channel: z.enum(["linkedin", "email"]).optional(),
-          role_label: z.string().optional(),
-          contact_title: z.string().optional(),
-          contact_handle: z.string().optional(),
-          message: z.string().optional(),
-          status: z.enum(OUTREACH_STATUSES).optional(),
-          follow_up_at: z.string().optional(),
-          notes: z.string().optional(),
-        },
-      },
-      (input, extra) =>
-        tool(async () => {
-          requireOwnerScope(extra, "log_outreach");
-          return json(await insertOutreach(query, OWNER_UID, input));
-        }, "log_outreach failed"),
-    );
-
-    server.registerTool(
-      "list_outreach",
-      {
-        title: "List outreach",
-        description:
-          "List outreach contacts newest first. Optionally filter by status and/or company_name, or set due_only to return only rows whose follow_up_at is on/before today (the follow-ups owed).",
-        inputSchema: {
-          status: z.enum(OUTREACH_STATUSES).optional(),
-          company_name: z.string().optional(),
-          due_only: z.boolean().optional(),
-        },
-      },
-      ({ status, company_name, due_only }, extra) =>
-        tool(async () => {
-          requireOwnerScope(extra, "list_outreach");
-          const likeSafe = company_name ? `%${company_name.replace(/[\\%_]/g, "\\$&")}%` : null;
-          const today = new Date().toISOString().slice(0, 10);
-          const rows = await query(
-            `select * from outreach
-              where user_id = $1
-                and ($2::text is null or status = $2)
-                and ($3::text is null or company_name ilike $3)
-                and (not $4::boolean or (follow_up_at is not null and follow_up_at <= $5::date))
-              order by created_at desc`,
-            [OWNER_UID, status ?? null, likeSafe, !!due_only, today],
-            "outreach",
-          );
-          return json(rows);
-        }, "list_outreach failed"),
-    );
-
-    server.registerTool(
-      "set_outreach_status",
-      {
-        title: "Set outreach status",
-        description:
-          "Move an outreach row to a new status. Marking 'sent' stamps sent_at today and a follow_up_at ~5 business days out (unless one is already set). Returns the updated row.",
-        inputSchema: { id: z.string().uuid(), status: z.enum(OUTREACH_STATUSES) },
-      },
-      ({ id, status }, extra) =>
-        tool(async () => {
-          requireOwnerScope(extra, "set_outreach_status");
-          const row = await setOutreachStatus(query, OWNER_UID, id, status);
-          if (!row) return json({ error: "not found" });
-          return json(row);
-        }, "set_outreach_status failed"),
     );
 
     // L5.3 (D22): callable by BOTH the owner ("scout") and the read-only judge
