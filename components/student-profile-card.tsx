@@ -6,7 +6,7 @@ import { getProfile } from "@/lib/student-profile";
 // account preferences) -- a signed-in student had no way to see or re-run it.
 // Small server component so it can await getProfile() directly, matching
 // app/(app)/journey/page.tsx's own await getProfile(userId) call.
-const card = "flex flex-col gap-6 rounded-card bg-raised p-4 shadow-sm ring-1 ring-hairline scroll-mt-24";
+const card = "flex flex-col gap-4 rounded-card bg-raised p-6 shadow-sm ring-1 ring-hairline scroll-mt-24";
 const heading = "font-display text-step-2 text-text";
 const label = "font-label text-[11px] uppercase tracking-label text-text-dim";
 const linkClass =
