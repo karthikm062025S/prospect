@@ -34,7 +34,7 @@ export function AccountMenu({ profile }: { profile: Profile }) {
   // Profile/Account/Settings links all navigate, so closing on the committed
   // pathname is the one rule that covers every exit. Reset-during-render is
   // React's own pattern for clearing state on a prop change (the same one
-  // components/tab-bar.tsx uses for its optimistic href) — an effect here
+  // components/tab-bar.tsx uses for its optimistic href), since an effect here
   // would paint the stale-open menu on the new route for one frame first.
   const [committedPathname, setCommittedPathname] = useState(pathname);
   if (pathname !== committedPathname) {
@@ -141,6 +141,9 @@ export function AccountMenu({ profile }: { profile: Profile }) {
           <FeedbackTrigger role="menuitem" className={ITEM}>
             Send feedback
           </FeedbackTrigger>
+          <Link href="/faq" role="menuitem" className={ITEM}>
+            Help &amp; FAQ
+          </Link>
           <Link href="/privacy" role="menuitem" className={ITEM}>
             Privacy
           </Link>
