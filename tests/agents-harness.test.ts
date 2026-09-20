@@ -176,7 +176,13 @@ test("self-correction: an answer the validator rejects is retried once with the 
   const long = "x".repeat(401);
   const generate = fakeModelSequence([`{"definition":"${long}"}`, '{"definition":"short"}']);
   const value = await callModel(
-    { ...base, label: "match.target", schema: z.object({ definition: z.string().max(400) }), responseSchema: { type: "OBJECT" } },
+    {
+      ...base,
+      label: "match.target",
+      schema: z.object({ definition: z.string().max(400) }),
+      responseSchema: { type: "OBJECT" },
+      thinking: { thinkingBudget: 0 },
+    },
     generate,
   );
   assert.deepEqual(value, { definition: "short" });
@@ -184,8 +190,8 @@ test("self-correction: an answer the validator rejects is retried once with the 
   const retryInstruction = String(generate.calls[1].config!.systemInstruction);
   assert.match(retryInstruction, /previous answer was rejected because: definition: /);
   assert.match(retryInstruction, /400/);
-  // The retry keeps the call's own thinking setting (thinking off looped match.target into RECITATION, 2026-09-19).
-  assert.equal(generate.calls[1].config!.thinkingConfig, undefined);
+  // The retry keeps the call's OWN thinking setting, unlike the MAX_TOKENS branch which forces it off.
+  assert.deepEqual(generate.calls[1].config!.thinkingConfig, { thinkingBudget: 0 });
 });
 
 test("self-correction: a second rejected answer is the named AGENT_OUTPUT_INVALID error, never a third call", async () => {

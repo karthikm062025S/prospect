@@ -45,9 +45,10 @@ export interface RoadmapNodePlan {
 
 /**
  * Validates one Gemini-proposed node against the real catalog (Invariant 1:
- * "a node id not in the courses/clubs/certs tables is rejected"). Never
- * silently drops an unfindable node -- throws, naming the code/name, so a
- * bad proposal fails the whole run instead of shipping a partial plan.
+ * "a node id not in the courses/clubs/certs tables is rejected"). Throws,
+ * naming the code/name; validatePlan() below catches per node, drops it and
+ * names it in the step label, so one bad proposal no longer fails the whole
+ * run (2026-09-20 demo-crasher fix).
  * `courseCodes` / `clubNames` are real Lakebase catalog rows (lib/catalog.ts); certs
  * only ever come from THIS run's own grounded search (`certsByName`), since
  * there is no certifications table (CONTEXT 13:35: "no dataset, live web
@@ -97,7 +98,8 @@ export function validatePlan(
       dropped.push((error as Error).message);
     }
   }
-  if (validated.length === 0) {
+  // A zero-node proposal was never a failure (an empty roadmap is written); only all-dropped is.
+  if (plan.length > 0 && validated.length === 0) {
     throw new Error(`ROADMAP_EMPTY: every proposed node failed catalog validation: ${dropped.join("; ")}`);
   }
   return { validated, dropped };
@@ -255,7 +257,7 @@ export async function runRoadmapAgent(
     onStep({
       step: "validating",
       label: dropped.length
-        ? `${validated.length} nodes validated against the catalog, ${dropped.length} dropped (${dropped.join("; ")})`
+        ? `${validated.length} nodes validated against the catalog, ${dropped.length} dropped (${dropped.slice(0, 3).join("; ")}${dropped.length > 3 ? `; +${dropped.length - 3} more` : ""})`
         : `${validated.length} nodes validated against the catalog`,
       count: validated.length,
     });

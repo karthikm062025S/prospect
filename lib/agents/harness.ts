@@ -58,6 +58,11 @@ export function modelCaller(generate: GenerateFn): ModelCaller {
 export const BREVITY_NUDGE =
   "Keep every string field under 60 words. Never repeat a sentence. Return the JSON object and stop.";
 
+// Self-correction (2026-09-20): the validator's exact rejection goes back to the model once.
+export const CORRECTION_NUDGE =
+  "Your previous answer failed validation. Return a corrected JSON answer that satisfies the stated shape and " +
+  "length limits exactly. Keep every string field short.";
+
 export async function callModel<T>(input: CallModelInput<T>, generate: GenerateFn): Promise<T> {
   // M2: ONE signal + timeout promise for the whole call, shared across the
   // RECITATION retry below, so AGENT_TIMEOUT bounds the whole step (not 2x timeoutMs).
@@ -116,10 +121,6 @@ The previous answer was rejected because: ${decoded.error}` },
   );
   return decode(input, second);
 }
-
-export const CORRECTION_NUDGE =
-  "Your previous answer failed validation. Return a corrected JSON answer that satisfies the stated shape and " +
-  "length limits exactly. Keep every string field short.";
 
 type ModelText = { text: string; finishReason: string };
 

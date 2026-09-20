@@ -17,8 +17,9 @@ import { query } from "@/lib/db";
 export const dynamic = "force-dynamic";
 // Honest ceiling: every model call inside the three agents has its own 20 s named timeout
 // (lib/agents/harness.ts); the worst serial path is profile (2 parallel parses, 20 s) +
-// max(match: target 20 s + requirements 20 s, roadmap: certifications 20 s + plan 20 s) plus
-// the DB/vector work around them, so 120 s holds without hiding a slow model.
+// roadmap (certifications 20 s + plan 20 s) + match's tail after it waits on roadmapDone
+// (before-you-apply + the score write, DB only; match's own model calls run in parallel with
+// roadmap) plus the DB/vector work around them, so 120 s holds without hiding a slow model.
 export const maxDuration = 120;
 
 // Named refusal before buffering: Vercel's own body limit (~4.5 MB) would

@@ -128,3 +128,8 @@ test("validatePlan throws ROADMAP_EMPTY when every node fails catalog validation
   ];
   assert.throws(() => validatePlan(plan, ctx()), /ROADMAP_EMPTY/);
 });
+
+test("validatePlan with a zero-node proposal returns an empty plan, never ROADMAP_EMPTY", () => {
+  const result = validatePlan([], ctx());
+  assert.deepEqual(result, { validated: [], dropped: [] });
+});
