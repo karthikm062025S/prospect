@@ -9,7 +9,8 @@ if (typeof window !== "undefined") {
 
 // Model policy (Karthik 2026-09-19 16:00, SETUP-DONE §2): agents on 3.8 Flash, PDF parse on 3.1 Pro (preview id),
 // bulk labelling on 3.1 Flash-Lite with grounding OFF. gemini-2.5-* is refused for this key ("no longer available").
-export const MODEL_PARSE = "gemini-3.1-pro-preview";
+// D-UI11 (2026-09-19 22:05): flash for PDF parse. Pro-LOW measured 13.0 s p50 on a 46-course transcript (pro refuses thinking off); flash 2.7 s with the same 46 items. Re-compare on a real PDF with `scripts/profile-smoke.ts --legs transcript --parse-model gemini-3.1-pro-preview` once one is in datasets/private/.
+export const MODEL_PARSE = "gemini-3.8-flash";
 export const MODEL_AGENT = "gemini-3.8-flash";
 export const MODEL_LABEL = "gemini-3.1-flash-lite";
 
