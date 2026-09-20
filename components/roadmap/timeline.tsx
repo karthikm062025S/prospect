@@ -11,13 +11,22 @@ const KIND_LABEL: Record<RoadmapNode["kind"], string> = {
   certification: "Certification",
 };
 
-const STATUS_LABEL: Record<RoadmapNode["status"], string> = {
-  suggested: "Suggested",
-  planned: "Planned",
-  done: "Done",
-};
+/** Hostname only, never the query string, for the certification "Source" chip -- derived from the real source_url, never invented. */
+function sourceLabel(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return url;
+  }
+}
 
-/** Semester columns of node cards. Purely presentational: selection and mutation live in RoadmapBoard. */
+/**
+ * Semester rail: a continuous vertical line with one dot per semester, each
+ * holding an equal-width grid of node cards (mock journey.html .rail/.nodes).
+ * Purely presentational -- selection and mutation live in RoadmapBoard.
+ * D10: equal-width columns via auto-fill, shared card padding/radius, no
+ * horizontal scroll at any width (semesters stack, cards wrap).
+ */
 export function RoadmapTimeline({
   semesters,
   nodesBySemester,
@@ -37,29 +46,44 @@ export function RoadmapTimeline({
   onAddNode: (semester: string) => void;
   onRemoveNode: (id: string) => void;
 }) {
+  const nowSemester = semesters[0];
+  const targetSemester = semesters[semesters.length - 1];
+
   return (
-    // Baseline defect 2: the semester columns scroll INSIDE their own
-    // horizontal scroller, never the page. `min-w-0` lets this flex/grid child
-    // shrink below its content (min-width defaults to auto, which is what
-    // pushed the whole page wide at 390); `snap-x` + `snap-start` makes a
-    // touch swipe land on a whole column; `overscroll-x-contain` stops the
-    // swipe chaining out to the page.
-    <div
-      className="-mx-1 flex min-w-0 snap-x snap-mandatory gap-6 overflow-x-auto overscroll-x-contain px-1 pb-3"
-      role="list"
-      aria-label="Semester roadmap"
-    >
-      {semesters.map((semester) => {
+    <div className="relative flex min-w-0 flex-col gap-8 pl-6 sm:pl-7" role="list" aria-label="Semester roadmap">
+      <div className="pointer-events-none absolute bottom-2 left-[7px] top-2 w-0.5 bg-hairline sm:left-2" aria-hidden />
+      {semesters.map((semester, semesterIndex) => {
         const nodes = nodesBySemester.get(semester) ?? [];
+        const isNow = semester === nowSemester;
+        // A one-semester plan is entirely "now"; only call it "the goal" when
+        // it is a distinct later term.
+        const isTarget = semester === targetSemester && semesters.length > 1;
+        const qualifier = [
+          isNow ? "now" : isTarget ? "the goal" : null,
+          nodes.length > 0 ? `${nodes.length} item${nodes.length === 1 ? "" : "s"}` : null,
+        ]
+          .filter(Boolean)
+          .join(" · ");
+
         return (
-          <section
-            key={semester}
-            role="listitem"
-            aria-label={semester}
-            className="flex w-72 shrink-0 snap-start flex-col gap-3 rounded-card border border-hairline bg-raised p-4"
-          >
-            <header className="flex items-center justify-between gap-2">
-              <h3 className="font-display text-step-1 text-text">{semester}</h3>
+          <Rise as="section" key={semester} index={semesterIndex} className="relative flex min-w-0 flex-col gap-3">
+            <span
+              className={`absolute -left-6 top-1.5 h-2.5 w-2.5 rounded-full border-2 sm:-left-7 ${
+                isNow ? "border-accent bg-accent" : "border-sage bg-bg"
+              }`}
+              aria-hidden
+            />
+            <header
+              role="listitem"
+              aria-label={semester}
+              className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1"
+            >
+              <h3 className="flex flex-wrap items-baseline gap-x-3 gap-y-1 font-display text-step-3 text-text">
+                {semester}
+                {qualifier ? (
+                  <span className="font-label text-[11px] uppercase tracking-label text-text-dim">{qualifier}</span>
+                ) : null}
+              </h3>
               <button
                 type="button"
                 onClick={() => onReplanFrom(semester)}
@@ -71,15 +95,20 @@ export function RoadmapTimeline({
             </header>
 
             {nodes.length === 0 ? (
-              <p className="py-4 text-[13px] text-text-dim">No nodes yet for this semester.</p>
+              <p className="rounded-card border border-dashed border-hairline p-4 text-center text-[13px] text-text-dim">
+                No nodes yet for this semester.
+              </p>
             ) : (
-              <ul className="flex flex-col gap-3">
-                {/* SYSTEM.md Motion grammar: roadmap nodes Rise with the same
-                    0.04-0.06s stagger the feed rows use. */}
+              // D10: equal-width columns that fill the available row (auto-fill
+              // + 1fr), so a 2-node semester never leaves a half-empty column
+              // and a 5-node one wraps cleanly. Grid's default row stretch
+              // gives every card in a row the same height.
+              <ul className="grid min-w-0 grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-3">
                 {nodes.map((node, index) => (
                   <Rise as="li" key={node.id} index={index}>
                     <NodeCard
                       node={node}
+                      nowSemester={nowSemester}
                       selected={node.id === selectedNodeId}
                       onSelect={() => onSelectNode(node.id)}
                       onRemove={() => onRemoveNode(node.id)}
@@ -92,11 +121,11 @@ export function RoadmapTimeline({
             <button
               type="button"
               onClick={() => onAddNode(semester)}
-              className="min-h-11 rounded-card border border-dashed border-hairline px-4 font-sans text-sm text-text-dim hover:bg-bg hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage"
+              className="flex min-h-11 w-full items-center justify-center rounded-card border border-dashed border-hairline px-4 font-sans text-sm text-text-dim hover:border-sage hover:bg-sage/5 hover:text-sage focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage"
             >
               + Add a course or club
             </button>
-          </section>
+          </Rise>
         );
       })}
     </div>
@@ -105,43 +134,90 @@ export function RoadmapTimeline({
 
 export function NodeCard({
   node,
+  nowSemester,
   selected,
   onSelect,
   onRemove,
 }: {
   node: RoadmapNode;
+  nowSemester: string;
   selected: boolean;
   onSelect: () => void;
   onRemove: () => void;
 }) {
+  // "In progress" is derived display only, never stored: a `planned` node in
+  // the semester the student is currently in reads as underway; the same
+  // status in a future semester reads as merely planned. `done`/`suggested`
+  // are unaffected by this derivation.
+  const inProgress = node.status === "planned" && node.semester === nowSemester;
+  const statusLabel =
+    node.status === "done" ? "Done" : inProgress ? "In progress" : node.status === "suggested" ? "Suggested" : "Planned";
+  const dotClass = node.status === "done" ? "border-sage bg-sage" : inProgress ? "border-accent bg-accent" : "border-sage bg-transparent";
+
+  // Provenance chips: real fields only. Course/club nodes never carry a
+  // source_url (lib/agents/roadmap.ts always writes it null for those kinds),
+  // so a "Source" chip only ever renders for a grounded certification, and the
+  // "not from a dataset" note only ever renders for an agent-suggested project
+  // (both true by construction, not a guess).
+  const hasFoot = node.moves_toward.length > 0 || (node.kind === "certification" && node.source_url) || node.kind === "project";
+
   return (
-    // A <button> can't nest another <button> (the × below), so the card
-    // itself is a div and the select button covers its content, pr-11 leaving
-    // room for the × that sits on top of it, absolutely positioned.
+    // A <button> can't nest another <button> (the remove control below), so
+    // the card itself is a div and the select button covers its content.
     <div
-      className={`relative flex min-h-11 w-full flex-col items-start gap-1 border-l-2 ${
-        selected ? "border-sage bg-bg" : "border-transparent hover:bg-bg"
+      className={`group relative flex h-full min-h-[168px] flex-col gap-2 rounded-card border p-4 transition-colors ${
+        node.status === "done"
+          ? "border-transparent bg-sage/10"
+          : selected
+            ? "border-sage bg-raised"
+            : "border-hairline bg-raised hover:border-sage/40"
       }`}
     >
       <button
         type="button"
         onClick={onSelect}
         aria-current={selected ? "true" : undefined}
-        className="flex w-full flex-col items-start gap-1 py-3 pl-4 pr-11 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage"
+        className="flex min-h-11 flex-1 flex-col items-start gap-2 rounded-card pr-11 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage"
       >
         <span className="flex w-full items-center justify-between gap-2">
           <span className="font-label text-[11px] uppercase tracking-label text-text-dim">{KIND_LABEL[node.kind]}</span>
-          <span
-            className={`font-label text-[11px] uppercase tracking-label ${
-              node.status === "done" ? "text-sage" : node.status === "planned" ? "text-text" : "text-text-dim"
-            }`}
-          >
-            {STATUS_LABEL[node.status]}
+          <span className="inline-flex items-center gap-1.5 text-[13px] text-text-dim">
+            <span className={`h-2 w-2 shrink-0 rounded-full border-[1.5px] ${dotClass}`} aria-hidden />
+            {statusLabel}
           </span>
         </span>
-        <span className="text-[15px] font-medium text-text">{node.title}</span>
+        <span className="font-display text-step-1 leading-[1.15] text-text">{node.title}</span>
+        <span className="text-[14px] text-text-dim">{node.why}</span>
         {node.ref_code || node.ref_name ? (
           <span className="font-mono text-[12px] text-text-dim">{node.ref_code ?? node.ref_name}</span>
+        ) : null}
+        {hasFoot ? (
+          <span className="mt-auto flex flex-wrap items-center gap-2 pt-1">
+            {node.moves_toward.map((target) => (
+              <span
+                key={target}
+                className="inline-flex h-[26px] shrink-0 items-center rounded-pill bg-sage/10 px-2.5 font-sans text-[12px] font-medium text-sage"
+              >
+                Moves you toward &middot; {target}
+              </span>
+            ))}
+            {node.kind === "certification" && node.source_url ? (
+              <a
+                href={node.source_url}
+                target="_blank"
+                rel="noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="inline-flex h-[26px] shrink-0 items-center rounded-pill border border-hairline px-2.5 font-sans text-[12px] text-text-dim hover:border-sage hover:text-sage focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage"
+              >
+                Source &middot; {sourceLabel(node.source_url)}
+              </a>
+            ) : null}
+            {node.kind === "project" ? (
+              <span className="inline-flex h-[26px] shrink-0 items-center rounded-pill border border-hairline px-2.5 font-sans text-[12px] text-text-dim">
+                Suggested, not from a dataset
+              </span>
+            ) : null}
+          </span>
         ) : null}
       </button>
       <button
@@ -151,7 +227,7 @@ export function NodeCard({
           onRemove();
         }}
         aria-label={`Remove ${node.title}`}
-        className="absolute right-0 top-0 flex min-h-11 min-w-11 items-center justify-center text-text-dim hover:text-danger focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage"
+        className="absolute right-1 top-1 flex min-h-11 min-w-11 items-center justify-center rounded-sm text-text-dim opacity-60 hover:text-danger focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage group-hover:opacity-100 group-focus-within:opacity-100"
       >
         <XIcon />
       </button>

@@ -159,16 +159,19 @@ test("SlidingNumber renders a static value under reduced motion", () => {
   assert.match(source, /if \(settled\) return/);
 });
 
-test("the roadmap timeline scrolls inside itself, never the page", () => {
+test("the roadmap timeline never pushes the page into a horizontal scroll", () => {
   // Baseline defect 2 (build/ui-baseline/journey-390-before.png): the semester
-  // columns pushed the whole page into a horizontal scroll at 390. A flex/grid
-  // child's min-width defaults to auto, so every ancestor of the scroller
-  // needs min-w-0 for `overflow-x-auto` to actually bound it.
+  // columns used to scroll horizontally inside their own scroller, which still
+  // required every ancestor to carry min-w-0 or the scroller widened the page
+  // at 390. Redesign 2026-09-20 (journey.html mock, D9/D10) replaced the
+  // horizontal scroller with a vertical rail whose node grid WRAPS
+  // (`grid-cols-[repeat(auto-fill,minmax(...)...`) instead of scrolling, so
+  // there is no scroller to bound -- but the min-w-0 chain stays as
+  // defense-in-depth for any future wide child of this grid.
   const timeline = read(path.join(ROOT, "components", "roadmap", "timeline.tsx"));
-  assert.match(timeline, /overflow-x-auto/);
+  assert.match(timeline, /grid-cols-\[repeat\(auto-fill,minmax\(/);
   assert.match(timeline, /min-w-0/);
-  assert.match(timeline, /snap-x/);
-  assert.match(timeline, /overscroll-x-contain/);
+  assert.doesNotMatch(timeline, /overflow-x-auto/, "the semester columns no longer scroll horizontally");
 
   const board = read(path.join(ROOT, "components", "roadmap", "roadmap-board.tsx"));
   assert.match(board, /flex min-w-0 flex-col/);
