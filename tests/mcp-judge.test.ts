@@ -27,6 +27,7 @@ export async function resolve(specifier, context, nextResolve) {
 register(`data:text/javascript,${encodeURIComponent(loaderSource)}`, import.meta.url);
 
 process.env.MCP_SECRET = "owner-secret-abc123";
+process.env.OWNER_USER_ID = "00000000-0000-4000-8000-000000000000"; // D29: owner tools need it; judge tools do not
 process.env.MCP_JUDGE_SECRET = "judge-secret-xyz789";
 
 // createMcpHandler (module scope in route.ts) starts a non-unref'd cleanup

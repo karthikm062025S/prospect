@@ -95,6 +95,14 @@ export function TabBar({ weekCount, profile }: { weekCount: number; profile: Pro
     }
 
     measure();
+    // Baseline defect 3: at 390 the four labels cannot fit the capsule, so the
+    // bar scrolls — and "Applications" was left clipped mid-word as "APP".
+    // Scrolling the ACTIVE tab fully into view is what turns a clipped label
+    // into a deliberate edge (SYSTEM.md Navigation: below md the bar is logo +
+    // scrollable tabs + avatar; ui_laws.md #3 Jakob's Law — this is the
+    // scrolling tab strip every mobile app already uses). `nearest` so a tab
+    // already fully visible never jumps.
+    activeTab.scrollIntoView({ inline: "nearest", block: "nearest" });
     const observer = new ResizeObserver(measure);
     observer.observe(container);
     return () => observer.disconnect();
@@ -144,7 +152,7 @@ export function TabBar({ weekCount, profile }: { weekCount: number; profile: Pro
             horizontal scroll). */}
         <div
           ref={containerRef}
-          className="relative flex min-h-[44px] flex-1 items-center gap-1 overflow-x-auto [justify-content:safe_center] [scrollbar-width:none]"
+          className="relative flex min-h-[44px] min-w-0 flex-1 snap-x items-center gap-1 overflow-x-auto overscroll-x-contain [justify-content:safe_center] [mask-image:linear-gradient(to_right,transparent_0,black_12px,black_calc(100%_-_12px),transparent_100%)] [scrollbar-width:none] md:[mask-image:none]"
         >
           {indicator ? (
             <span
@@ -177,7 +185,7 @@ export function TabBar({ weekCount, profile }: { weekCount: number; profile: Pro
                   tabIndex={activeIndex === -1 ? (index === 0 ? 0 : -1) : active ? 0 : -1}
                   onClick={(event) => handleClick(event, item.href)}
                   onKeyDown={(event) => handleKeyDown(event, index)}
-                  className={`flex min-h-11 shrink-0 items-center gap-1.5 rounded-pill px-3 font-label text-[11px] uppercase tracking-label focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage ${
+                  className={`flex min-h-11 shrink-0 snap-start items-center gap-1.5 whitespace-nowrap rounded-pill px-3 font-label text-[11px] uppercase tracking-label focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage ${
                     active ? "text-sage" : "text-text-dim hover:text-text"
                   }`}
                 >
@@ -201,7 +209,7 @@ export function TabBar({ weekCount, profile }: { weekCount: number; profile: Pro
         <div className="flex shrink-0 items-center gap-3">
           <FeedbackTrigger
             aria-label="Feedback"
-            className="hidden min-h-11 shrink-0 items-center gap-1.5 rounded-pill bg-accent px-4 font-label text-[11px] uppercase tracking-label text-ink hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage md:flex"
+            className="accent-fill-on-raised hidden min-h-11 shrink-0 items-center gap-1.5 rounded-pill bg-accent px-4 font-label text-[11px] uppercase tracking-label text-ink hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage md:flex"
           >
             <ChatIcon />
             Feedback

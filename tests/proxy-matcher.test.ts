@@ -19,8 +19,10 @@ function classify(pathname: string, signedIn = false) {
   if (
     pathname === "/welcome" ||
     pathname === "/privacy" ||
+    pathname === "/faq" ||
     pathname === "/terms" ||
-    pathname.startsWith("/auth/")
+    pathname.startsWith("/auth/") ||
+    pathname.startsWith("/.well-known/")
   ) {
     return "public";
   }
@@ -32,6 +34,7 @@ test("proxy matcher and public-path split classify app and public pages", () => 
   assert.equal(classify("/applications"), "authenticated");
   assert.equal(classify("/welcome"), "public");
   assert.equal(classify("/privacy"), "public");
+  assert.equal(classify("/faq"), "public");
   assert.equal(classify("/terms"), "public");
   assert.equal(classify("/auth/callback"), "public");
 });

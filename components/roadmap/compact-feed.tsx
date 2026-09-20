@@ -43,17 +43,17 @@ export function CompactFeed({ rows, nowMs }: { rows: HomeRow[] | null; nowMs: nu
         onChange={(e) => setFilter(e.target.value)}
         placeholder={`Filter ${rows.length} postings by title, company, family or location`}
         aria-label="Filter the feed"
-        className="w-full border border-hairline bg-raised px-3 py-2 text-[13px] text-text placeholder:text-text-dim focus-visible:outline focus-visible:outline-2 focus-visible:outline-sage"
-        style={{ borderRadius: "var(--radius-card, 16px)" }}
+        className="min-h-11 w-full rounded-pill border border-hairline bg-raised px-4 py-3 text-[13px] text-text placeholder:text-text-dim focus-visible:outline focus-visible:outline-2 focus-visible:outline-sage"
       />
       {shown.length === 0 ? (
         <p className="text-[13px] text-text-dim">No postings match &ldquo;{filter.trim()}&rdquo;.</p>
       ) : null}
-    <ul className="flex flex-col border border-hairline" style={{ borderRadius: "var(--radius-card, 16px)" }}>
-      {shown.map((row) => (
+    <ul className="flex flex-col overflow-hidden rounded-card border border-hairline">
+      {shown.map((row, index) => (
         <RoleRow
           key={row.id}
           row={row}
+          riseIndex={index}
           showCompany
           nowMs={nowMs}
           selectMode={false}

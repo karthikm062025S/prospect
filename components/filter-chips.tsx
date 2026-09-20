@@ -88,7 +88,7 @@ export function FilterChips({
     >
       <span
         aria-hidden
-        className={`pointer-events-none absolute left-0 top-0 rounded-full bg-text transition-[transform,width,height] duration-[240ms] ease-[cubic-bezier(0,0,0.2,1)] motion-reduce:transition-none ${
+        className={`pointer-events-none absolute left-0 top-0 rounded-pill bg-text transition-[transform,width,height] duration-[240ms] ease-[cubic-bezier(0,0,0.2,1)] motion-reduce:transition-none ${
           pill ? "" : "opacity-0"
         }`}
         style={
@@ -108,7 +108,7 @@ export function FilterChips({
             type="button"
             aria-pressed={isActive}
             onClick={() => onSelect(item.key)}
-            className={`relative z-10 inline-flex min-h-11 items-center gap-1.5 rounded-full border px-3.5 text-[13px] font-medium transition-colors duration-[120ms] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage focus-visible:ring-offset-2 focus-visible:ring-offset-bg ${
+            className={`relative z-10 inline-flex min-h-11 items-center gap-1.5 rounded-pill border px-4 text-[13px] font-medium transition-colors duration-[120ms] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage focus-visible:ring-offset-2 focus-visible:ring-offset-bg ${
               isActive ? "border-transparent text-bg" : "border-text-dim text-text-dim hover:bg-raised hover:text-text"
             } ${
               // Before the first measurement (server HTML, slow hydrate) the

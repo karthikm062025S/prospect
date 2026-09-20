@@ -141,6 +141,36 @@ export function encodeStepLine(step: { step: string; label: string; count: numbe
 }
 
 /**
+ * Runs `first` and `second` in parallel but calls `onFirst` before `onSecond`
+ * ever runs, buffering `onSecond`'s call if `second` resolves first (m1: the
+ * transcript step line must go out before the resume line even when the
+ * resume parse finishes first -- pure and independently testable, no IO).
+ */
+export async function emitInOrder<A, B>(
+  first: Promise<A>,
+  onFirst: (value: A) => void,
+  second: Promise<B>,
+  onSecond: (value: B) => void,
+): Promise<[A, B]> {
+  let firstEmitted = false;
+  let runBufferedSecond: (() => void) | null = null;
+  const firstDone = first.then((value) => {
+    onFirst(value);
+    firstEmitted = true;
+    runBufferedSecond?.();
+    runBufferedSecond = null;
+    return value;
+  });
+  const secondDone = second.then((value) => {
+    const run = () => onSecond(value);
+    if (firstEmitted) run();
+    else runBufferedSecond = run;
+    return value;
+  });
+  return Promise.all([firstDone, secondDone]);
+}
+
+/**
  * PDFs + form -> a validated profile row in Lakebase. Not covered by the unit
  * suite (it calls the real Gemini API and the real DB) -- see scripts/profile-smoke.ts
  * for the live proof path and the handoff for what ran.
@@ -157,22 +187,26 @@ export async function runProfileAgent(
   const runId = await startAgentRun("profile", input.userId);
 
   try {
-    // The two PDFs are independent, so both parses run at once; the step lines
-    // still go out transcript-first (D-UI3 order).
-    const [courses, { skills: parsedSkills, experiences }] = await Promise.all([
+    // The two PDFs are independent, so both parses run at once; emitInOrder
+    // (m1) still sends the transcript line first even when the resume parse
+    // resolves first, buffering the resume line until it has gone out (D-UI3 order).
+    let skills: string[] = [];
+    const [courses, resume] = await emitInOrder(
       extractCourses(call, MODEL_PARSE, input.transcriptPdf, input.typedCourses),
+      (courses) => onStep({ step: "transcript", label: courseCountLabel(courses.length), count: courses.length }),
       extractResume(call, MODEL_PARSE, input.resumePdf),
-    ]);
-    onStep({ step: "transcript", label: courseCountLabel(courses.length), count: courses.length });
-
-    // Onboarding's skills typeahead lets a student add skills the resume parse
-    // missed; merged and deduped here rather than dropped on the floor.
-    const skills = Array.from(new Set([...parsedSkills, ...(input.form.skills ?? [])]));
-    onStep({
-      step: "resume",
-      label: skillsExperienceLabel(skills.length, experiences.length),
-      count: skills.length + experiences.length,
-    });
+      (resume) => {
+        // Onboarding's skills typeahead lets a student add skills the resume
+        // parse missed; merged and deduped here rather than dropped on the floor.
+        skills = Array.from(new Set([...resume.skills, ...(input.form.skills ?? [])]));
+        onStep({
+          step: "resume",
+          label: skillsExperienceLabel(skills.length, resume.experiences.length),
+          count: skills.length + resume.experiences.length,
+        });
+      },
+    );
+    const { experiences } = resume;
 
     const candidate = {
       // The three facts come from the form and win over anything the PDF said.
@@ -214,7 +248,6 @@ const PARSE_MAX_OUTPUT_TOKENS = 8_192;
 // Measured 2026-09-19 (scripts/profile-smoke.ts, 46-course typed transcript):
 // gemini-3.1-pro-preview default thinking > 20 s (timeout), thinkingBudget 0 and
 // MINIMAL refused by the model (400), LOW 12.1 s; gemini-3.8-flash LOW 2.7 s.
-// LOW is the fastest level MODEL_PARSE accepts.
 const PARSE_THINKING = { thinkingLevel: ThinkingLevel.LOW };
 
 /** Exported for tests: a fake `ModelCaller` (lib/agents/harness.ts modelCaller(fakeGenerate)) drives it with no network. */

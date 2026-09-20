@@ -77,8 +77,7 @@ export async function POST(request: Request) {
           await runProfilePipeline(
             {
               profile: (onStep) => runProfileAgent({ userId, resumePdf, transcriptPdf, typedCourses, form: parsedForm }, onStep),
-              // Interactive mode: the feed-wide cache warming belongs to the hourly Orchestrator, not this stream.
-              match: () => runMatchAgent({ userId, mode: "interactive" }, query, () => {}),
+              match: () => runMatchAgent({ userId }, query, () => {}),
               roadmap: () => runRoadmapAgent({ userId }, () => {}),
             },
             (line) => controller.enqueue(encoder.encode("step" in line ? encodeStepLine(line) : `${JSON.stringify(line)}\n`)),

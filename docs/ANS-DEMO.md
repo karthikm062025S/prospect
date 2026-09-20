@@ -81,7 +81,7 @@ Returns up to 5 open postings (`roles_public`) and 5 matching VT courses; postin
 ```
 nslookup -type=TXT _ans-badge.roadmap.prospect.courses 1.1.1.1
 ```
-Ran tonight, exit 0: `Non-existent domain` — nothing published yet, say "published at demo time." Once published (`ans/dns-records.json`): SVCB at `roadmap.prospect.courses`, TXT at `_ans-badge.roadmap.prospect.courses`, TLSA at `_443._tcp.roadmap.prospect.courses`.
+Published 2026-09-20 03:40 ET and verified through Cloudflare 1.1.1.1: all four `_ans-badge.<agent>` TXT rows, the four A rows, the four SVCB rows and the four TLSA rows are live, and each `https://<agent>.prospect.courses/.well-known/mcp/server-card.json` returns 200 (TLSA/SVCB show via DNS-over-HTTPS, since Windows nslookup cannot query those types). From `ans/dns-records.json`: SVCB at `roadmap.prospect.courses`, TXT at `_ans-badge.roadmap.prospect.courses`, TLSA at `_443._tcp.roadmap.prospect.courses`.
 Scheme note: the badge TXT says `https://localhost:18081` because the registry (RA) config only accepts an https public TL url (upstream validation). The local TL serves plain http, so every `ans-verify` command above passes `-url http://localhost:18081` explicitly. Say this if a judge asks; a public https TL (tunnel) is the after-demo stretch.
 
 ## Say / never say
