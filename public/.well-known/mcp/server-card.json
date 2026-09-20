@@ -21,5 +21,12 @@
     "domain": "prospect.courses",
     "transparency_log": "set at demo time"
   },
+  "agents": [
+    { "name": "profile", "host": "profile.prospect.courses", "ans_name": "ans://v1.0.1.profile.prospect.courses" },
+    { "name": "match", "host": "match.prospect.courses", "ans_name": "ans://v1.0.1.match.prospect.courses" },
+    { "name": "roadmap", "host": "roadmap.prospect.courses", "ans_name": "ans://v1.0.1.roadmap.prospect.courses" },
+    { "name": "orchestrator", "host": "orchestrator.prospect.courses", "ans_name": "ans://v1.0.0.orchestrator.prospect.courses" }
+  ],
+  "note": "Each agent's server card and MCP URL are also served at https://<agent>.prospect.courses; the endpoint is one shared Next.js app.",
   "contact": "VTHacks 14 team Prospect"
 }

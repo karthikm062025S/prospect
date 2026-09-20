@@ -3,10 +3,17 @@
 // against the LOCAL RA/TL (build/MISSION.md L5 D19-D24). Plain ESM, Node 22
 // built-ins only (fetch, child_process, fs) -- no deps, no npm install.
 //
-// Usage: node ans/register.mjs
+// Usage: node ans/register.mjs [--reset]
 // Env:   ANS_RA_URL   (default http://localhost:18080)
 //        ANS_TL_URL   (default http://localhost:18081)
 //        ANS_RA_KEY   (default ans-dev-key-change-me)
+//
+// --reset (L5.6): revokes every registry entry that still carries an
+// agent_id (reason SUPERSEDED -- we are re-registering with STREAMABLE_HTTP
+// transports instead of the old SSE), nulls those ids, rewrites
+// dns-records.json from scratch, then runs the normal registration below
+// for all five identities (profile, match, roadmap, orchestrator + the
+// roadmap-agent impostor).
 //
 // Sequence per real agent (idempotent -- reruns skip an already-ACTIVE agent):
 //   generate CSRs -> POST /v2/ans/agents (202) -> POST verify-acme (202) ->
@@ -37,12 +44,21 @@ const KEYS_DIR = path.join(ROOT, "ans", "keys");
 // brief's literal agentUrl/metaDataUrl values, confirmed against the live RA and
 // the demo's own register.sh pattern (https://$host/mcp): both URLs use the
 // per-agent host. metaDataUrl has no such check (only agentUrl is validated).
+// L5.6 (fresh-review FOLD #1): "orchestrator" is a fourth real identity so
+// four badges exist -- the Databricks job that re-ranks/re-plans on new
+// drops is external and calls no in-app code path. Nothing in lib/ calls
+// startAgentRun("orchestrator"), so the ans-verify gate is unaffected by
+// this addition; it exists purely so the demo's badge count is four, not
+// three.
 const HOSTS = {
   profile: "profile.prospect.courses",
   match: "match.prospect.courses",
   roadmap: "roadmap.prospect.courses",
+  orchestrator: "orchestrator.prospect.courses",
   "roadmap-agent": "roadmap-agent.prospect.courses", // impostor
 };
+
+const REAL_AGENTS = ["profile", "match", "roadmap", "orchestrator"];
 
 /** POST/GET the RA. Loud failure: any status outside `expect` exits non-zero with the body printed. */
 async function ra(method, urlPath, body, expect) {
@@ -96,26 +112,61 @@ function opensslCsrs(name, host, ansName) {
   return { identityCsrPEM, serverCsrPEM };
 }
 
-async function registerAgent(name, host, ansName) {
+/** One POST /v2/ans/agents attempt for `ansName`/`version`. Returns the raw {status, json, text} -- never exits, so the caller can inspect a 409 before deciding to retry. */
+async function tryRegister(name, host, ansName, version) {
   const { identityCsrPEM, serverCsrPEM } = opensslCsrs(name, host, ansName);
   const body = {
     agentDisplayName: name.slice(0, 64),
     agentDescription: `Prospect ${name} agent (${host}), registered by ans/register.mjs.`.slice(0, 150),
-    version: "1.0.0",
+    version,
     agentHost: host,
     endpoints: [
       {
         agentUrl: `https://${host}/api/mcp`,
         metaDataUrl: `https://${host}/.well-known/mcp/server-card.json`,
         protocol: "MCP",
-        transports: ["SSE"],
+        // L5.6 FOLD #4: STREAMABLE_HTTP replaces SSE (ans-upstream
+        // spec/api-spec-v2.yaml ~line 2467 Endpoint.transports enum).
+        transports: ["STREAMABLE_HTTP"],
       },
     ],
     identityCsrPEM,
     serverCsrPEM,
   };
-  const { json } = await ra("POST", "/v2/ans/agents", body, [202]);
-  return json.agentId;
+  const res = await fetch(`${RA_URL}/v2/ans/agents`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${RA_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const text = await res.text();
+  const json = text ? JSON.parse(text) : null;
+  return { status: res.status, json, text };
+}
+
+/**
+ * Registers `name` at `ansName` v1.0.0. If the RA rejects it as a conflict
+ * (409 ANS_NAME_TAKEN -- e.g. a --reset revoke does not delete the row, so
+ * the exact versioned name stays taken), reports the exact error and
+ * retries once at v1.0.1, writing the bumped name back onto `entry` so the
+ * registry stays in sync. Returns { agentId, ansName } (the name actually
+ * accepted).
+ */
+async function registerAgent(name, host, ansName, entry) {
+  let result = await tryRegister(name, host, ansName, "1.0.0");
+  let usedAnsName = ansName;
+  if (result.status === 409) {
+    console.error(`RA rejected re-registration of ${ansName}: HTTP 409 -- ${result.text}`);
+    usedAnsName = ansName.replace("v1.0.0.", "v1.0.1.");
+    console.log(`retrying ${name} as ${usedAnsName} (version 1.0.1)`);
+    result = await tryRegister(name, host, usedAnsName, "1.0.1");
+    if (entry) entry.ans_name = usedAnsName;
+  }
+  if (result.status !== 202) {
+    console.error(`FATAL: POST /v2/ans/agents (${name}) -> HTTP ${result.status} (expected 202)`);
+    console.error(result.text);
+    process.exit(1);
+  }
+  return { agentId: result.json.agentId, ansName: usedAnsName };
 }
 
 function loadDnsRecords() {
@@ -139,11 +190,12 @@ async function processRealAgent(name, entry, dnsRecords) {
     }
   }
 
-  const agentId = await registerAgent(name, HOSTS[name], entry.ans_name);
+  const { agentId, ansName } = await registerAgent(name, HOSTS[name], entry.ans_name, entry);
+  entry.ans_name = ansName;
   await ra("POST", `/v2/ans/agents/${agentId}/verify-acme`, null, [202]);
 
   const detail = await ra("GET", `/v2/ans/agents/${agentId}`, null, [200]);
-  appendDnsRecords(dnsRecords, name, entry.ans_name, detail.json.registrationPending?.dnsRecords ?? []);
+  appendDnsRecords(dnsRecords, name, ansName, detail.json.registrationPending?.dnsRecords ?? []);
 
   await ra("POST", `/v2/ans/agents/${agentId}/verify-dns`, null, [202]);
 
@@ -174,24 +226,81 @@ async function processImpostor(registry, dnsRecords) {
     }
   }
 
-  const agentId = await registerAgent("roadmap-agent", HOSTS["roadmap-agent"], entry.ans_name);
+  const { agentId, ansName } = await registerAgent("roadmap-agent", HOSTS["roadmap-agent"], entry.ans_name, entry);
+  entry.ans_name = ansName;
   await ra("POST", `/v2/ans/agents/${agentId}/verify-acme`, null, [202]);
 
   const detail = await ra("GET", `/v2/ans/agents/${agentId}`, null, [200]);
-  appendDnsRecords(dnsRecords, "roadmap-agent", entry.ans_name, detail.json.registrationPending?.dnsRecords ?? []);
+  appendDnsRecords(dnsRecords, "roadmap-agent", ansName, detail.json.registrationPending?.dnsRecords ?? []);
 
   entry.agent_id = agentId;
-  registry.agents["roadmap-agent"] = { ans_name: entry.ans_name, agent_id: agentId };
+  registry.agents["roadmap-agent"] = { ans_name: ansName, agent_id: agentId };
   console.log(`registered roadmap-agent -> ${agentId} (${detail.json.agentStatus}, no verify-dns)`);
   return { name: "roadmap-agent", agentId, raStatus: detail.json.agentStatus };
 }
 
+/** POST /v2/ans/agents/{id}/revoke. A 404/409 (already gone/already revoked) is logged loudly and treated as a non-fatal no-op, per --reset's contract. */
+async function revokeAgent(agentId) {
+  const res = await fetch(`${RA_URL}/v2/ans/agents/${agentId}/revoke`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${RA_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ reason: "SUPERSEDED", comments: "re-registered with STREAMABLE_HTTP" }),
+  });
+  if (res.status === 404 || res.status === 409) {
+    console.warn(`WARN: revoke ${agentId} -> HTTP ${res.status} (ignored, continuing)`);
+    return;
+  }
+  if (!res.ok) {
+    console.error(`FATAL: POST /v2/ans/agents/${agentId}/revoke -> HTTP ${res.status}`);
+    console.error(await res.text());
+    process.exit(1);
+  }
+  console.log(`revoked ${agentId} (SUPERSEDED)`);
+}
+
+/**
+ * --reset: revokes every distinct agent_id still on the registry (real
+ * agents + the impostor, deduped since registry.impostor mirrors
+ * registry.agents["roadmap-agent"]), nulls them all, and rewrites
+ * dns-records.json to []. Mutates `registry` in place; the caller persists it.
+ */
+async function resetRegistry(registry) {
+  const nullers = new Map(); // agentId -> [() => void, ...]
+  for (const entry of Object.values(registry.agents)) {
+    if (!entry.agent_id) continue;
+    if (!nullers.has(entry.agent_id)) nullers.set(entry.agent_id, []);
+    nullers.get(entry.agent_id).push(() => {
+      entry.agent_id = null;
+    });
+  }
+  if (registry.impostor?.agent_id) {
+    const id = registry.impostor.agent_id;
+    if (!nullers.has(id)) nullers.set(id, []);
+    nullers.get(id).push(() => {
+      registry.impostor.agent_id = null;
+    });
+  }
+  for (const [agentId, fns] of nullers) {
+    await revokeAgent(agentId);
+    for (const fn of fns) fn();
+  }
+  writeFileSync(DNS_RECORDS_PATH, "[]\n");
+  console.log("ans/dns-records.json reset to []");
+}
+
 async function main() {
+  const reset = process.argv.includes("--reset");
   const registry = JSON.parse(readFileSync(REGISTRY_PATH, "utf8"));
+
+  if (reset) {
+    await resetRegistry(registry);
+    writeFileSync(REGISTRY_PATH, JSON.stringify(registry, null, 2) + "\n");
+  }
+
   let dnsRecords = loadDnsRecords();
 
   const results = [];
-  for (const name of ["profile", "match", "roadmap"]) {
+  for (const name of REAL_AGENTS) {
     results.push(await processRealAgent(name, registry.agents[name], dnsRecords));
     dnsRecords = loadDnsRecords();
   }
@@ -211,4 +320,7 @@ async function main() {
   }
 }
 
-main();
+main().catch((err) => {
+  console.error(`FATAL: ${err instanceof Error ? err.message : String(err)}`);
+  process.exit(1);
+});
