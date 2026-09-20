@@ -1,7 +1,7 @@
-// Wipes every NON-OWNER user account and all non-owner user-owned rows, then creates 5 fresh
-// demo accounts with short emails / a short password, so the deployed app recognizes no
-// previous account. The postings feed, the VT datasets, companies, endpoints, watcher state
-// and the OWNER account all SURVIVE.
+// Creates 5 fresh demo accounts with short emails / a short password, then wipes every OTHER
+// user account and all their user-owned rows, so the deployed app recognizes no previous
+// account. The postings feed, the VT datasets, companies, endpoints, watcher state and the
+// OWNER account all SURVIVE.
 //
 //   node scripts/reset-demo-users.mjs --dry-run    # baseline + plan, writes nothing, exit 0
 //   node scripts/reset-demo-users.mjs --execute    # the destructive run (Karthik's gate)
@@ -11,6 +11,20 @@
 // process.loadEnvFile, no new deps). Service role only, server-side; never bundled, never in
 // the app. Never prints a URL or a key.
 //
+// ORDER OF --execute: CREATE BEFORE WIPE (binding, Karthik 2026-09-20). Supabase Auth can
+// reject an email its project validation dislikes (the deliberately fake `@p.test` domain is
+// exactly that risk). Creating the 5 accounts LAST would leave the database emptied and the app
+// unusable when the very last step failed, so the order is:
+//   1. baseline (read-only)
+//   2. create a1..a5@p.test via the Admin API. A create failure exits 1 with AUTH_CREATE_FAILED
+//      and NOTHING else has changed yet -- no row and no account has been deleted. Idempotent:
+//      an a<n>@p.test left behind by an earlier partial run is deleted and recreated, so the
+//      five ids in play are always the ones this run made.
+//   3. delete the user-owned rows, one transaction, sparing the owner AND the 5 new ids
+//   4. delete every other auth user (everything except the owner and the 5 new ids)
+//   5. AFTER counts: auth == 6, every user-owned table holds owner rows only (0 for the 5 new
+//      ids, 0 for anyone else); preserved tables unchanged. Any miss exits 1, named.
+//
 // THE OWNER IS NEVER DELETED (binding, Karthik 2026-09-20). OWNER_USER_ID on Vercel points at
 // the tech demo persona; the MCP server (app/api/[transport]/route.ts answers only as that user
 // id) and the ANS/GoDaddy passport both depend on it existing. Resolution order:
@@ -18,12 +32,12 @@
 //   (b) the auth user whose email is tech@prospect-demo.com.
 // Unresolvable = exit non-zero BEFORE any write, in both modes.
 //
-// USER-OWNED TABLES, IN DELETE ORDER (children before parents). Every delete carries the owner
-// exclusion `user_id is distinct from $owner` -- `is distinct from`, not `<>`, so rows with a
-// NULL user_id (anonymous feedback, unattributed agent runs) are deleted too instead of
-// silently surviving a three-valued comparison:
-//    1. application_events   user_id + application_id -> applications  (owner rule widened: a
-//                            row also survives when its parent application is the owner's)
+// USER-OWNED TABLES, IN DELETE ORDER (children before parents). Every delete spares the ids in
+// $1 (the owner plus the 5 new accounts) with `user_id is null or user_id <> all($1)` -- the
+// explicit NULL arm matters, because a bare `<> all(...)` is NULL-false and would silently
+// leave rows with a NULL user_id (anonymous feedback, unattributed agent runs) behind:
+//    1. application_events   user_id + application_id -> applications  (spare widened: a row
+//                            also survives when its parent application belongs to a spared id)
 //    2. roadmap_nodes        user_id + roadmap_id -> roadmaps
 //    3. roadmaps             user_id (unique, one per student)
 //    4. match_scores         user_id + role_id
@@ -32,7 +46,7 @@
 //    7. user_roles           user_id + role_id  (save/hide/delete/apply state)
 //    8. outreach             user_id
 //    9. feedback             user_id (nullable) + email + ip_hash -- anonymous rows are still
-//                            user submissions carrying PII, so every non-owner row goes
+//                            user submissions carrying PII, so every unspared row goes
 //   10. profiles             user_id (primary key)
 //   11. agent_runs           user_id (nullable) -- per-user agent run history
 //   12. applications         user_id; deleted last (8 and 1 point at it)
@@ -61,25 +75,25 @@ import { createClient } from "@supabase/supabase-js";
 
 const OWNER_FALLBACK_EMAIL = "tech@prospect-demo.com";
 
-// table -> the delete predicate that spares the owner. $1 is the owner user id.
+// table -> the delete predicate. $1 is the uuid[] of spared ids (owner + the 5 new accounts).
 const USER_TABLES = [
   [
     "application_events",
-    `user_id is distinct from $1
+    `(user_id is null or user_id <> all($1::uuid[]))
        and (application_id is null
-            or not exists (select 1 from applications a where a.id = application_id and a.user_id = $1))`,
+            or not exists (select 1 from applications a where a.id = application_id and a.user_id = any($1::uuid[])))`,
   ],
-  ["roadmap_nodes", "user_id is distinct from $1"],
-  ["roadmaps", "user_id is distinct from $1"],
-  ["match_scores", "user_id is distinct from $1"],
-  ["nudges", "user_id is distinct from $1"],
-  ["role_corrections", "user_id is distinct from $1"],
-  ["user_roles", "user_id is distinct from $1"],
-  ["outreach", "user_id is distinct from $1"],
-  ["feedback", "user_id is distinct from $1"],
-  ["profiles", "user_id is distinct from $1"],
-  ["agent_runs", "user_id is distinct from $1"],
-  ["applications", "user_id is distinct from $1"],
+  ["roadmap_nodes", "user_id is null or user_id <> all($1::uuid[])"],
+  ["roadmaps", "user_id is null or user_id <> all($1::uuid[])"],
+  ["match_scores", "user_id is null or user_id <> all($1::uuid[])"],
+  ["nudges", "user_id is null or user_id <> all($1::uuid[])"],
+  ["role_corrections", "user_id is null or user_id <> all($1::uuid[])"],
+  ["user_roles", "user_id is null or user_id <> all($1::uuid[])"],
+  ["outreach", "user_id is null or user_id <> all($1::uuid[])"],
+  ["feedback", "user_id is null or user_id <> all($1::uuid[])"],
+  ["profiles", "user_id is null or user_id <> all($1::uuid[])"],
+  ["agent_runs", "user_id is null or user_id <> all($1::uuid[])"],
+  ["applications", "user_id is null or user_id <> all($1::uuid[])"],
 ];
 const USER_TABLE_NAMES = USER_TABLES.map(([t]) => t);
 
@@ -177,15 +191,22 @@ async function countRows(tables) {
   return counts;
 }
 
-/** { table: { total, owner, other } } for the user-owned tables, split by the delete predicate. */
-async function countUserRows(ownerId) {
+/**
+ * { table: { total, other, owner, fresh } } for the user-owned tables.
+ * `other` is exactly what the delete predicate would remove given the spared ids.
+ */
+async function countUserRows(sparedIds, ownerId, newIds) {
   const counts = {};
   for (const [table, predicate] of USER_TABLES) {
     const { rows } = await pool.query(
-      `select count(*)::int as total, count(*) filter (where ${predicate})::int as other from "${table}"`,
-      [ownerId],
+      `select count(*)::int as total,
+              count(*) filter (where ${predicate})::int as other,
+              count(*) filter (where user_id = $2::uuid)::int as owner,
+              count(*) filter (where user_id = any($3::uuid[]))::int as fresh
+         from "${table}"`,
+      [sparedIds, ownerId, newIds],
     );
-    counts[table] = { total: rows[0].total, other: rows[0].other, owner: rows[0].total - rows[0].other };
+    counts[table] = { total: rows[0].total, other: rows[0].other, owner: rows[0].owner, fresh: rows[0].fresh };
   }
   return counts;
 }
@@ -217,10 +238,12 @@ function printPreserved(label, counts) {
 
 function printUserCounts(label, counts) {
   console.log(label);
-  console.log(`  ${"table".padEnd(20)} ${"total".padStart(7)} ${"owner".padStart(7)} ${"other".padStart(7)}`);
+  console.log(
+    `  ${"table".padEnd(20)} ${"total".padStart(7)} ${"owner".padStart(7)} ${"new5".padStart(7)} ${"other".padStart(7)}`,
+  );
   for (const [table, c] of Object.entries(counts)) {
     console.log(
-      `  ${table.padEnd(20)} ${String(c.total).padStart(7)} ${String(c.owner).padStart(7)} ${String(c.other).padStart(7)}`,
+      `  ${table.padEnd(20)} ${String(c.total).padStart(7)} ${String(c.owner).padStart(7)} ${String(c.fresh).padStart(7)} ${String(c.other).padStart(7)}`,
     );
   }
 }
@@ -229,18 +252,25 @@ let failed = false;
 try {
   await assertSchemaKnown();
 
-  // ---- BASELINE (printed in both modes) ----
+  // ---- 1. BASELINE (printed in both modes) ----
   const usersBefore = await listAllAuthUsers();
   const { user: owner, via } = resolveOwner(usersBefore); // throws before any write
   const ownerId = owner.id;
+  const staleDemo = usersBefore.filter((u) => DEMO_EMAILS.includes(u.email?.toLowerCase() ?? ""));
+  if (staleDemo.some((u) => u.id === ownerId)) {
+    throw new Error(`OWNER_IS_A_DEMO_EMAIL: the owner ${ownerId} uses one of ${DEMO_EMAILS.join(", ")}. Refusing to write.`);
+  }
+
   console.log(`MODE ${mode}`);
   console.log(`OWNER (never deleted, resolved via ${via}): ${owner.email ?? "(no email)"}  ${ownerId}`);
-
   console.log(`\nBASELINE auth users: ${usersBefore.length}`);
   for (const u of usersBefore) {
-    console.log(`  ${u.id === ownerId ? "KEEP  " : "DELETE"} ${u.email ?? "(no email)"}  ${u.id}`);
+    const verdict = u.id === ownerId ? "KEEP    " : staleDemo.includes(u) ? "RECREATE" : "DELETE  ";
+    console.log(`  ${verdict} ${u.email ?? "(no email)"}  ${u.id}`);
   }
-  const userCountsBefore = await countUserRows(ownerId);
+  // Baseline is measured against the owner alone: the 5 new ids do not exist yet, and a stale
+  // a<n>@p.test from a partial run is recreated with a NEW id, so its rows are "other" too.
+  const userCountsBefore = await countUserRows([ownerId], ownerId, []);
   printUserCounts("\nBASELINE user-owned rows (delete order; 'other' is what gets deleted):", userCountsBefore);
   const preservedBefore = await countRows(PRESERVED_TABLES);
   printPreserved("\nBASELINE preserved rows (must not change):", preservedBefore);
@@ -253,30 +283,58 @@ try {
 
   // ---- PLAN ----
   const doomedUsers = usersBefore.filter((u) => u.id !== ownerId);
-  console.log("\nPLAN");
-  console.log(`  1. delete, in one transaction, sparing user_id = ${ownerId}, in this order:`);
-  for (const [table, predicate] of USER_TABLES) {
-    console.log(`       delete from ${table} where ${predicate.replace(/\s+/g, " ")};   -- ${userCountsBefore[table].other} rows`);
+  console.log("\nPLAN (create BEFORE wipe: a rejected email must never leave the DB emptied)");
+  console.log(`  step 1  baseline above, read-only`);
+  console.log(`  step 2  create ${DEMO_EMAILS.length} accounts FIRST, email_confirm: true, metadata ${JSON.stringify(DEMO_METADATA)}`);
+  for (const email of DEMO_EMAILS) {
+    const stale = staleDemo.find((u) => u.email?.toLowerCase() === email);
+    console.log(`            ${email}  ${DEMO_PASSWORD}${stale ? `   (stale ${stale.id} deleted + recreated first)` : ""}`);
   }
-  console.log(`  2. delete ${doomedUsers.length} Supabase auth users via the Admin API (the owner is skipped):`);
-  for (const u of doomedUsers) console.log(`       ${u.email ?? "(no email)"}  ${u.id}`);
-  console.log(`  3. create ${DEMO_EMAILS.length} accounts, email_confirm: true, metadata ${JSON.stringify(DEMO_METADATA)}`);
-  for (const email of DEMO_EMAILS) console.log(`       ${email}  ${DEMO_PASSWORD}`);
+  console.log(`            any failure here exits 1 (AUTH_CREATE_FAILED) with nothing else changed`);
+  console.log(`  step 3  delete user-owned rows, one transaction, sparing the owner AND the 5 new ids:`);
+  for (const [table, predicate] of USER_TABLES) {
+    console.log(
+      `            delete from ${table} where ${predicate.replace(/\s+/g, " ")};   -- ~${userCountsBefore[table].other} rows`,
+    );
+  }
+  console.log(`  step 4  delete every other auth user (${doomedUsers.length} today, owner + the 5 new ids excluded):`);
+  for (const u of doomedUsers) console.log(`            ${u.email ?? "(no email)"}  ${u.id}`);
   console.log(
-    `  4. AFTER: auth users == ${EXPECTED_AUTH_AFTER} (owner + ${DEMO_EMAILS.length}), every user-owned table holds owner rows ONLY (other == 0), preserved tables unchanged`,
+    `  step 5  AFTER: auth users == ${EXPECTED_AUTH_AFTER} (owner + ${DEMO_EMAILS.length}); every user-owned table holds owner rows ONLY (new5 == 0, other == 0); preserved tables unchanged`,
   );
   console.log(`  untouched: ${PRESERVED_TABLES.join(", ")}`);
 
   if (mode === "dry-run") {
     console.log("\nDRY RUN: nothing was written.");
   } else {
-    // ---- 2. delete non-owner user-owned rows, one transaction ----
+    // ---- 2. CREATE THE 5 DEMO ACCOUNTS FIRST ----
+    const newIds = [];
+    for (const email of DEMO_EMAILS) {
+      const stale = staleDemo.find((u) => u.email?.toLowerCase() === email);
+      if (stale) {
+        const { error } = await admin.auth.admin.deleteUser(stale.id);
+        if (error) throw new Error(`AUTH_DELETE_FAILED ${email} (stale ${stale.id}): ${error.message}`);
+        console.log(`deleted stale ${email} ${stale.id}`);
+      }
+      const { data, error } = await admin.auth.admin.createUser({
+        email,
+        password: DEMO_PASSWORD,
+        email_confirm: true,
+        user_metadata: DEMO_METADATA,
+      });
+      if (error) throw new Error(`AUTH_CREATE_FAILED ${email}: ${error.message} (nothing has been wiped)`);
+      newIds.push(data.user.id);
+      console.log(`created ${email} ${data.user.id}`);
+    }
+    const sparedIds = [ownerId, ...newIds];
+
+    // ---- 3. delete the unspared user-owned rows, one transaction ----
     const client = await pool.connect();
     try {
       await client.query("begin");
       for (const [table, predicate] of USER_TABLES) {
-        const result = await client.query(`delete from "${table}" where ${predicate}`, [ownerId]);
-        console.log(`\ndeleted ${result.rowCount} from ${table}`);
+        const result = await client.query(`delete from "${table}" where ${predicate}`, [sparedIds]);
+        console.log(`deleted ${result.rowCount} from ${table}`);
       }
       await client.query("commit");
     } catch (error) {
@@ -286,32 +344,22 @@ try {
       client.release();
     }
 
-    // ---- 3. delete every non-owner auth user ----
-    for (const u of doomedUsers) {
+    // ---- 4. delete every auth user that is not the owner or one of the 5 ----
+    const usersNow = await listAllAuthUsers();
+    const toDelete = usersNow.filter((u) => !sparedIds.includes(u.id));
+    for (const u of toDelete) {
       const { error } = await admin.auth.admin.deleteUser(u.id);
       if (error) throw new Error(`AUTH_DELETE_FAILED ${u.email ?? u.id}: ${error.message}`);
     }
-    console.log(`\ndeleted ${doomedUsers.length} auth users (owner ${ownerId} kept)`);
-
-    // ---- 4. create the 5 demo accounts ----
-    for (const email of DEMO_EMAILS) {
-      const { data, error } = await admin.auth.admin.createUser({
-        email,
-        password: DEMO_PASSWORD,
-        email_confirm: true,
-        user_metadata: DEMO_METADATA,
-      });
-      if (error) throw new Error(`AUTH_CREATE_FAILED ${email}: ${error.message}`);
-      console.log(`created ${email} ${data.user.id}`);
-    }
+    console.log(`\ndeleted ${toDelete.length} auth users (owner ${ownerId} + the 5 new accounts kept)`);
 
     // ---- 5. AFTER counts ----
     const usersAfter = await listAllAuthUsers();
-    const userCountsAfter = await countUserRows(ownerId);
+    const userCountsAfter = await countUserRows(sparedIds, ownerId, newIds);
     const preservedAfter = await countRows(PRESERVED_TABLES);
     console.log(`\nAFTER auth users: ${usersAfter.length}`);
     for (const u of usersAfter) console.log(`  ${u.email ?? "(no email)"}  ${u.id}`);
-    printUserCounts("\nAFTER user-owned rows ('other' must be 0; 'owner' is what was spared):", userCountsAfter);
+    printUserCounts("\nAFTER user-owned rows ('new5' and 'other' must both be 0):", userCountsAfter);
     printPreserved("\nAFTER preserved rows:", preservedAfter);
 
     // ---- 6. verdict ----
@@ -330,7 +378,11 @@ try {
     }
     for (const [table, c] of Object.entries(userCountsAfter)) {
       if (c.other !== 0) {
-        console.error(`VERIFY_FAILED: ${table} still has ${c.other} non-owner rows`);
+        console.error(`VERIFY_FAILED: ${table} still has ${c.other} unspared rows`);
+        failed = true;
+      }
+      if (c.fresh !== 0) {
+        console.error(`VERIFY_FAILED: ${table} has ${c.fresh} rows for the 5 new accounts, expected 0`);
         failed = true;
       }
       if (c.owner !== userCountsBefore[table].owner) {
@@ -346,7 +398,7 @@ try {
     }
     if (!failed) {
       console.log(
-        `\nOK: owner kept, ${DEMO_EMAILS.length} demo accounts created, no non-owner rows left, every preserved table unchanged.`,
+        `\nOK: owner kept, ${DEMO_EMAILS.length} demo accounts created, no other account or row left, every preserved table unchanged.`,
       );
       console.log("Sign in with:");
       for (const email of DEMO_EMAILS) console.log(`  ${email}  ${DEMO_PASSWORD}`);
