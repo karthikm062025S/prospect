@@ -39,7 +39,7 @@ import ansRegistry from "../../../ans/registry.json" with { type: "json" };
 // app/actions.ts.
 const PIPELINE_STATUSES = ["applied", "oa", "interviewing", "offer", "rejected"] as const;
 const WATCH_STATUSES = ["not_open", "open", "closed", "applied_lock"] as const;
-const OWNER_UID = process.env.OWNER_USER_ID!;
+const OWNER_UID = process.env.OWNER_USER_ID ?? "";
 
 function json(value: unknown) {
   return { content: [{ type: "text" as const, text: JSON.stringify(value) }] };
@@ -63,6 +63,12 @@ async function tool(run: () => Promise<ReturnType<typeof json>>, fallback: strin
 export function requireOwnerScope(extra: { authInfo?: AuthInfo }, name: string): void {
   if (!extra.authInfo?.scopes.includes("scout")) {
     throw new Error(`FORBIDDEN_SCOPE (${name})`);
+  }
+  // The owner id is only needed by owner tools; the judge tools (whoami,
+  // plan_next_steps) never touch it, so a missing OWNER_USER_ID is a named
+  // per-tool error here, not a 503 in front of the whole endpoint.
+  if (!OWNER_UID) {
+    throw new Error(`OWNER_NOT_CONFIGURED (${name}): OWNER_USER_ID unset`);
   }
 }
 
@@ -584,13 +590,6 @@ export const verifyToken = async (
 
 // Owner guard runs INSIDE the bearer check so an unauthenticated probe sees 401,
 // never the 503 config state (audit MINOR, 2026-09-02).
-async function ownerConfiguredHandler(request: Request) {
-  if (!OWNER_UID) {
-    return Response.json({ error: "owner not configured" }, { status: 503 });
-  }
-  return handler(request);
-}
-
-const authHandler = withMcpAuth(ownerConfiguredHandler, verifyToken, { required: true });
+const authHandler = withMcpAuth(handler, verifyToken, { required: true });
 
 export { authHandler as GET, authHandler as POST, authHandler as DELETE };
