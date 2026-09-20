@@ -60,7 +60,7 @@ async function tool(run: () => Promise<ReturnType<typeof json>>, fallback: strin
 // run() body so a judge caller sees the same { error } shape `tool()` already
 // formats a thrown DB error into, never a transport-level failure. One choke
 // point instead of 16 copies of an if-block.
-export function requireOwnerScope(extra: { authInfo?: AuthInfo }, name: string): void {
+function requireOwnerScope(extra: { authInfo?: AuthInfo }, name: string): void {
   if (!extra.authInfo?.scopes.includes("scout")) {
     throw new Error(`FORBIDDEN_SCOPE (${name})`);
   }
@@ -572,7 +572,7 @@ const handler = createMcpHandler(
 // against the SAME constant-time helper as the owner secret. If
 // MCP_JUDGE_SECRET is unset this branch never matches — the judge path simply
 // does not exist, exactly as it didn't before this lane.
-export const verifyToken = async (
+const verifyToken = async (
   _req: Request,
   bearerToken?: string,
 ): Promise<AuthInfo | undefined> => {
