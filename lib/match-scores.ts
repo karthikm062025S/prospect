@@ -73,8 +73,18 @@ export async function topScores(q: QueryFn, userId: string, n: number): Promise<
  */
 export async function replaceScores(q: QueryFn, userId: string, rows: readonly MatchScoreInput[]): Promise<void> {
   await q("delete from match_scores where user_id = $1", [userId], "match_scores");
-  if (rows.length === 0) return;
+  // The pg wire protocol caps one statement at 65,535 bind parameters
+  // (13 per row -> 5,041 rows); a 30-day feed is ~7,000 rows, so the insert
+  // goes in chunks inside the caller's transaction (proven live 2026-09-20:
+  // "bind message has 18249 parameter formats but 0 parameters" = the uint16
+  // wrap). 1,000 rows per statement: pglite (the test DB) silently wedges its
+  // connection at >= 3,000 rows in one bind, so the same chunk proves both.
+  for (let i = 0; i < rows.length; i += INSERT_CHUNK) await insertChunk(q, userId, rows.slice(i, i + INSERT_CHUNK));
+}
 
+const INSERT_CHUNK = 1000;
+
+async function insertChunk(q: QueryFn, userId: string, rows: readonly MatchScoreInput[]): Promise<void> {
   const values: string[] = [];
   const params: unknown[] = [userId];
   rows.forEach((row, i) => {

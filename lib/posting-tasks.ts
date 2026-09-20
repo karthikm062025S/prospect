@@ -2,8 +2,8 @@ import { z } from "zod";
 import type { QueryResultRow } from "pg";
 import type { Label } from "./exposure";
 
-// ponytail: "./gemini", "./vector-search", "./databricks-sql" and "./exposure"
-// are imported DYNAMICALLY inside mapPostingTasks, never as a static top-level
+// ponytail: "./gemini", "./vector-search" and "./exposure" are imported
+// DYNAMICALLY inside mapPostingTasks, never as a static top-level
 // import. A static extensionless value import between two lib/*.ts files
 // throws ERR_MODULE_NOT_FOUND the moment `node --experimental-strip-types
 // --test` loads a test that imports THIS file directly (proven pattern, see
@@ -72,9 +72,7 @@ export type PostingTasksInput = {
 
 type OnetMatch = { task_id?: unknown; onet_soc_code?: unknown; score?: unknown };
 
-function sqlStringLiteral(value: string): string {
-  return `'${value.replace(/'/g, "''")}'`;
-}
+const DUTY_CONCURRENCY = 2;
 
 /**
  * Gemini extracts 5-8 duties from the posting -> each duty is matched to its
@@ -111,7 +109,6 @@ function assertOnetIndexUsable(): Promise<void> {
 export async function mapPostingTasks(input: PostingTasksInput, q: QueryFn): Promise<Record<Label, number>> {
   const { gemini, MODEL_AGENT, FAST_CONFIG } = await import("./gemini");
   const { queryIndex } = await import("./vector-search");
-  const { executeStatement } = await import("./databricks-sql");
   const { labelTask, summarizeLabels } = await import("./exposure");
 
   const jobText = [input.title, input.jd ?? ""].filter((part) => part.length > 0).join("\n\n");
@@ -142,33 +139,42 @@ export async function mapPostingTasks(input: PostingTasksInput, q: QueryFn): Pro
   // rebuilt while a long-lived process keeps running.
   await assertOnetIndexUsable();
 
-  const matches: OnetMatch[] = await Promise.all(
-    duties.map(async (duty) => {
-      const rows = await queryIndex({
-        name: "scout.core.onet_tasks_index",
-        text: duty,
-        columns: ["task_id", "onet_soc_code"],
-        numResults: 1,
-      });
-      return rows[0] ?? {};
-    }),
-  );
+  // Free Edition Vector Search is capped at a few tens of QPS on a shared
+  // embedding endpoint (lib/vector-search.ts): 2 duty queries at a time, not
+  // all 8 at once.
+  const matches: OnetMatch[] = [];
+  for (let i = 0; i < duties.length; i += DUTY_CONCURRENCY) {
+    const chunk = await Promise.all(
+      duties.slice(i, i + DUTY_CONCURRENCY).map(async (duty) => {
+        const rows = await queryIndex({
+          name: "scout.core.onet_tasks_index",
+          text: duty,
+          columns: ["task_id", "onet_soc_code"],
+          numResults: 1,
+        });
+        return rows[0] ?? {};
+      }),
+    );
+    matches.push(...chunk);
+  }
 
   const taskIds = Array.from(
     new Set(matches.map((m) => (typeof m.task_id === "string" ? m.task_id : null)).filter((id): id is string => id !== null)),
   );
 
+  // Exposure rows from the Lakebase copy (db/lakebase/007-catalog.sql,
+  // D-S4) -- one parameterized statement instead of a SQL-warehouse round trip.
   const exposureByTaskId = new Map<string, { automation_share: number; augmentation_share: number }>();
   if (taskIds.length > 0) {
-    const inList = taskIds.map(sqlStringLiteral).join(", ");
-    const result = await executeStatement(
-      `select task_id, automation_share, augmentation_share from scout.core.task_exposure where task_id in (${inList})`,
+    const rows = await q<{ task_id: string; automation_share: string; augmentation_share: string }>(
+      "select task_id, automation_share, augmentation_share from task_exposure where task_id = any($1::text[])",
+      [taskIds],
+      "task_exposure",
     );
-    for (const row of result.rows) {
-      const [taskId, automation, augmentation] = row as [string, number, number];
-      exposureByTaskId.set(taskId, {
-        automation_share: Number(automation),
-        augmentation_share: Number(augmentation),
+    for (const row of rows) {
+      exposureByTaskId.set(row.task_id, {
+        automation_share: Number(row.automation_share),
+        augmentation_share: Number(row.augmentation_share),
       });
     }
   }

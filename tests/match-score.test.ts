@@ -12,6 +12,7 @@ import {
   buildRequirementsPrompt,
   parseRequirementsResponse,
   nodeMatchesPosting,
+  titleSimilarity,
 } from "../lib/agents/match.ts";
 
 const NOW = Date.parse("2026-09-19T18:00:00.000Z");
@@ -138,4 +139,24 @@ test("nodeMatchesPosting: a node naming the target archetype, or sharing 2+ titl
     nodeMatchesPosting({ moves_toward: [], title: "Photography Club" }, "Data Scientist", "Backend Software Engineer Intern"),
     false,
   );
+});
+
+test("titleSimilarity: best token overlap against the archetype name or an alias, scaled to 0..0.6", () => {
+  assert.equal(titleSimilarity("Backend Software Engineer Intern", "Backend Software Engineer"), 0.6);
+  assert.equal(titleSimilarity("Software Engineering Intern", "Backend Software Engineer"), 0.3);
+  assert.equal(titleSimilarity("Marketing Coordinator", "Backend Software Engineer"), 0);
+  // an alias can be the best match
+  assert.equal(titleSimilarity("SWE Intern - Platform", "Backend Software Engineer", ["SWE"]), 0.6);
+  // an archetype whose every word is a stopword carries no signal
+  assert.equal(titleSimilarity("Engineer", "Engineer"), 0);
+  assert.equal(titleSimilarity("", "Data Analyst"), 0);
+});
+
+test("resolveArchetypeSimilarity: a posting with no archetype uses the title fallback, capped at 0.6; an assigned one ignores it", () => {
+  assert.equal(resolveArchetypeSimilarity("a1", null, null, 0.3), 0.3);
+  assert.equal(resolveArchetypeSimilarity("a1", null, 0.9, 0.9), 0.6);
+  assert.equal(resolveArchetypeSimilarity("a1", null, null), 0);
+  assert.equal(resolveArchetypeSimilarity("a1", "a1", 0.2, 0.3), 1);
+  assert.equal(resolveArchetypeSimilarity("a1", "a2", 0.73, 0.3), 0.73);
+  assert.equal(resolveArchetypeSimilarity("a1", "a2", null, 0.3), 0);
 });
