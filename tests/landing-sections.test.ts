@@ -4,8 +4,9 @@ import test from "node:test";
 
 // Lane C / MISSION C6. The landing's contract with the reference: the sections
 // exist, in the reference's order, the two motion pieces have a real
-// reduced-motion branch, the before/after works by pointer AND keyboard, every
-// number is fetched, and the screenshot strip reads public/mocks.
+// reduced-motion branch, the before/after band is a pinned scroll scene whose
+// settled state is the whole record, every number is fetched, and the
+// screenshot strip reads public/mocks.
 //
 // A source-shape test, deliberately: `npm test` is node --experimental-strip-types
 // with no DOM and no renderer (next/cache alone cannot be imported here, see the
@@ -106,17 +107,37 @@ test("the strip reads public/mocks and names its empty state", () => {
   assert.ok(Array.isArray(pngs));
 });
 
-test("the before/after slider works by pointer and by keyboard", () => {
+test("the before/after band is a pinned scene driven only by scroll", () => {
+  // Redesign 2026-09-20 (L3): the clip-path wipe and its range input are gone.
+  // The wipe could only ever show ONE side at a time, which is the opposite of
+  // the point the band makes. Scroll position is the single input now, so
+  // there is nothing to drag and no control invented for the animation.
   const source = read("components/landing/before-after.tsx");
-  // A native range input is pointer-draggable AND arrow-key operable, and it
-  // carries its own label. One control, one code path.
-  assert.match(source, /type="range"/);
-  assert.match(source, /onChange=\{\(event\) => setSplit\(Number\(event\.target\.value\)\)\}/);
-  assert.match(source, /<label/);
-  assert.match(source, /clipPath: `inset\(0 0 0 \$\{offset\}px\)`/);
-  // 44px target (SYSTEM.md / ui_laws 2) and a visible focus ring.
-  assert.match(source, /h-11 w-full/);
-  assert.match(source, /focus-visible:ring-2/);
+  // The ONE pinning primitive on the landing, not a second one.
+  assert.match(source, /usePinProgress/);
+  assert.match(source, /sticky top-0/);
+  assert.match(source, /h-\[240dvh\]/);
+  // Every value is a function of scroll offset, so the scene is reversible
+  // rather than a fired-once timeline.
+  assert.match(source, /useTransform\(progress, \[start, end\]/);
+  assert.doesNotMatch(source, /type="range"/, "the band takes no control of its own");
+});
+
+test("the before/after band renders its whole record with no pin when it must", () => {
+  // The accessibility floor: reduced motion, the Settled setting, and a
+  // viewport too narrow for two panes all render the complete record — every
+  // field and every chip — with no runway and no interpolation. Nothing on
+  // this band is reachable only from a scroll position.
+  const source = read("components/landing/before-after.tsx");
+  assert.match(source, /const settled = useSettled\(\);/);
+  assert.match(source, /const pinned = wide && !settled;/);
+  assert.match(source, /if \(!pinned\)/);
+  assert.match(source, /animate=\{false\}/);
+  const pin = read("components/motion/pin-scene.tsx");
+  // `skip` is a dependency of the measurement, not just a guard: the runway
+  // only exists while the scene is pinned.
+  assert.match(pin, /if \(skip\) return undefined;/);
+  assert.match(pin, /\}, \[ref, skip\]\);/);
 });
 
 test("the before/after posting is a real feed row, never an invented one", () => {

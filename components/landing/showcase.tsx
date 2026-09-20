@@ -2,6 +2,7 @@ import { CheckIcon } from "@/components/landing/icons";
 import { MockShot } from "@/components/landing/mock-shot";
 import { Rise } from "@/components/landing/rise";
 import { SignInCta } from "@/components/landing/sign-in-cta";
+import { ParallaxMedia } from "@/components/motion/parallax-media";
 import { TextReveal } from "@/components/motion/text-reveal";
 
 // Sections 4 and 5: the two product bands, the reference's eyebrow + big
@@ -86,9 +87,15 @@ export function Showcase({
           </Rise>
         </div>
 
-        <Rise delay={0.06} className={media === "left" ? "lg:order-1" : undefined}>
-          <MockShot name={shot} caption={shotCaption} />
-        </Rise>
+        {/* Depth: the shot travels at ~0.86x the copy column beside it and
+            settles out of a small tilt as it enters (lane L3, item 3). The
+            island is the wrapper only — the shot itself still renders on the
+            server and is passed in as children. */}
+        <ParallaxMedia className={media === "left" ? "lg:order-1" : undefined}>
+          <Rise delay={0.06}>
+            <MockShot name={shot} caption={shotCaption} />
+          </Rise>
+        </ParallaxMedia>
       </div>
     </section>
   );

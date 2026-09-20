@@ -1,15 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import {
-  motion,
-  useMotionValueEvent,
-  useScroll,
-  useTransform,
-  type MotionValue,
-} from "motion/react";
+import { useRef, useState } from "react";
+import { motion, useMotionValueEvent, useTransform, type MotionValue } from "motion/react";
 import { TextReveal } from "@/components/motion/text-reveal";
 import { useSettled } from "@/components/motion/settled";
+import { usePinProgress } from "@/components/motion/pin-scene";
 
 // v7 D20 item 4.3. Three pinned statements on the sheet, revealed WORD by word
 // against scroll position (the integratedbio /company mechanic; the hero uses
@@ -83,28 +78,9 @@ function Statement({
 export function PinnedSteps() {
   const ref = useRef<HTMLDivElement>(null);
   const settled = useSettled();
-  const { scrollY } = useScroll();
-  // Sentinel until measured: a huge end keeps progress at ~0 on first paint.
-  const [range, setRange] = useState<[number, number]>([0, 1e9]);
-
-  useEffect(() => {
-    if (settled) return undefined;
-    const el = ref.current;
-    if (!el) return undefined;
-    const measure = () => {
-      const top = el.getBoundingClientRect().top + globalThis.scrollY;
-      setRange([top, top + el.offsetHeight - globalThis.innerHeight]);
-    };
-    const observer = new ResizeObserver(measure);
-    observer.observe(el);
-    globalThis.addEventListener("resize", measure);
-    return () => {
-      observer.disconnect();
-      globalThis.removeEventListener("resize", measure);
-    };
-  }, [settled]);
-
-  const scrollYProgress = useTransform(scrollY, range, [0, 1]);
+  // The shared pinning primitive, extracted from this component (lane L3):
+  // one tall runway, one sticky frame, progress as a function of scroll.
+  const scrollYProgress = usePinProgress(ref, settled);
   const [step, setStep] = useState(0);
   useMotionValueEvent(scrollYProgress, "change", (v) => {
     setStep(Math.min(STEPS.length - 1, Math.max(0, Math.floor(v * STEPS.length))));
