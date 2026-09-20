@@ -108,6 +108,9 @@ export function FilterChips({
             type="button"
             aria-pressed={isActive}
             onClick={() => onSelect(item.key)}
+            // Lane handoffs 2026-09-20 (L9 logged first; adopted here):
+            // min-h-11 (44px, accessibility floor), not D10's literal 36px --
+            // shared by Home and Applications (the one filter-chip component).
             className={`relative z-10 inline-flex min-h-11 items-center gap-1.5 rounded-pill border px-4 text-[13px] font-medium transition-colors duration-[120ms] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage focus-visible:ring-offset-2 focus-visible:ring-offset-bg ${
               isActive ? "border-transparent text-bg" : "border-text-dim text-text-dim hover:bg-raised hover:text-text"
             } ${

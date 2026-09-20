@@ -68,7 +68,10 @@ export function VelocityStrip({
   target?: number | null;
 }) {
   return (
-    <div className="grid max-w-2xl grid-cols-2 gap-6 sm:grid-cols-4">
+    // D10 (Karthik): stat tiles are equal columns, in a raised card matching
+    // the mock's `.card.velocity` (get-started.tsx's own card recipe, so the
+    // two cards on this page read as one system).
+    <div className="grid grid-cols-2 gap-6 rounded-card bg-raised p-6 shadow-sm ring-1 ring-hairline sm:grid-cols-4">
       <Figure label="Added today" number={<Stat value={added} />} />
       <Figure label="Applied today" number={<Stat value={today} />} />
       <Figure label="Applied this week" number={<Stat value={week} />} />

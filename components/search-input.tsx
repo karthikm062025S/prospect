@@ -48,7 +48,11 @@ export function SearchInput({ onQuery }: { onQuery: (query: string) => void }) {
   }
 
   return (
-    <div className="relative inline-flex min-h-11 flex-1 items-center gap-2 rounded-pill border border-hairline px-4 text-text-dim focus-within:ring-2 focus-within:ring-sage sm:max-w-xs">
+    // D10/mock: full-width search input (mission mock's `.search` spans the
+    // toolbar) -- flex-1 with no max-width cap, so it fills the remaining
+    // toolbar space beside Sort/Select on wide viewports and takes the whole
+    // row on its own once it wraps at narrow ones.
+    <div className="relative inline-flex min-h-11 min-w-0 flex-1 items-center gap-2 rounded-pill border border-hairline bg-raised px-4 text-text-dim focus-within:ring-2 focus-within:ring-sage">
       <MagnifyingGlassIcon />
       <input
         ref={inputRef}
