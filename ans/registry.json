@@ -1,13 +1,26 @@
 {
   "tl_url_default": "http://localhost:18081",
   "agents": {
-    "profile": { "ans_name": "ans://v1.0.0.profile.prospect.courses", "agent_id": null },
-    "match": { "ans_name": "ans://v1.0.0.match.prospect.courses", "agent_id": null },
-    "roadmap": { "ans_name": "ans://v1.0.0.roadmap.prospect.courses", "agent_id": null }
+    "profile": {
+      "ans_name": "ans://v1.0.0.profile.prospect.courses",
+      "agent_id": "6fd1291a-6d41-4786-bd7b-ca05eb46d160"
+    },
+    "match": {
+      "ans_name": "ans://v1.0.0.match.prospect.courses",
+      "agent_id": "9f186966-0a4a-41a3-8f42-983b1197034f"
+    },
+    "roadmap": {
+      "ans_name": "ans://v1.0.0.roadmap.prospect.courses",
+      "agent_id": "bf518653-effb-4601-8204-45ea08e9fd01"
+    },
+    "roadmap-agent": {
+      "ans_name": "ans://v1.0.0.roadmap-agent.prospect.courses",
+      "agent_id": "c77cb034-9b96-4590-8c4c-0159e5588881"
+    }
   },
   "impostor": {
     "ans_name": "ans://v1.0.0.roadmap-agent.prospect.courses",
-    "agent_id": null,
+    "agent_id": "c77cb034-9b96-4590-8c4c-0159e5588881",
     "note": "look-alike; never completes verify-dns"
   }
 }

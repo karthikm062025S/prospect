@@ -1,0 +1,122 @@
+[
+  {
+    "agent": "profile",
+    "ansName": "ans://v1.0.0.profile.prospect.courses",
+    "dnsRecords": [
+      {
+        "name": "profile.prospect.courses",
+        "type": "SVCB",
+        "value": "1 . alpn=mcp port=443 key65400=https://profile.prospect.courses/.well-known/mcp/server-card.json key65402=mcp",
+        "purpose": "DISCOVERY",
+        "required": true,
+        "ttl": 3600
+      },
+      {
+        "name": "_ans-badge.profile.prospect.courses",
+        "type": "TXT",
+        "value": "v=ans-badge1; version=v1.0.0; url=https://localhost:18081/v1/agents/6fd1291a-6d41-4786-bd7b-ca05eb46d160",
+        "purpose": "BADGE",
+        "required": true,
+        "ttl": 3600
+      },
+      {
+        "name": "_443._tcp.profile.prospect.courses",
+        "type": "TLSA",
+        "value": "3 0 1 aff3feb0639b7fd1f3e30bc8502804dbfae2f0a1533201b0d3e2cff7e737b632",
+        "purpose": "CERTIFICATE_BINDING",
+        "required": false,
+        "ttl": 3600
+      }
+    ]
+  },
+  {
+    "agent": "match",
+    "ansName": "ans://v1.0.0.match.prospect.courses",
+    "dnsRecords": [
+      {
+        "name": "match.prospect.courses",
+        "type": "SVCB",
+        "value": "1 . alpn=mcp port=443 key65400=https://match.prospect.courses/.well-known/mcp/server-card.json key65402=mcp",
+        "purpose": "DISCOVERY",
+        "required": true,
+        "ttl": 3600
+      },
+      {
+        "name": "_ans-badge.match.prospect.courses",
+        "type": "TXT",
+        "value": "v=ans-badge1; version=v1.0.0; url=https://localhost:18081/v1/agents/9f186966-0a4a-41a3-8f42-983b1197034f",
+        "purpose": "BADGE",
+        "required": true,
+        "ttl": 3600
+      },
+      {
+        "name": "_443._tcp.match.prospect.courses",
+        "type": "TLSA",
+        "value": "3 0 1 e441b09dc71e695e61513e8e24a6c81fdedd84d7afde23a4047f75e4e33cfc56",
+        "purpose": "CERTIFICATE_BINDING",
+        "required": false,
+        "ttl": 3600
+      }
+    ]
+  },
+  {
+    "agent": "roadmap",
+    "ansName": "ans://v1.0.0.roadmap.prospect.courses",
+    "dnsRecords": [
+      {
+        "name": "roadmap.prospect.courses",
+        "type": "SVCB",
+        "value": "1 . alpn=mcp port=443 key65400=https://roadmap.prospect.courses/.well-known/mcp/server-card.json key65402=mcp",
+        "purpose": "DISCOVERY",
+        "required": true,
+        "ttl": 3600
+      },
+      {
+        "name": "_ans-badge.roadmap.prospect.courses",
+        "type": "TXT",
+        "value": "v=ans-badge1; version=v1.0.0; url=https://localhost:18081/v1/agents/bf518653-effb-4601-8204-45ea08e9fd01",
+        "purpose": "BADGE",
+        "required": true,
+        "ttl": 3600
+      },
+      {
+        "name": "_443._tcp.roadmap.prospect.courses",
+        "type": "TLSA",
+        "value": "3 0 1 9b9bb4a286bf2d8101ed8ff6f5ce1bd7bc8263adab9b369ca8013212b82b1324",
+        "purpose": "CERTIFICATE_BINDING",
+        "required": false,
+        "ttl": 3600
+      }
+    ]
+  },
+  {
+    "agent": "roadmap-agent",
+    "ansName": "ans://v1.0.0.roadmap-agent.prospect.courses",
+    "dnsRecords": [
+      {
+        "name": "roadmap-agent.prospect.courses",
+        "type": "SVCB",
+        "value": "1 . alpn=mcp port=443 key65400=https://roadmap-agent.prospect.courses/.well-known/mcp/server-card.json key65402=mcp",
+        "purpose": "DISCOVERY",
+        "required": true,
+        "ttl": 3600
+      },
+      {
+        "name": "_ans-badge.roadmap-agent.prospect.courses",
+        "type": "TXT",
+        "value": "v=ans-badge1; version=v1.0.0; url=https://localhost:18081/v1/agents/c77cb034-9b96-4590-8c4c-0159e5588881",
+        "purpose": "BADGE",
+        "required": true,
+        "ttl": 3600
+      },
+      {
+        "name": "_443._tcp.roadmap-agent.prospect.courses",
+        "type": "TLSA",
+        "value": "3 0 1 45787680ffef9a211ea04497c211269c6b914bdb44295b15178ef27db3d4881c",
+        "purpose": "CERTIFICATE_BINDING",
+        "required": false,
+        "ttl": 3600
+      }
+    ]
+  }
+]
