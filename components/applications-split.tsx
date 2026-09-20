@@ -11,8 +11,19 @@
 // (`?s=<chip>`), a right pane that is its own scroll container beside the
 // list (v6 DX3), the row→pane View-Transition morph, round company avatars,
 // and the bigger type scale.
+//
+// L7 (redesign 2026-09-20, mission "Redesign mission 2026-09-20" D9/D10):
+// restyled to wt-redesign/planning/mocks/applications.html — raised/bordered
+// list card, 40px avatar + 12px/16px row padding, status dot, a real header
+// (eyebrow + serif h1 + a this-week/this-month/follow-ups-due stat trio, all
+// derived from props already on the page, no new data call), a proper
+// bordered empty-state panel for the pane. See build/MISSION.md "Lane
+// handoffs" 2026-09-20 (L7) for the exact sizes and the pill-height CONFLICT
+// logged there. Every server action, its name and its arguments are
+// untouched.
 import { useCallback, useEffect, useMemo, useOptimistic, useRef, useState, useTransition } from "react";
 import { flushSync } from "react-dom";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { deleteApplicationAction } from "@/app/actions";
 import { bumpWeekCount } from "@/components/week-count";
@@ -30,7 +41,7 @@ import {
 import { formatDate } from "@/lib/dashboard";
 import { isStale } from "@/lib/stale";
 import { velocity } from "@/lib/velocity";
-import type { EventRow } from "@/lib/types";
+import type { AppStatus, EventRow } from "@/lib/types";
 import { CompanyAvatar } from "@/components/company-avatar";
 import { DetailPane, STATUS_LABELS } from "@/components/detail-pane";
 import { FilterChips } from "@/components/filter-chips";
@@ -48,6 +59,20 @@ const barButton =
 const dialogMotion =
   "translate-y-1 opacity-0 open:translate-y-0 open:opacity-100 transition-discrete transition-[opacity,transform,overlay,display] duration-[120ms] ease-[cubic-bezier(0.4,0,1,1)] open:duration-[180ms] open:ease-[cubic-bezier(0.23,1,0.32,1)] open:starting:translate-y-1 open:starting:opacity-0 backdrop:opacity-0 open:backdrop:opacity-100 backdrop:transition-discrete backdrop:transition-[opacity,overlay,display] backdrop:duration-[120ms] open:backdrop:duration-[180ms] open:backdrop:starting:opacity-0 motion-reduce:transition-none";
 
+// mocks/applications.html's per-row status dot: sage for the settled-forward
+// states, accent for the one actively moving, danger for a closed door. offer
+// gets the tint ring the mock reserves for it. (tokens-wanted: --sage-tint —
+// mocks/tokens.css defines it, app/globals.css does not; `sage/10` below is
+// the Tailwind opacity-modifier stand-in.)
+const STATUS_DOT: Record<AppStatus, string> = {
+  applied: "bg-sage",
+  oa: "bg-sage",
+  interviewing: "bg-accent",
+  offer: "bg-sage ring-[3px] ring-sage/20",
+  rejected: "bg-danger",
+  withdrawn: "bg-danger",
+};
+
 const NARROW = "(max-width: 767px)";
 // v6 DX3: on md+ the pane is its own scroll container filling the grid row,
 // with the vertical hairline + gutter between the columns. Below md the
@@ -64,10 +89,16 @@ export function ApplicationsSplit({
   applications,
   events,
   nowMs,
+  targetTerm = null,
 }: {
   applications: ApplicationsRow[];
   events: EventRow[];
   nowMs: number;
+  // Real data already returned by page.tsx's existing requireProfile(uid)
+  // call (lib/student-profile.ts StoredProfile.target_term, e.g. "Summer
+  // 2027") — no new query, just the value the call already fetched. null
+  // when the profile has none set.
+  targetTerm?: string | null;
 }) {
   const [sort, setSort] = useState<ApplicationsSort>("date");
   const [query, setQuery] = useState("");
@@ -126,6 +157,23 @@ export function ApplicationsSplit({
     () => buildApplicationsList(filterByChip(optimisticRows, chip), { sort, query }),
     [optimisticRows, chip, sort, query],
   );
+
+  // mocks/applications.html's header stat trio, built only from data already
+  // on the page (no new query): lib/velocity.ts is already imported below for
+  // the delete-badge check, reused here for the week/month figures (target
+  // stays null — nothing here fetches lib/profile.ts's monthlyTarget, so the
+  // mock's "/ 25" fraction is left off rather than invented; see handoff).
+  // isFollowUpDue is the same "due" test the per-row chip below uses.
+  const isFollowUpDue = useCallback(
+    (row: ApplicationsRow) =>
+      row.follow_up_at !== null &&
+      new Date(row.follow_up_at).getTime() <= nowMs &&
+      row.status !== "rejected" &&
+      row.status !== "withdrawn",
+    [nowMs],
+  );
+  const pace = useMemo(() => velocity(optimisticRows, nowMs, null), [optimisticRows, nowMs]);
+  const dueCount = useMemo(() => optimisticRows.filter(isFollowUpDue).length, [optimisticRows, isFollowUpDue]);
   const selected = selectedId ? optimisticRows.find((r) => r.id === selectedId) ?? null : null;
   const selectedEvents = useMemo(
     () => (selected ? events.filter((e) => e.application_id === selected.id) : []),
@@ -236,31 +284,66 @@ export function ApplicationsSplit({
           <main> scrolls the page and the pane is the fixed slide-over (DX4). */}
       <div className={`grid gap-6 md:-mx-1 md:h-full md:min-h-0 md:grid-rows-[minmax(0,1fr)] md:overflow-hidden md:px-1 ${selected ? "md:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]" : "md:grid-cols-1"}`}>
         <section aria-label="Applications" className="flex min-w-0 flex-col gap-6 pt-4 pb-6 md:-mx-1 md:min-h-0 md:overflow-y-auto md:px-1 md:pr-2">
-          <h1 className="sr-only">Applications</h1>
-          <p className="font-mono text-xs text-text-dim">
-            <span className="text-text">{optimisticRows.length}</span> recorded
-          </p>
+          {/* mocks/applications.html header: eyebrow + serif h1 + a small
+              stat trio, all built from props already on the page (no new
+              data call — see the pace/dueCount comment above). */}
+          <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+            <div className="flex flex-col gap-2">
+              <p className="flex items-center gap-2 font-label text-[11px] uppercase tracking-label text-text-dim">
+                <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-accent" />
+                Applications{targetTerm ? ` · ${targetTerm}` : ""}
+              </p>
+              <h1 className="font-display text-step-4 text-text">
+                <span className="tabular-nums">{optimisticRows.length}</span> application
+                {optimisticRows.length === 1 ? "" : "s"} recorded
+              </h1>
+            </div>
+            {empty ? null : (
+              <div className="flex items-baseline gap-6">
+                <div className="flex flex-col gap-1">
+                  <p className="font-sans text-step-2 leading-none tabular-nums text-text">{pace.week}</p>
+                  <p className="font-label text-[11px] uppercase tracking-label text-text-dim">This week</p>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <p className="font-sans text-step-2 leading-none tabular-nums text-text">{pace.month}</p>
+                  <p className="font-label text-[11px] uppercase tracking-label text-text-dim">This month</p>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <p className="font-sans text-step-2 leading-none tabular-nums text-text">{dueCount}</p>
+                  <p className="font-label text-[11px] uppercase tracking-label text-text-dim">Follow-ups due</p>
+                </div>
+              </div>
+            )}
+          </div>
 
           {/* D29 status chips — one shared visual with Home's All/Saved/Hidden. */}
-          <FilterChips
-            items={chipItems}
-            active={chip}
-            onSelect={(key) => setChip(key as StatusChip)}
-            ariaLabel="Filter by stage"
-          />
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <FilterChips
+              items={chipItems}
+              active={chip}
+              onSelect={(key) => setChip(key as StatusChip)}
+              ariaLabel="Filter by stage"
+            />
+            <Link
+              href="/"
+              className="inline-flex min-h-11 items-center gap-2 rounded-pill border border-transparent bg-sage px-4 font-sans text-sm font-medium text-bg hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage focus-visible:ring-offset-2 focus-visible:ring-offset-raised"
+            >
+              Log an application
+            </Link>
+          </div>
 
           {/* Pinned to the top of the scrolling column on md+. The column's
               -mx-1/px-1 and this pt-1 are a 4px bleed so ring-2 + offset-2
               focus rings are not clipped by the column's overflow. */}
           <div className="flex flex-wrap items-center gap-2 md:sticky md:top-0 md:z-10 md:border-b md:border-hairline md:bg-bg md:pb-3 md:pt-1">
             <SearchInput onQuery={setQuery} />
-            <label className="inline-flex min-h-11 items-center gap-2 font-label text-[11px] uppercase tracking-label text-text-dim">
+            <label className="inline-flex min-h-11 items-center gap-2 rounded-pill border border-hairline px-1 font-label text-[11px] uppercase tracking-label text-text-dim">
               Sort
               <select
                 aria-label="Sort applications"
                 value={sort}
                 onChange={(e) => setSort(e.target.value as ApplicationsSort)}
-                className="min-h-11 border border-hairline bg-transparent px-1 font-label text-[11px] uppercase tracking-label text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage"
+                className="min-h-11 rounded-pill bg-transparent px-2 font-label text-[11px] uppercase tracking-label text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage"
               >
                 <option value="date">Recently added</option>
                 <option value="company">Company A–Z</option>
@@ -282,36 +365,63 @@ export function ApplicationsSplit({
           ) : null}
 
           {empty ? (
-            <p className="py-6 text-[15px] text-text-dim">No applications yet. Confirm an apply on Home and it lands here.</p>
+            <p className="rounded-card border border-hairline bg-raised px-4 py-6 text-[15px] text-text-dim">
+              No applications yet. Confirm an apply on Home and it lands here.
+            </p>
           ) : nothingMatches ? (
-            <p className="py-6 text-[15px] text-text-dim">
+            <p className="rounded-card border border-hairline bg-raised px-4 py-6 text-[15px] text-text-dim">
               Nothing matches &ldquo;{query}&rdquo;.{" "}
               <span className="font-sans text-sm">Clear search</span>
             </p>
           ) : chipEmpty ? (
-            <p className="py-6 text-[15px] text-text-dim">No applications in {CHIP_LABELS[chip]}.</p>
+            <p className="rounded-card border border-hairline bg-raised px-4 py-6 text-[15px] text-text-dim">
+              No applications in {CHIP_LABELS[chip]}.
+            </p>
           ) : (
-            <ul>
+            // mocks/applications.html .card: a raised, bordered list card
+            // instead of a bare divided list (D10: rows share Home's rhythm
+            // — 40px avatar column, 12px/16px row padding, token radii).
+            <ul className="overflow-hidden rounded-card border border-hairline bg-raised [&>li:last-child]:border-b-0">
               {rows.map((row) => {
                 const active = row.id === selectedId;
+                const due = isFollowUpDue(row);
                 return (
                   <li key={row.id} className="border-b border-hairline">
                     <button
                       type="button"
                       onClick={(e) => selectWithMotion(row.id, e.currentTarget)}
                       aria-current={active ? "true" : undefined}
-                      className={`flex w-full items-center gap-3 border-l-2 px-3 py-3 text-left transition-colors duration-[120ms] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage ${
-                        active ? "border-sage bg-raised" : "border-transparent hover:bg-raised"
+                      className={`flex w-full flex-col gap-2 border-l-2 px-4 py-3 text-left transition-colors duration-[120ms] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage md:flex-row md:items-center md:gap-3 ${
+                        active ? "border-sage bg-bg" : "border-transparent hover:bg-bg"
                       }`}
                     >
-                      <CompanyAvatar name={row.company_name} url={row.careers_url ?? row.jd_link} size={32} />
-                      <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-                        <span className="truncate text-[15px] font-medium leading-snug text-text">{row.role}</span>
-                        <span className="truncate text-[13px] leading-snug text-text-dim">{row.company_name}</span>
+                      <CompanyAvatar name={row.company_name} url={row.careers_url ?? row.jd_link} size={40} />
+                      <span className="flex min-w-0 flex-1 flex-col gap-1">
+                        <span className="flex flex-wrap items-baseline gap-2">
+                          <span className="text-[16px] font-medium leading-snug text-text">{row.role}</span>
+                          {due ? (
+                            <span className="inline-flex h-[26px] shrink-0 items-center rounded-pill bg-accent/15 px-2.5 text-[12px] font-medium text-text">
+                              Follow-up due
+                            </span>
+                          ) : null}
+                        </span>
+                        <span className="text-[13px] leading-snug text-text-dim">
+                          {row.company_name} · applied {formatDate(row.date_applied)}
+                          {row.resume_file ? (
+                            <>
+                              {" · resume "}
+                              <span className="font-mono text-[12px]">{row.resume_file}</span>
+                            </>
+                          ) : row.deadline ? (
+                            <> · deadline {formatDate(row.deadline)}</>
+                          ) : null}
+                        </span>
                       </span>
-                      <span className="flex shrink-0 items-center gap-2 text-[11px] text-text-dim">
-                        <span className="font-label uppercase tracking-label">{STATUS_LABELS[row.status]}</span>
-                        <span className="font-mono">{formatDate(row.date_applied)}</span>
+                      <span className="flex shrink-0 items-center gap-3 text-[13px] text-text-dim md:flex-col md:items-end md:gap-1.5">
+                        <span className="inline-flex items-center gap-1.5">
+                          <span aria-hidden="true" className={`h-2 w-2 rounded-full ${STATUS_DOT[row.status]}`} />
+                          {STATUS_LABELS[row.status]}
+                        </span>
                         {isStale(row, nowMs) ? <StaleBadge /> : null}
                       </span>
                     </button>
@@ -348,9 +458,13 @@ export function ApplicationsSplit({
               onBack={() => select(null)}
             />
           ) : (
-            // RB-024: designed empty state, thin icon + one line (doc 4 §6).
-            <div className="hidden min-h-64 flex-col items-center justify-center gap-3 text-text-dim md:h-full md:min-h-0">
-              <FileTextIcon thin />
+            // RB-024 / D10: a proper empty-state PANEL (raised, bordered,
+            // rounded — mocks/applications.html's .pane card), not a blank
+            // column, thin icon + one line (doc 4 §6).
+            <div className="hidden min-h-64 flex-col items-center justify-center gap-3 rounded-panel border border-hairline bg-raised px-6 py-16 text-center text-text-dim md:flex md:h-full md:min-h-0">
+              <span className="flex h-11 w-11 items-center justify-center rounded-full bg-sage/10 text-sage">
+                <FileTextIcon />
+              </span>
               <p className="text-[15px]">
                 {selectedId && !empty ? "That application is gone." : "Select an application to see its details."}
               </p>
