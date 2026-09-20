@@ -35,12 +35,21 @@ const PIXEL_GRID = 2; // device px per dither cell at the poster's own scale
 const BUDGET_BYTES = 260 * 1024;
 
 // 4-step tint ramps, darkest step first. Both are monotonic in WCAG relative
-// luminance so the dither still reads as tone, not as colour noise:
-//   light  0.026 / 0.401 / 0.615 / 0.900
-//   dark   0.008 / 0.086 / 0.331 / 0.501
+// luminance so the dither still reads as tone, not as colour noise.
+//
+// Prospect, 2026-09-19 (CONTEXT 20:30 palette lock, Karthik: the imagery stays
+// ours, the dither palette moves to the VT system). The old teal/apricot ramps
+// (`#222F30 #E69A6F #CCCFCE #F7F7F5` light, `#12161A #4C5253 #D98B60 #B9C2BD`
+// dark) belonged to the retired sage palette and read green against maroon.
+// The new ramps are built from the four locked values only: --ink #1f0e14,
+// maroon #861F41, orange #E5751F, and the warm off-white --raised #faf7f2.
+//   light  0.007 / 0.065 / 0.295 / 0.905
+//   dark   0.004 / 0.030 / 0.185 / 0.522   (the dark set is the same hue family,
+//          darkened, so a poster never out-glares the night page ground)
+// Both are still monotonic, which is the only property the dither depends on.
 const RAMPS = {
-  light: ["#222F30", "#E69A6F", "#CCCFCE", "#F7F7F5"],
-  dark: ["#12161A", "#4C5253", "#D98B60", "#B9C2BD"],
+  light: ["#1f0e14", "#861F41", "#E5751F", "#faf7f2"],
+  dark: ["#150a0e", "#5c1530", "#b85f19", "#c9bcc0"],
 };
 
 // Tone curve, and the rule that goes with it.

@@ -155,3 +155,73 @@ export function CaretDownIcon({ size = 12 }: IconProps) {
     </svg>
   );
 }
+
+// ---------------------------------------------------------------------------
+// Phosphor BOLD weight (MIT), copied verbatim from
+// C:\My_WorkSpace\design\icons\phosphor\SVGs\bold\ — the three the feature
+// cards use. Bold, not thin: at 40px on a card a thin stroke disappears, and
+// the reference's card art is heavy. Same recipe as the thin set above.
+
+function BoldFrame({ size = 40, children }: IconProps & { children: React.ReactNode }) {
+  return (
+    <svg
+      viewBox="0 0 256 256"
+      width={size}
+      height={size}
+      fill="none"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="20"
+      aria-hidden="true"
+      className="shrink-0"
+    >
+      {children}
+    </svg>
+  );
+}
+
+/** list-magnifying-glass-bold — the ranked live feed. */
+export function ListSearchIcon({ size }: IconProps) {
+  return (
+    <BoldFrame size={size}>
+      <line x1="40" y1="64" x2="216" y2="64" />
+      <line x1="40" y1="128" x2="104" y2="128" />
+      <line x1="40" y1="192" x2="120" y2="192" />
+      <circle cx="184" cy="144" r="32" />
+      <line x1="206.63" y1="166.63" x2="232" y2="192" />
+    </BoldFrame>
+  );
+}
+
+/** path-bold — the semester roadmap. */
+export function PathIcon({ size }: IconProps) {
+  return (
+    <BoldFrame size={size}>
+      <circle cx="200" cy="200" r="24" />
+      <path d="M72,56h96a32,32,0,0,1,0,64H72a40,40,0,0,0,0,80H176" />
+    </BoldFrame>
+  );
+}
+
+/** robot-bold — the four agents. */
+export function RobotIcon({ size }: IconProps) {
+  return (
+    <BoldFrame size={size}>
+      <circle cx="88" cy="104" r="12" fill="currentColor" stroke="none" />
+      <circle cx="168" cy="104" r="12" fill="currentColor" stroke="none" />
+      <rect x="32" y="56" width="192" height="160" rx="24" />
+      <line x1="128" y1="56" x2="128" y2="16" />
+      <rect x="68" y="144" width="120" height="36" rx="18" />
+    </BoldFrame>
+  );
+}
+
+/** check-bold — the bullet glyph in the showcase and under-the-hood lists. */
+export function CheckIcon({ size = 16 }: IconProps) {
+  return (
+    <BoldFrame size={size}>
+      <polyline points="216 72 104 184 40 120" />
+    </BoldFrame>
+  );
+}
