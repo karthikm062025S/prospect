@@ -227,7 +227,7 @@ export function ApplicationsSplit({
   const chipEmpty = !empty && rows.length === 0 && query.trim() === "";
 
   return (
-    <div className="flex flex-col gap-4 md:h-full">
+    <div className="flex flex-col gap-6 md:h-full">
       {/* v6 DX3: the split owns the height on md+ — the grid fills <main>, its
           one row is pinned to that height, and each column scrolls on its own
           (min-h-0 + overflow-y-auto). The page header (h1, count) and the
@@ -235,7 +235,7 @@ export function ApplicationsSplit({
           detail pane gets the full height. Below md nothing here applies:
           <main> scrolls the page and the pane is the fixed slide-over (DX4). */}
       <div className={`grid gap-6 md:-mx-1 md:h-full md:min-h-0 md:grid-rows-[minmax(0,1fr)] md:overflow-hidden md:px-1 ${selected ? "md:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]" : "md:grid-cols-1"}`}>
-        <section aria-label="Applications" className="flex min-w-0 flex-col gap-4 pt-4 pb-6 md:-mx-1 md:min-h-0 md:overflow-y-auto md:px-1 md:pr-2">
+        <section aria-label="Applications" className="flex min-w-0 flex-col gap-6 pt-4 pb-6 md:-mx-1 md:min-h-0 md:overflow-y-auto md:px-1 md:pr-2">
           <h1 className="sr-only">Applications</h1>
           <p className="font-mono text-xs text-text-dim">
             <span className="text-text">{optimisticRows.length}</span> recorded

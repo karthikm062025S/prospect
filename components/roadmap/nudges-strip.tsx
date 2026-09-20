@@ -18,12 +18,11 @@ export function NudgesStrip({ nudges }: { nudges: NudgeRow[] | null }) {
     return <p className="text-[13px] text-text-dim">No nudges yet.</p>;
   }
   return (
-    <ul className="flex flex-col gap-2" aria-label="Nudges">
+    <ul className="flex flex-col gap-3" aria-label="Nudges">
       {nudges.map((nudge) => (
         <li
           key={nudge.id}
-          className="flex flex-col gap-1 border border-hairline bg-raised p-3"
-          style={{ borderRadius: "var(--radius-card, 16px)" }}
+          className="flex flex-col gap-1 rounded-card border border-hairline bg-raised p-4"
         >
           <span className="font-label text-[11px] uppercase tracking-label text-text-dim">{nudge.kind}</span>
           <span className="text-[15px] font-medium text-text">{nudge.title}</span>

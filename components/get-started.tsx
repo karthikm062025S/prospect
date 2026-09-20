@@ -14,6 +14,12 @@ import {
 const paneButton =
   "inline-flex min-h-11 items-center gap-1.5 border border-hairline px-4 font-sans text-sm font-medium text-text hover:bg-bg hover:text-sage focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage focus-visible:ring-offset-2 focus-visible:ring-offset-raised disabled:cursor-not-allowed disabled:opacity-60";
 
+// The quiet secondary affordance: an underlined text action at a 44px target,
+// never a filled or bordered button (ui_laws.md #7: secondary actions stay
+// visually quieter than the section's one dominant action).
+const quietAction =
+  "inline-flex min-h-11 items-center font-sans text-[13px] text-sage underline underline-offset-2 hover:no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage focus-visible:ring-offset-2 focus-visible:ring-offset-bg disabled:cursor-not-allowed disabled:text-text-dim disabled:no-underline";
+
 export const GET_STARTED_DISMISSED_KEY = "scout_get_started_dismissed";
 export const GET_STARTED_FEEDBACK_KEY = "scout_get_started_feedback_clicked";
 export const GET_STARTED_ACTIVE_KEY = "scout_get_started_active";
@@ -118,7 +124,7 @@ function ProgressItem({
   const reducedMotion = useReducedMotion();
   return (
     <li className="flex min-h-8 items-center gap-2 text-[13px] text-text">
-      <span className="text-text-dim [&_svg]:size-5 [&_svg]:[stroke-width:8]">{icon}</span>
+      <span className="text-text-dim [&_svg]:size-5">{icon}</span>
       {done ? (
         <span className="min-w-0 flex-1 text-pretty text-text-dim line-through">{children}</span>
       ) : (
@@ -196,57 +202,6 @@ export function GetStarted({
     () => false,
   );
   const titleId = useId();
-  const router = useRouter();
-  // L2c: the signed-in NDJSON path (app/api/match/route.ts) -- one line per
-  // named step as the Match agent runs, exactly like components/setup/
-  // setup-form.tsx parses app/api/profile/route.ts's stream.
-  const [ranking, setRanking] = useState(false);
-  const [rankSteps, setRankSteps] = useState<{ step: string; label: string }[]>([]);
-  const [rankError, setRankError] = useState<string | null>(null);
-
-  async function runRankMyFeed() {
-    setRankError(null);
-    setRankSteps([]);
-    setRanking(true);
-    try {
-      const response = await fetch("/api/match", { method: "POST" });
-      if (!response.ok || !response.body) {
-        const body = await response.json().catch(() => null);
-        setRankError(body?.error ?? `Request failed (${response.status})`);
-        setRanking(false);
-        return;
-      }
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        buffer = lines.pop() ?? "";
-        for (const line of lines) {
-          if (!line.trim()) continue;
-          const event = JSON.parse(line) as { step?: string; label?: string; error?: string; done?: boolean };
-          if (event.error) {
-            setRankError(event.error);
-            setRanking(false);
-            return;
-          }
-          if (event.done) {
-            router.refresh(); // re-fetches app/(app)/page.tsx server-side; hasScores flips true
-            return;
-          }
-          if (event.step && event.label) {
-            setRankSteps((prev) => [...prev, { step: event.step as string, label: event.label as string }]);
-          }
-        }
-      }
-    } catch (err) {
-      setRankError((err as Error).message);
-      setRanking(false);
-    }
-  }
 
   useEffect(() => {
     feedbackUserId = userId;
@@ -277,9 +232,9 @@ export function GetStarted({
     return (
       <section
         aria-labelledby="profile-setup-heading"
-        className="shrink-0 overflow-hidden rounded-2xl bg-raised p-4 shadow-sm ring-1 ring-hairline"
+        className="shrink-0 overflow-hidden rounded-card bg-raised p-4 shadow-sm ring-1 ring-hairline"
       >
-        <h2 id="profile-setup-heading" className="font-display text-lg text-text">
+        <h2 id="profile-setup-heading" className="font-display text-step-1 text-text">
           Set up your profile
         </h2>
         <p className="mt-1 text-[13px] text-text-dim">
@@ -292,36 +247,17 @@ export function GetStarted({
     );
   }
 
+  // Baseline defect 4: Home used to LEAD with a full "Rank my feed" card and a
+  // primary button. Lanes A/B make ranking automatic at the end of the setup
+  // stream, so Home must not open with a manual button (ui_laws.md #7 Von
+  // Restorff: one dominant action per section, and this is not it; #12
+  // Prägnanz: remove the decoration). What is left is one quiet secondary
+  // line. The full control still lives in Settings (RankFeedControl below).
   if (!hasScores) {
     return (
-      <section
-        aria-labelledby="rank-feed-heading"
-        className="shrink-0 overflow-hidden rounded-2xl bg-raised p-4 shadow-sm ring-1 ring-hairline"
-      >
-        <h2 id="rank-feed-heading" className="font-display text-lg text-text">
-          Rank my feed
-        </h2>
-        {ranking ? (
-          <ol aria-live="polite" className="mt-2 flex flex-col gap-1 text-[13px] text-text-dim">
-            {rankSteps.map((s, i) => (
-              <li key={`${s.step}-${i}`}>{s.label}</li>
-            ))}
-            {rankSteps.length === 0 ? <li>Starting the Match agent…</li> : null}
-          </ol>
-        ) : (
-          <p className="mt-1 text-[13px] text-text-dim">
-            Score every open posting against your profile and goal, best match first.
-          </p>
-        )}
-        {rankError ? (
-          <p role="alert" className="mt-2 text-[13px] text-danger">
-            {rankError}
-          </p>
-        ) : null}
-        <button type="button" onClick={runRankMyFeed} disabled={ranking} className={`${paneButton} mt-3`}>
-          {ranking ? "Ranking…" : "Rank my feed"}
-        </button>
-      </section>
+      <div className="flex shrink-0 flex-wrap items-center gap-3 text-[13px] text-text-dim">
+        <RankFeedControl idle="Not ranked for you yet." />
+      </div>
     );
   }
 
@@ -343,11 +279,11 @@ export function GetStarted({
           animate={{ opacity: 1, height: "auto" }}
           exit={{ opacity: 0, height: 0 }}
           transition={reducedMotion ? { duration: 0 } : { duration: 0.24, ease: [0.23, 1, 0.32, 1] }}
-          className="shrink-0 overflow-hidden rounded-2xl bg-raised p-4 shadow-sm ring-1 ring-hairline"
+          className="shrink-0 overflow-hidden rounded-card bg-raised p-4 shadow-sm ring-1 ring-hairline"
         >
           <div className="flex items-start justify-between gap-3">
             <div>
-              <h2 id={titleId} className="font-display text-lg text-text">
+              <h2 id={titleId} className="font-display text-step-1 text-text">
                 Get started
               </h2>
               <p aria-live="polite" className="mt-0.5 font-sans text-[11px] uppercase tracking-[0.08em] tabular-nums text-text-dim">
@@ -408,5 +344,79 @@ export function GetStarted({
         </motion.section>
       ) : null}
     </AnimatePresence>
+  );
+}
+
+/**
+ * The ONE "Rank my feed" control (ui_laws.md #16 Law of Similarity: one
+ * component, one appearance, wherever the action appears). Home renders it as
+ * the quiet secondary line that replaced the old leading card (baseline defect
+ * 4); Settings renders the same control so the re-rank stays reachable once
+ * ranking is automatic.
+ *
+ * L2c: the signed-in NDJSON path (app/api/match/route.ts) -- one line per named
+ * step as the Match agent runs, exactly like components/setup/setup-form.tsx
+ * parses app/api/profile/route.ts's stream.
+ */
+export function RankFeedControl({ idle, label = "Rank my feed" }: { idle: string; label?: string }) {
+  const router = useRouter();
+  const [ranking, setRanking] = useState(false);
+  const [step, setStep] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  async function run() {
+    setError(null);
+    setStep(null);
+    setRanking(true);
+    try {
+      const response = await fetch("/api/match", { method: "POST" });
+      if (!response.ok || !response.body) {
+        const body = await response.json().catch(() => null);
+        setError(body?.error ?? `Request failed (${response.status})`);
+        setRanking(false);
+        return;
+      }
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          const event = JSON.parse(line) as { step?: string; label?: string; error?: string; done?: boolean };
+          if (event.error) {
+            setError(event.error);
+            setRanking(false);
+            return;
+          }
+          if (event.done) {
+            router.refresh(); // re-fetches the page server-side; hasScores flips true
+            return;
+          }
+          if (event.label) setStep(event.label);
+        }
+      }
+    } catch (err) {
+      setError((err as Error).message);
+      setRanking(false);
+    }
+  }
+
+  return (
+    <>
+      <span aria-live="polite">{ranking ? (step ?? "Starting the Match agent…") : idle}</span>
+      <button type="button" onClick={run} disabled={ranking} className={quietAction}>
+        {ranking ? "Ranking…" : label}
+      </button>
+      {error ? (
+        <span role="alert" className="text-danger">
+          {error}
+        </span>
+      ) : null}
+    </>
   );
 }

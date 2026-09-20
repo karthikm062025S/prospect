@@ -2,6 +2,7 @@
 
 import { useSyncExternalStore } from "react";
 import Link from "next/link";
+import { XIcon } from "@/components/icons";
 
 // D10: shown on Home while user_metadata.full_name is empty. Dismissal is
 // per-device (localStorage), namespaced by user id (see get-started.tsx's
@@ -50,20 +51,26 @@ export function ProfileBanner({ uid }: { uid: string }) {
   if (dismissed) return null;
 
   return (
-    <div className="flex items-center justify-between gap-3 border border-hairline bg-raised px-4 py-2 text-sm text-text">
+    // Baseline defect 4: this used to be a full-width raised banner ABOVE the
+    // stat strip, so the first thing a new user saw was a chore. It is now one
+    // quiet dim line at the top of the page ground with a 44px dismiss target
+    // (ui_laws.md #7 Von Restorff: a secondary affordance must not carry the
+    // strongest emphasis on the screen; #12 Prägnanz: less visual noise).
+    <div className="flex items-center justify-between gap-3 pt-4 text-[13px] text-text-dim">
       <p>
-        Update your profile. Add your name so Prospect can greet you.{" "}
-        <Link href="/settings#profile" className="underline underline-offset-2 hover:text-sage">
+        Add your name so Prospect can greet you.{" "}
+        <Link href="/settings#profile" className="text-sage underline underline-offset-2 hover:no-underline">
           Go to profile
         </Link>
       </p>
       <button
         type="button"
         aria-label="Dismiss"
+        title="Dismiss"
         onClick={() => dismiss(uid)}
-        className="flex min-h-11 min-w-11 shrink-0 items-center justify-center text-text-dim hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage"
+        className="flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-sm hover:bg-raised hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage"
       >
-        ×
+        <XIcon />
       </button>
     </div>
   );

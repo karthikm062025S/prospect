@@ -179,7 +179,7 @@ export function RoadmapBoard({
 
   if (!roadmap) {
     return (
-      <div className="flex flex-col items-center gap-4 border border-hairline bg-raised p-8 text-center" style={{ borderRadius: "var(--radius-card, 16px)" }}>
+      <div className="flex min-w-0 flex-col items-center gap-6 rounded-card border border-hairline bg-raised p-8 text-center">
         <h2 className="font-display text-step-3 text-text">Build your journey</h2>
         <p className="max-w-md text-[15px] text-text-dim">
           The Roadmap agent plans a semester-by-semester path to {targetTerm} from your real courses, VT clubs and
@@ -191,7 +191,7 @@ export function RoadmapBoard({
           <button
             type="button"
             onClick={() => runAgent()}
-            className="min-h-11 border border-sage bg-sage px-4 font-sans text-sm text-ink-text hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
+            className="min-h-11 rounded-pill border border-sage bg-sage px-5 font-sans text-sm font-medium text-ink-text hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
           >
             Build my roadmap
           </button>
@@ -206,9 +206,12 @@ export function RoadmapBoard({
   }
 
   return (
-    <div className="flex flex-col gap-4">
+    // Baseline defect 2: `min-w-0` so the timeline's own scroller below can
+    // shrink instead of widening the page (a flex/grid child's min-width
+    // defaults to auto).
+    <div className="flex min-w-0 flex-col gap-6">
       {isAgentPending ? (
-        <div className="border border-hairline bg-raised p-4" style={{ borderRadius: "var(--radius-card, 16px)" }}>
+        <div className="rounded-card border border-hairline bg-raised p-4">
           <RoadmapLoadingSteps states={pendingStates(agentSteps, agentSteps.length)} />
         </div>
       ) : agentError ? (

@@ -146,7 +146,7 @@ export function RoleDetailPane({
         <CompanyAvatar name={row.company_name} url={row.company_url} size={40} />
         <div className="flex min-w-0 flex-col gap-0.5">
           <span className="text-[13px] text-text-dim">{row.company_name}</span>
-          <h2 className="text-xl font-medium text-text">{row.title}</h2>
+          <h2 className="font-display text-step-2 text-text">{row.title}</h2>
         </div>
       </header>
 

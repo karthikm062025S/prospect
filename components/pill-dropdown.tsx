@@ -166,7 +166,7 @@ export function PillDropdown({
             close(true);
           }
         }}
-        className="inline-flex min-h-11 items-center gap-2 rounded-full border border-text-dim bg-raised px-3.5 font-label text-[11px] uppercase tracking-[0.08em] text-text hover:border-sage focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
+        className="inline-flex min-h-11 items-center gap-2 rounded-pill border border-text-dim bg-raised px-4 font-label text-[11px] uppercase tracking-[0.08em] text-text hover:border-sage focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
       >
         <span className="text-text-dim">{label}</span>
         <span>{selected?.label ?? "All"}</span>
@@ -215,7 +215,7 @@ export function PillDropdown({
                 setOpen(false);
               }
             }}
-            className="fixed z-50 min-w-56 overflow-hidden rounded-[18px] border border-hairline bg-raised p-1.5 text-text shadow-lg"
+            className="fixed z-50 min-w-56 overflow-hidden rounded-panel border border-hairline bg-raised p-1.5 text-text shadow-lg"
             style={{
               left: panelPosition?.left ?? 0,
               top: panelPosition?.top ?? 0,
@@ -238,7 +238,7 @@ export function PillDropdown({
                     tabIndex={index === activeIndex ? 0 : -1}
                     onPointerMove={() => setActiveIndex(index)}
                     onClick={() => choose(index)}
-                    className={`relative flex min-h-11 cursor-pointer items-center justify-between gap-4 rounded-xl px-3 font-label text-[11px] uppercase tracking-[0.08em] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage ${
+                    className={`relative flex min-h-11 cursor-pointer items-center justify-between gap-4 rounded-pill px-4 font-label text-[11px] uppercase tracking-[0.08em] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage ${
                       isSelected ? "text-bg" : "text-text hover:bg-bg"
                     }`}
                   >
@@ -246,7 +246,7 @@ export function PillDropdown({
                       <motion.span
                         layoutId={`${id}-active-option`}
                         aria-hidden
-                        className="absolute inset-0 rounded-xl bg-text"
+                        className="absolute inset-0 rounded-pill bg-text"
                         transition={
                           reducedMotion
                             ? { duration: 0 }

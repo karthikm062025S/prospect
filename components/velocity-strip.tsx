@@ -22,14 +22,35 @@
 // the current filter happens to show.
 import type { ReactNode } from "react";
 import Link from "next/link";
+import { SlidingNumber } from "@/components/motion/sliding-number";
 
 function Figure({ label, number, footer }: { label: string; number: ReactNode; footer?: ReactNode }) {
   return (
-    <div>
-      <p className="font-sans text-step-2 tabular-nums text-text leading-none">{number}</p>
-      <p className="font-label text-[11px] uppercase tracking-label text-text-dim mt-1">{label}</p>
+    // A figure and its label are ONE unit, so they sit at the 8px grid step,
+    // not the 12px stack gap that separates DIFFERENT items (ui_laws.md #4,
+    // Law of Proximity). The 24px block gap between figures is what groups
+    // them into the strip.
+    <div className="flex flex-col gap-2">
+      <p className="font-sans text-step-2 leading-none tabular-nums text-text">{number}</p>
+      <p className="font-label text-[11px] uppercase tracking-label text-text-dim">{label}</p>
       {footer}
     </div>
+  );
+}
+
+// SYSTEM.md Motion grammar: the stat numbers slide (odometer). SlidingNumber
+// paints all ten digits per column, so the READABLE value is this sr-only
+// span; the odometer itself is aria-hidden decoration. Under
+// prefers-reduced-motion / the Settled setting SlidingNumber renders the plain
+// final value instead (components/motion/sliding-number.tsx).
+function Stat({ value }: { value: number }) {
+  return (
+    <>
+      <span className="sr-only">{value}</span>
+      <span aria-hidden="true">
+        <SlidingNumber value={value} />
+      </span>
+    </>
   );
 }
 
@@ -47,18 +68,18 @@ export function VelocityStrip({
   target?: number | null;
 }) {
   return (
-    <div className="grid max-w-2xl grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-4">
-      <Figure label="Added today" number={added} />
-      <Figure label="Applied today" number={today} />
-      <Figure label="Applied this week" number={week} />
+    <div className="grid max-w-2xl grid-cols-2 gap-6 sm:grid-cols-4">
+      <Figure label="Added today" number={<Stat value={added} />} />
+      <Figure label="Applied today" number={<Stat value={today} />} />
+      <Figure label="Applied this week" number={<Stat value={week} />} />
       <Figure
         label="This month"
         number={
           target === null ? (
-            month
+            <Stat value={month} />
           ) : (
             <>
-              {month} <span className="text-text-dim">of</span> {target}
+              <Stat value={month} /> <span className="text-text-dim">of</span> <Stat value={target} />
             </>
           )
         }
