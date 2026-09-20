@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/require-user";
 import { runRoadmapAgent, type RoadmapStep } from "@/lib/agents/roadmap";
 import { setNodeStatus, setNodeNotes, deleteNode, addNode, type RoadmapNode, type NodeStatus, type NodeKind } from "@/lib/roadmaps";
-import { loadCourseCandidates, loadClubCandidates } from "@/lib/catalog";
+import { searchCatalog, type CatalogSearch } from "@/lib/catalog";
 
 export type ActionResult<T> = { ok: true; data: T } | { ok: false; error: string };
 
@@ -80,21 +80,11 @@ export async function addNodeAction(input: {
   }
 }
 
-export async function searchCoursesAction(keyword: string): Promise<ActionResult<Array<{ code: string; title: string }>>> {
+/** The add-node typeahead: courses + clubs in one Lakebase round trip (lib/catalog.ts searchCatalog). */
+export async function searchCatalogAction(keyword: string): Promise<ActionResult<CatalogSearch>> {
   await requireUser();
   try {
-    const rows = await loadCourseCandidates({ keywords: [keyword], limit: 20 });
-    return { ok: true, data: rows.map((r) => ({ code: r.code, title: r.title })) };
-  } catch (error) {
-    return failed(error);
-  }
-}
-
-export async function searchClubsAction(keyword: string): Promise<ActionResult<Array<{ name: string; description: string }>>> {
-  await requireUser();
-  try {
-    const rows = await loadClubCandidates({ keywords: [keyword], limit: 20 });
-    return { ok: true, data: rows.map((r) => ({ name: r.name, description: r.description })) };
+    return { ok: true, data: await searchCatalog(keyword, 20) };
   } catch (error) {
     return failed(error);
   }
