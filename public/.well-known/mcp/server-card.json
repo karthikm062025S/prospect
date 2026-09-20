@@ -1,0 +1,25 @@
+{
+  "name": "Prospect",
+  "description": "The career journey for every Virginia Tech student; agents verified via ANS under prospect.courses.",
+  "url": "https://prospect.courses/api/mcp",
+  "transports": ["streamable-http"],
+  "auth": {
+    "type": "bearer",
+    "note": "judge token issued at the table"
+  },
+  "tools": [
+    {
+      "name": "whoami",
+      "description": "Identify this MCP server and its ANS registration."
+    },
+    {
+      "name": "plan_next_steps",
+      "description": "Match a goal against public open postings and the VT course catalog."
+    }
+  ],
+  "ans": {
+    "domain": "prospect.courses",
+    "transparency_log": "set at demo time"
+  },
+  "contact": "VTHacks 14 team Prospect"
+}
