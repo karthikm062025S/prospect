@@ -134,18 +134,37 @@ const STAMP = new Intl.DateTimeFormat("en-US", {
   minute: "2-digit",
 });
 
-// A font-label relative date ("today" / "2d ago") must not render its digits
-// in the label face (D1 + tests/app-numerals.test.ts) — split the leading run
-// of digits into a font-sans tabular-nums span.
+// A font-label relative date ("added today" / "added 2 days ago") must not
+// render its digits in the label face (D1 + tests/app-numerals.test.ts) —
+// split the FIRST run of digits (wherever it falls in the string) into a
+// font-sans tabular-nums span.
 function relativeDayLabel(text: string): React.ReactNode {
-  const match = /^(\d+)(.*)$/.exec(text);
+  const match = /(\d+)/.exec(text);
   if (!match) return text;
+  const start = match.index;
+  const digits = match[1];
   return (
     <>
-      <span className="font-sans tabular-nums">{match[1]}</span>
-      {match[2]}
+      {text.slice(0, start)}
+      <span className="font-sans tabular-nums">{digits}</span>
+      {text.slice(start + digits.length)}
     </>
   );
+}
+
+// VTHacks speed pass (2026-09-20): the row's liveness chip ("seen today")
+// sits right next to the "added" chip, so a bare "today"/"2d ago" read as a
+// doubled "seen today today". Local to role-row.tsx's own "added" chip only —
+// lib/sort.ts's relativeDay() stays untouched (role-detail-pane.tsx calls it
+// directly, in its own non-chip sentence).
+function addedLabel(relative: string): string {
+  if (relative === "Today") return "added today";
+  if (relative === "Yesterday") return "added 1 day ago";
+  const days = /^(\d+)d ago$/.exec(relative);
+  if (days) return `added ${days[1]} days ago`;
+  const weeks = /^(\d+)w ago$/.exec(relative);
+  if (weeks) return `added ${Number(weeks[1]) * 7} days ago`;
+  return relative; // "Not recorded" (unparseable date) — left as-is
 }
 
 export function absoluteDateTime(iso: string | null): string {
@@ -357,8 +376,8 @@ function RoleRowBase({
             className="flex min-h-12 min-w-0 flex-1 items-center gap-2 py-2 pl-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage md:min-w-[16rem]"
           >
             {showCompany ? <CompanyAvatar name={row.company_name} url={row.company_url} size={28} /> : null}
-            {showCompany ? <span className="max-w-[40%] shrink-0 truncate text-[13px] text-text-dim">{row.company_name}</span> : null}
-            <span title={decodeEntities(row.title)} className="min-w-0 truncate text-[15px] font-medium text-text">
+            {showCompany ? <span className="max-w-[9rem] shrink-0 truncate text-[13px] text-text-dim">{row.company_name}</span> : null}
+            <span title={decodeEntities(row.title)} className="min-w-0 line-clamp-2 text-[15px] font-medium text-text">
               {decodeEntities(row.title)}
             </span>
           </button>
@@ -390,7 +409,7 @@ function RoleRowBase({
                   title={`Added ${absoluteDateTime(row.created_at)}`}
                   className="font-label text-[11px] tracking-label uppercase text-text-dim"
                 >
-                  {relativeDayLabel(relativeDay(row.created_at, nowMs))}
+                  {relativeDayLabel(addedLabel(relativeDay(row.created_at, nowMs)))}
                 </span>
                 {row.href ? (
                   <a href={row.href} target="_blank" rel="noreferrer" onClick={flow.arm} className={actionButton}>

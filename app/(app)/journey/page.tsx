@@ -82,6 +82,7 @@ async function loadCompactFeed(nowMs: number, userId: string): Promise<HomeRow[]
        join roles_public r on r.id = m.role_id
        left join companies_public c on c.id = r.company_id
        where m.user_id = $1 and r.lifecycle = 'open'
+         and coalesce(r.source_posted_at, r.created_at) > now() - interval '30 days'
        order by m.score desc
        limit 150`,
       [userId],
@@ -93,6 +94,7 @@ async function loadCompactFeed(nowMs: number, userId: string): Promise<HomeRow[]
          from roles_public r
          left join companies_public c on c.id = r.company_id
          where r.lifecycle = 'open'
+           and coalesce(r.source_posted_at, r.created_at) > now() - interval '30 days'
          order by r.created_at desc
          limit 150`,
         [],
