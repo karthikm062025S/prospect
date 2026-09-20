@@ -203,6 +203,23 @@ test("self-correction: a second rejected answer is the named AGENT_OUTPUT_INVALI
   assert.equal(generate.calls.length, 2);
 });
 
+test("a U+0000 inside any model output string is stripped before validation (Postgres jsonb rejects it)", async () => {
+  const generate = fakeModel('{"results":[{"role_id":"r1","requirements":["3+ years\\u0000 Java","\\u0000"]}],"note":"a\\u0000b"}');
+  const value = await callModel(
+    {
+      ...base,
+      label: "match.requirements[0]",
+      schema: z.object({ results: z.array(z.object({ role_id: z.string(), requirements: z.array(z.string()) })), note: z.string() }),
+      responseSchema: { type: "OBJECT" },
+    },
+    generate,
+  );
+  assert.deepEqual(value, { results: [{ role_id: "r1", requirements: ["3+ years Java", ""] }], note: "ab" });
+  assert.equal(JSON.stringify(value).includes("\\u0000"), false);
+  const plain = await callModel({ ...base, label: "roadmap.certifications", schema: z.string() }, fakeModel("AWS\u0000 | why | https://x.y"));
+  assert.equal(plain, "AWS | why | https://x.y");
+});
+
 test("self-correction also covers a non-JSON first answer", async () => {
   const generate = fakeModelSequence(["I refuse", '{"n":9}']);
   const value = await callModel({ ...base, label: "transcript", schema: z.object({ n: z.number() }), responseSchema: { type: "OBJECT" } }, generate);

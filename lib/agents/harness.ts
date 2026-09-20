@@ -166,12 +166,26 @@ function decode<T>(input: CallModelInput<T>, text: ModelText): T {
   return decoded.value;
 }
 
+/**
+ * Postgres cannot store U+0000 in text or jsonb ("unsupported Unicode escape sequence", 22P05;
+ * seen live 2026-09-20 on match_scores when a posting's requirement text carried one). Every
+ * model output string is scrubbed here, the one door, so no agent's write can trip it.
+ */
+export function stripNul<T>(value: T): T {
+  if (typeof value === "string") return value.replaceAll("\u0000", "") as T;
+  if (Array.isArray(value)) return value.map(stripNul) as T;
+  if (value && typeof value === "object") {
+    return Object.fromEntries(Object.entries(value as Record<string, unknown>).map(([k, v]) => [k, stripNul(v)])) as T;
+  }
+  return value;
+}
+
 /** The validator as a value: `error` is the exact message the self-correction retry hands back to the model. */
 function tryDecode<T>(input: CallModelInput<T>, { text, finishReason }: ModelText): { ok: true; value: T } | { ok: false; error: string } {
-  let candidate: unknown = text;
+  let candidate: unknown = stripNul(text);
   if (input.responseSchema !== undefined) {
     try {
-      candidate = JSON.parse(text);
+      candidate = stripNul(JSON.parse(text));
     } catch {
       return { ok: false, error: `response is not JSON (finishReason=${finishReason}, ${text.length} chars: ${text.slice(0, 80)})` };
     }
