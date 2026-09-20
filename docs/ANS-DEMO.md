@@ -4,7 +4,7 @@
 
 ## What ANS does for Prospect
 
-Each agent (Profile, Match, Roadmap) holds an ANS passport: a name like `ans://v1.0.0.roadmap.prospect.courses` plus a signed TL record proving an outside registration authority verified it. Before any agent run writes a row, `startAgentRun` (`lib/student-profile.ts:78`) calls `assertVerifiedAgent` (`lib/ans-verify.ts`) — a badge that is not `ACTIVE` on the TL is refused before the write. The RA/TL are an outside party vouching for us, not a claim we make about ourselves.
+Each agent (Profile, Match, Roadmap, Orchestrator) holds an ANS passport: a name like `ans://v1.0.0.roadmap.prospect.courses` plus a signed TL record proving an outside registration authority verified it. Before any agent run writes a row, `startAgentRun` (`lib/student-profile.ts:78`) calls `assertVerifiedAgent` (`lib/ans-verify.ts`) — a badge that is not `ACTIVE` on the TL is refused before the write. The RA/TL are an outside party vouching for us, not a claim we make about ourselves.
 
 ## Why it is not on GoDaddy's list
 
@@ -30,15 +30,16 @@ Ran tonight (`docker ps`, exit 0): `ans-tl` and `ans-ra` both `Up (healthy)`; fi
 | profile | `ans://v1.0.0.profile.prospect.courses` | ACTIVE |
 | match | `ans://v1.0.0.match.prospect.courses` | ACTIVE |
 | roadmap | `ans://v1.0.0.roadmap.prospect.courses` | ACTIVE |
+| orchestrator | `ans://v1.0.0.orchestrator.prospect.courses` | ACTIVE (the Databricks job; no in-app gate call) |
 | roadmap-agent (impostor) | `ans://v1.0.0.roadmap-agent.prospect.courses` | PENDING_DNS, no TL record |
 
 **(2) `ans-verify` pass vs fail** (`cd ans-upstream` first):
 ```
-./bin/ans-verify.exe -url http://localhost:18081 -agent bf518653-effb-4601-8204-45ea08e9fd01
+./bin/ans-verify.exe -url http://localhost:18081 -agent 373e41f3-4458-416f-83d4-228c16cf4468
 ```
 Ran tonight, exit 0: 7 steps print `✓` (keys, receipt, COSE decode, crypto verify, status token, badge cross-check, metadata hashes), ending `status: ACTIVE`.
 ```
-./bin/ans-verify.exe -url http://localhost:18081 -agent c77cb034-9b96-4590-8c4c-0159e5588881
+./bin/ans-verify.exe -url http://localhost:18081 -agent 55514d08-8b32-40ee-979c-e8186b8b9c4b
 ```
 Ran tonight, exit 1: step 2 fails `HTTP 404 ... "sql: no rows in result set","code":"TL_NOT_FOUND"` — the impostor was never written to the log.
 
