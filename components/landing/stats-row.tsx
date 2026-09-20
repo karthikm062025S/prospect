@@ -1,4 +1,5 @@
 import { Rise } from "@/components/landing/rise";
+import { StatOdometer } from "@/components/motion/stat-odometer";
 import { TextReveal } from "@/components/motion/text-reveal";
 import { formatStat } from "@/lib/public-stats-format";
 import type { PublicStats } from "@/lib/public-stats-format";
@@ -47,7 +48,10 @@ export function StatsRow({ stats }: { stats: PublicStats }) {
                 {figure.label}
               </dt>
               <dd className="font-sans text-step-5 leading-none tabular-nums text-text">
-                {formatStat(figure.value)}
+                {/* The figure rolls up once, when the band is on screen. The
+                    string formatStat() returns is what is read aloud and what
+                    renders under reduced motion; the columns are decorative. */}
+                <StatOdometer value={figure.value} text={formatStat(figure.value)} />
               </dd>
             </Rise>
           ))}
