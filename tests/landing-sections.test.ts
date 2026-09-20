@@ -77,7 +77,7 @@ test("the hero wordmark reveals per character, the statement per word, and both 
   const wordmark = read("components/brand/wordmark.tsx");
   assert.match(wordmark, /aria-label="Prospect"/);
   assert.equal((wordmark.match(/\{ char: "[a-z]", d: "M/g) ?? []).length, 8, "eight letter paths");
-  assert.match(wordmark, /{ char: "p"[sS]*?{ char: "r"[sS]*?{ char: "o"[sS]*?{ char: "s"[sS]*?{ char: "p"[sS]*?{ char: "e"[sS]*?{ char: "c"[sS]*?{ char: "t"/, "letters in reading order");
+  assert.match(wordmark, /\{ char: "p"[\s\S]*?\{ char: "r"[\s\S]*?\{ char: "o"[\s\S]*?\{ char: "s"[\s\S]*?\{ char: "p"[\s\S]*?\{ char: "e"[\s\S]*?\{ char: "c"[\s\S]*?\{ char: "t"/, "letters in reading order");
   assert.match(wordmark, /delay: index \* LETTER_STAGGER/);
   // D2: VT maroon letters, VT orange sparkle and nugget, nothing else.
   assert.match(wordmark, /const MAROON = "#861F41";/);
