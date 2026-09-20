@@ -12,6 +12,7 @@ import { velocity } from "@/lib/velocity";
 import { safeHttpUrl, type Company, type Role } from "@/lib/types";
 import { deriveFamily, familySignals } from "@/lib/family";
 import { deriveTierTags } from "@/lib/company-tier";
+import { isUsLocation } from "@/lib/us-location";
 import { deriveSeason } from "@/lib/season";
 import { overlayCorrections, parseCorrection, type Correction } from "@/lib/corrections";
 import { HomeList } from "@/components/home-list";
@@ -81,7 +82,9 @@ export default async function HomePage() {
 
   const pace = velocity(appRows, now, profile?.monthlyTarget ?? null);
   const merged = mergeUserRoles(roleRows, userRows);
-  const inPlay = merged.rows.filter((role) => isInPlay(role, now));
+  // VTHacks speed pass: "change the location to only united states"
+  // (Karthik) — a read-time filter (lib/us-location.ts), ambiguous/blank kept.
+  const inPlay = merged.rows.filter((role) => isInPlay(role, now) && isUsLocation(role.location));
 
   // L2c: archetype + role_tasks label data, scoped to the roles actually on
   // this page (never a full-table scan) and skipped entirely when nothing

@@ -7,6 +7,7 @@ import { safeHttpUrl } from "@/lib/types";
 import { deriveSeason } from "@/lib/season";
 import { deriveFamily, familySignals, type Family } from "@/lib/family";
 import { deriveTierTags } from "@/lib/company-tier";
+import { isUsLocation } from "@/lib/us-location";
 import type { Season } from "@/lib/season";
 import { liveness } from "@/lib/liveness";
 import { nowMs as getNowMs } from "@/lib/dashboard";
@@ -102,6 +103,9 @@ async function loadCompactFeed(nowMs: number, userId: string): Promise<HomeRow[]
     if (/relation "(roles_public|match_scores)" does not exist/.test((error as Error).message)) return null;
     throw error;
   }
+  // VTHacks speed pass: "change the location to only united states"
+  // (Karthik) — a read-time filter (lib/us-location.ts), ambiguous/blank kept.
+  rows = rows.filter((role) => isUsLocation(role.location));
   return rows.map((role) => ({
     matchScore: role.match_score ?? null,
     id: role.id,
