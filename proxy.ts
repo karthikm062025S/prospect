@@ -22,6 +22,8 @@ function isPublicPath(pathname: string) {
     pathname === "/terms" ||
     pathname.startsWith("/auth/") ||
     pathname.startsWith("/api/") ||
+    // L5 D22: the MCP server card is discovered by ANS (SVCB key65400) with no session.
+    pathname.startsWith("/.well-known/") ||
     pathname.startsWith("/_next/static/") ||
     pathname.startsWith("/_next/image") ||
     pathname.startsWith("/fonts/") ||
