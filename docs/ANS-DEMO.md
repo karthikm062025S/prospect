@@ -4,7 +4,7 @@
 
 ## What ANS does for Prospect
 
-Each agent (Profile, Match, Roadmap, Orchestrator) holds an ANS passport: a name like `ans://v1.0.0.roadmap.prospect.courses` plus a signed TL record proving an outside registration authority verified it. Before any agent run writes a row, `startAgentRun` (`lib/student-profile.ts:78`) calls `assertVerifiedAgent` (`lib/ans-verify.ts`) — a badge that is not `ACTIVE` on the TL is refused before the write. The RA/TL are an outside party vouching for us, not a claim we make about ourselves.
+Each agent (Profile, Match, Roadmap, Orchestrator) holds an ANS passport: a name like `ans://v1.0.1.roadmap.prospect.courses` plus a signed TL record proving an outside registration authority verified it. Before any agent run writes a row, `startAgentRun` (`lib/student-profile.ts:78`) calls `assertVerifiedAgent` (`lib/ans-verify.ts`) — a badge that is not `ACTIVE` on the TL is refused before the write. The RA/TL are an outside party vouching for us, not a claim we make about ourselves.
 
 ## Why it is not on GoDaddy's list
 
@@ -27,11 +27,11 @@ Ran tonight (`docker ps`, exit 0): `ans-tl` and `ans-ra` both `Up (healthy)`; fi
 
 | Name | ANS name | Status |
 | --- | --- | --- |
-| profile | `ans://v1.0.0.profile.prospect.courses` | ACTIVE |
-| match | `ans://v1.0.0.match.prospect.courses` | ACTIVE |
-| roadmap | `ans://v1.0.0.roadmap.prospect.courses` | ACTIVE |
+| profile | `ans://v1.0.1.profile.prospect.courses` | ACTIVE |
+| match | `ans://v1.0.1.match.prospect.courses` | ACTIVE |
+| roadmap | `ans://v1.0.1.roadmap.prospect.courses` | ACTIVE |
 | orchestrator | `ans://v1.0.0.orchestrator.prospect.courses` | ACTIVE (the Databricks job; no in-app gate call) |
-| roadmap-agent (impostor) | `ans://v1.0.0.roadmap-agent.prospect.courses` | PENDING_DNS, no TL record |
+| roadmap-agent (impostor) | `ans://v1.0.1.roadmap-agent.prospect.courses` | PENDING_DNS, no TL record |
 
 **(2) `ans-verify` pass vs fail** (`cd ans-upstream` first):
 ```
@@ -49,11 +49,11 @@ ANS_ENFORCE=1 node --experimental-strip-types scripts/ans-impostor.mjs
 ```
 Ran tonight, exit 0. Printed:
 ```
-roadmap-agent -> ans://v1.0.0.roadmap-agent.prospect.courses
+roadmap-agent -> ans://v1.0.1.roadmap-agent.prospect.courses
 ANS_UNVERIFIED (roadmap-agent): no transparency-log record
 REFUSED, nothing written
 
-roadmap -> ans://v1.0.0.roadmap.prospect.courses
+roadmap -> ans://v1.0.1.roadmap.prospect.courses
 VERIFIED
 Impostor refused as required.
 ```
