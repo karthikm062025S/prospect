@@ -30,7 +30,6 @@ function classify(pathname: string, signedIn = false) {
 test("proxy matcher and public-path split classify app and public pages", () => {
   assert.equal(classify("/"), "signed-out rewrite");
   assert.equal(classify("/applications"), "authenticated");
-  assert.equal(classify("/outreach"), "authenticated");
   assert.equal(classify("/welcome"), "public");
   assert.equal(classify("/privacy"), "public");
   assert.equal(classify("/terms"), "public");

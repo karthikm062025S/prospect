@@ -30,7 +30,7 @@ export default function TermsPage() {
       <section className="flex flex-col gap-3">
         <h2 className="font-label text-[11px] uppercase tracking-label text-text">Your data</h2>
         <p className="text-text-dim">
-          You own the applications, notes, and outreach you enter. See{" "}
+          You own the applications and notes you enter. See{" "}
           <Link href="/privacy" className="text-sage underline-offset-4 hover:underline">
             Privacy
           </Link>{" "}

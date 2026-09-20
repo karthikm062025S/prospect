@@ -43,8 +43,8 @@ export default function PrivacyPage() {
           and work experience. What gets saved to our database is that structured result, plus the
           facts you typed in setup, tied to your account: major, grad term, work authorization,
           goal, target term, role types, dream tier, and your parsed courses, skills and
-          experiences. Your ranked feed, roadmap and any applications or outreach you log are
-          stored the same way, tied to your account.
+          experiences. Your ranked feed, roadmap and any applications you log are stored the same
+          way, tied to your account.
         </p>
       </section>
 
