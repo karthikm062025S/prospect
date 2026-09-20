@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ArtBand } from "@/components/landing/art-band";
 import { CELESTIAL, RISING_WAVES } from "@/components/landing/art";
 import { BeforeAfter } from "@/components/landing/before-after";
+import { BoardsList, BoardsStrip } from "@/components/landing/boards-strip";
 import { FeatureCards } from "@/components/landing/feature-cards";
 import { LabelLegend, LABEL_SOURCE } from "@/components/landing/label-legend";
 import { SignInCta, SIGN_IN_REASON } from "@/components/landing/sign-in-cta";
@@ -134,6 +135,18 @@ export default async function WelcomePage({
 
         {/* 4 --------------------------------------------------------------- */}
         <StatsRow stats={stats} />
+
+        {/* 4b: the boards Prospect watches, 50 marks across industries in two
+            counter-scrolling rows (Karthik 2026-09-20: never "just big tech"). */}
+        <section aria-labelledby="boards-heading" className="px-gutter pb-section">
+          <div className={INNER}>
+            <p id="boards-heading" className="font-label text-step-2xs uppercase tracking-label text-text-dim">
+              Sourced from the boards we watch
+            </p>
+            <BoardsStrip />
+            <BoardsList />
+          </div>
+        </section>
 
         {/* 5 --------------------------------------------------------------- */}
         <Showcase
