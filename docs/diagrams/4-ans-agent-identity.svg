@@ -1,0 +1,78 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 760" width="1600" height="760" font-family="Segoe UI, Helvetica, Arial, sans-serif">
+  <rect width="1600" height="760" fill="#ffffff"/>
+  <text x="40" y="58" font-size="34" fill="#1b1d21">How an agent proves who it is (GoDaddy ANS)</text>
+
+  <!-- row 1: registration path -->
+  <g stroke="#1b1d21" stroke-width="2.5">
+    <rect x="40" y="120" width="260" height="120" rx="6" fill="#fdf5ec"/>
+    <rect x="380" y="120" width="300" height="120" rx="6" fill="#fdf5ec"/>
+    <rect x="760" y="120" width="300" height="120" rx="6" fill="#efe9f7"/>
+    <rect x="1140" y="120" width="420" height="120" rx="6" fill="#e6f3ec"/>
+  </g>
+  <g font-size="21" fill="#1b1d21" text-anchor="middle">
+    <text x="170" y="165">1. Agent</text>
+    <text x="170" y="195" font-size="17">profile, match, roadmap, orchestrator</text>
+    <text x="170" y="220" font-size="17">each makes a key pair + CSR</text>
+
+    <text x="530" y="165">2. Registration Authority (RA)</text>
+    <text x="530" y="195" font-size="17">register, verify-acme (domain), verify-dns</text>
+    <text x="530" y="220" font-size="17">issues the agent its certificate</text>
+
+    <text x="910" y="165">3. Transparency Log (TL)</text>
+    <text x="910" y="195" font-size="17">append-only, signed SCITT receipt</text>
+    <text x="910" y="220" font-size="17">status ACTIVE, provable by Merkle proof</text>
+
+    <text x="1350" y="165">4. Public DNS under prospect.courses</text>
+    <text x="1350" y="195" font-size="17">A + SVCB (MCP) + TXT _ans-badge + TLSA</text>
+    <text x="1350" y="220" font-size="17">16 rows, four agent sub-hosts</text>
+  </g>
+  <g stroke="#1b1d21" stroke-width="2.5" fill="none" marker-end="url(#arrow)">
+    <path d="M300 180 H375"/>
+    <path d="M680 180 H755"/>
+    <path d="M1060 180 H1135"/>
+  </g>
+
+  <!-- row 2: the gate -->
+  <g stroke="#1b1d21" stroke-width="2.5">
+    <rect x="40" y="340" width="420" height="150" rx="6" fill="#fdf5ec"/>
+    <rect x="560" y="340" width="440" height="150" rx="6" fill="#e6f3ec"/>
+    <rect x="1140" y="340" width="420" height="150" rx="6" fill="#fbe9e7"/>
+  </g>
+  <g font-size="21" fill="#1b1d21" text-anchor="middle">
+    <text x="250" y="380">5. The app's gate</text>
+    <text x="250" y="410" font-size="17">startAgentRun calls assertVerifiedAgent</text>
+    <text x="250" y="435" font-size="17">before any row is written</text>
+    <text x="250" y="465" font-size="17">(ANS_ENFORCE=1: asks the TL, caches 60 s)</text>
+
+    <text x="780" y="380">Badge ACTIVE on the log</text>
+    <text x="780" y="410" font-size="17">profile, match, roadmap, orchestrator</text>
+    <text x="780" y="440" font-size="17">VERIFIED, the run proceeds and writes</text>
+
+    <text x="1350" y="380">Impostor: roadmap-agent</text>
+    <text x="1350" y="410" font-size="17">real RA registration, never finished verify-dns</text>
+    <text x="1350" y="440" font-size="17">TL returns 404, no record</text>
+    <text x="1350" y="470" font-size="17" fill="#8a1c1c">ANS_UNVERIFIED, REFUSED, nothing written</text>
+  </g>
+  <g stroke="#1b1d21" stroke-width="2.5" fill="none" marker-end="url(#arrow)">
+    <path d="M460 415 H555"/>
+    <path d="M1000 415 H1135"/>
+    <path d="M910 240 V335"/>
+  </g>
+  <text x="925" y="300" font-size="16" fill="#1b1d21">the gate reads the log, never a flag in our own database</text>
+
+  <!-- row 3: a judge's own agent -->
+  <g stroke="#1b1d21" stroke-width="2.5">
+    <rect x="40" y="580" width="1520" height="130" rx="6" fill="#f2f3f0"/>
+  </g>
+  <g font-size="21" fill="#1b1d21">
+    <text x="70" y="620">6. A judge's own Claude, over the open web</text>
+    <text x="70" y="652" font-size="17">DNS lookup of roadmap.prospect.courses  ->  https://prospect.courses/.well-known/mcp/server-card.json  ->  MCP at https://prospect.courses/api/mcp with the read-only judge bearer</text>
+    <text x="70" y="682" font-size="17">tools allowed: whoami, plan_next_steps. Every owner tool answers FORBIDDEN_SCOPE. Posting text comes back as data, never as instructions.</text>
+  </g>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#1b1d21"/>
+    </marker>
+  </defs>
+</svg>
