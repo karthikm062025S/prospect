@@ -65,12 +65,26 @@ test("every band names its own heading for assistive tech", () => {
 });
 
 test("the hero wordmark reveals per character, the statement per word, and both go static under reduced motion", () => {
-  // Redesign 2026-09-19: the H1 is the wordmark (character granularity is the
-  // hero's alone, SYSTEM.md Motion grammar); the sentence moved to the cream
-  // StatementBand and keeps its word-by-word reveal.
+  // Redesign 2026-09-20: the H1 is Karthik's SVG wordmark (character
+  // granularity is the hero's alone, SYSTEM.md Motion grammar): eight letter
+  // paths in reading order, each rising on its own delay, named "Prospect"
+  // for assistive tech. The sentence stays in the cream StatementBand with
+  // its word-by-word reveal.
   const hero = read("components/landing/hero.tsx");
-  assert.match(hero, /as="h1"/);
-  assert.match(hero, /granularity="char"/);
+  assert.match(hero, /<h1\s+id="hero-heading"/);
+  assert.match(hero, /<Wordmark entrance/);
+  const wordmark = read("components/brand/wordmark.tsx");
+  assert.match(wordmark, /aria-label="Prospect"/);
+  assert.equal((wordmark.match(/\{ char: "[a-z]", d: "M/g) ?? []).length, 8, "eight letter paths");
+  assert.match(wordmark, /\{ char: "p".*\n.*\{ char: "r".*\n.*\{ char: "o".*\n.*\{ char: "s".*\n.*\{ char: "p".*\n.*\{ char: "e".*\n.*\{ char: "c".*\n.*\{ char: "t"/);
+  assert.match(wordmark, /delay: index \* LETTER_STAGGER/);
+  // D2: VT maroon letters, VT orange sparkle and nugget, nothing else.
+  assert.match(wordmark, /const MAROON = "#861F41";/);
+  assert.match(wordmark, /const ORANGE = "#E5751F";/);
+  assert.doesNotMatch(wordmark, /#711731|#D6681D|#EE8A32/, "the file's own colours must be recoloured");
+  // Settled renders plain <path>s, fully visible, no motion values.
+  assert.match(wordmark, /const settled = useSettled\(\);/);
+  assert.match(wordmark, /const animate = entrance && !settled;/);
   const statement = read("components/landing/wordmark-strip.tsx");
   assert.match(statement, /export function StatementBand/);
   assert.match(statement, /granularity="word"/);

@@ -56,16 +56,28 @@ test("the shader runtime is imported lazily, never statically", () => {
 
 // `display: none` does not stop an <img> downloading. The hero used to mount
 // both crops behind `hidden sm:block` / `sm:hidden` and paid for all four
-// posters (192 KB) to paint one.
-test("the hero art ships one crop, not both", () => {
+// posters (192 KB) to paint one. Redesign 2026-09-20: the hero is four painted
+// planes (public/art/hero/*), each ONE <picture> with a WebP source and a PNG
+// fallback, so a browser fetches one encoding per plane; all four paint above
+// the fold, so all four load eagerly, never lazily, and never through
+// next/image (which would re-encode the cut layers).
+test("the hero art ships one encoding per plane, eagerly", () => {
   const hero = read(HERO);
   assert.doesNotMatch(
     hero,
     /className="hidden size-full sm:block"/,
-    "the crop swap must be a <picture> media source, not a hidden sibling tree",
+    "no hidden sibling tree: a swap must be a <picture> source",
   );
-  assert.match(hero, /<ArtPoster work=\{HERO_TALL\} wide=\{HERO_WIDE\} priority \/>/);
+  assert.match(hero, /<source type="image\/webp" srcSet=\{`\/art\/hero\/\$\{name\}\.webp`\} \/>/);
+  assert.match(hero, /src=\{`\/art\/hero\/\$\{name\}\.png`\}/);
+  assert.match(hero, /loading="eager"/);
+  assert.match(hero, /fetchPriority="high"/);
+  assert.doesNotMatch(hero, /loading="lazy"/);
+  assert.doesNotMatch(hero, /from "next\/image"/);
+  const planes = hero.match(/<Art\s+name="(sky|ridges|hills|near)"/g) ?? [];
+  assert.equal(planes.length, 4, "exactly four planes");
 
+  // The poster primitive keeps its media-source crop swap for any other band.
   const art = read(ART);
   assert.match(art, /<source\s+media=\{WIDE_CROP_FROM\}/);
   assert.match(art, /const WIDE_CROP_FROM = "\(min-width: 640px\)"/);
