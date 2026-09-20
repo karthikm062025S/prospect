@@ -143,7 +143,8 @@ test("nodeMatchesPosting: a node naming the target archetype, or sharing 2+ titl
 
 test("titleSimilarity: best token overlap against the archetype name or an alias, scaled to 0..0.6", () => {
   assert.equal(titleSimilarity("Backend Software Engineer Intern", "Backend Software Engineer"), 0.6);
-  assert.equal(titleSimilarity("Software Engineering Intern", "Backend Software Engineer"), 0.3);
+  assert.equal(titleSimilarity("Software Engineering Intern", "Backend Software Engineer").toFixed(2), "0.30"); // "engineer" is a stopword
+  assert.equal(titleSimilarity("Technology Consulting Intern", "Cybersecurity Consultant"), 0.3);
   assert.equal(titleSimilarity("Marketing Coordinator", "Backend Software Engineer"), 0);
   // an alias can be the best match
   assert.equal(titleSimilarity("SWE Intern - Platform", "Backend Software Engineer", ["SWE"]), 0.6);

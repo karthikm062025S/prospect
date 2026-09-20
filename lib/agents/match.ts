@@ -65,9 +65,9 @@ export function resolveLevel(postingLevel: string | null, title: string, deriveL
 // --- Archetype similarity ----------------------------------------------------
 
 /**
- * Identical archetype id is always similarity 1.0, regardless of the stored
- * vector score; a different archetype uses the stored vector similarity,
- * clamped, or 0 with no evidence. A posting with NO archetype yet (the hourly
+ * Identical archetype id is always similarity 1.0; a different archetype uses
+ * `vectorSimilarity` = that archetype's similarity to the TARGET (from the one
+ * registry-wide vector query in runMatchAgent), clamped, or 0 with no evidence. A posting with NO archetype yet (the hourly
  * job has not reached it -- D-S1/D-S2) uses `titleFallback`, the pure
  * titleSimilarity below (0..0.6), so a fresh feed still ranks meaningfully.
  */
@@ -295,11 +295,15 @@ function titleWords(title: string): string[] {
  * real vector/archetype match. "Backend Software Engineer" vs "Software
  * Engineering Intern" -> {software} of {backend, software} = 0.5 -> 0.3.
  */
+// ponytail: prefix stemming so "consulting"/"consultant" and "cyber"/"cybersecurity"
+// count as the same word; a real stemmer if this ever misranks.
+const stem = (word: string) => (word.length >= 6 ? word.slice(0, 5) : word);
+
 export function titleSimilarity(title: string, archetypeName: string, aliases: readonly string[] = []): number {
-  const postingWords = new Set(titleWords(title));
+  const postingWords = new Set(titleWords(title).map(stem));
   let best = 0;
   for (const name of [archetypeName, ...aliases]) {
-    const nameWords = Array.from(new Set(titleWords(name)));
+    const nameWords = Array.from(new Set(titleWords(name).map(stem)));
     if (nameWords.length === 0) continue;
     const shared = nameWords.filter((word) => postingWords.has(word)).length;
     best = Math.max(best, shared / nameWords.length);
@@ -500,7 +504,7 @@ export async function runMatchAgent(
             if (!match) {
               throw new Error(`ARCHETYPE_NOT_FOUND: Gemini confirmed "${targetDecision.name}" which is not in the registry`);
             }
-            return { id: match.id, name: match.name, aliases: match.aliases };
+            return { id: match.id, name: match.name, aliases: match.aliases, definition: match.definition };
           })()
         : await upsertArchetype(q, {
             name: targetDecision.name,
@@ -508,8 +512,28 @@ export async function runMatchAgent(
             aliases: targetDecision.aliases,
             status: "provisional",
             evidence_role_ids: [],
-          }).then((a) => ({ id: a.id, name: a.name, aliases: a.aliases }));
+          }).then((a) => ({ id: a.id, name: a.name, aliases: a.aliases, definition: a.definition }));
     onStep({ step: "target", label: `goal matched to ${target.name} among ${registry.length}`, count: registry.length });
+
+    // Posting-to-target similarity = how close the posting's ARCHETYPE is to the
+    // chosen target archetype (name + definition), one registry-wide vector
+    // query. Raw gte similarities compress into ~0.5-0.65 across the registry
+    // (measured 2026-09-20), so they are min-max normalised: nearest 1.0,
+    // farthest 0. (Ranking against the raw goal text put "Data Analyst" nearest
+    // for a cyber-consulting goal because the major and skills dominated.)
+    const targetRows = await queryIndex({
+      name: "scout.core.archetypes_index",
+      text: `${target.name}: ${target.definition}`,
+      columns: ["id"],
+      numResults: 200,
+    });
+    const rawScores = targetRows.map((row) => (typeof row.score === "number" ? row.score : NaN)).filter(Number.isFinite);
+    const [lo, hi] = [Math.min(...rawScores), Math.max(...rawScores)];
+    const archetypeScoreById = new Map<string, number>();
+    for (const row of targetRows) {
+      if (typeof row.id !== "string" || typeof row.score !== "number") continue;
+      archetypeScoreById.set(row.id, hi > lo ? (row.score - lo) / (hi - lo) : 1);
+    }
 
     // --- score the open feed of the last 30 days -----------------------------
     const postingRows = await q<PostingRow>(
@@ -538,7 +562,7 @@ export async function runMatchAgent(
         const archetypeSimilarity = resolveArchetypeSimilarity(
           target.id,
           row.archetype_id,
-          row.confidence,
+          row.archetype_id ? (archetypeScoreById.get(row.archetype_id) ?? null) : null,
           titleSimilarity(row.title, target.name, target.aliases),
         );
         const result = scorePosting({
