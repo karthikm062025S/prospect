@@ -157,9 +157,7 @@ export async function runRoadmapAgent(
     // (the roadmap plans from them). Clubs are one node kind: on the fallback
     // path a missing club catalog is NAMED in the step label and the plan runs
     // without club nodes (validation 2026-09-19). Any other error throws verbatim.
-    const goalText = `Goal: ${profile.goal}
-Major: ${profile.major}
-Skills: ${profile.skills.join(", ")}`;
+    const goalText = `Goal: ${profile.goal}\nMajor: ${profile.major}\nSkills: ${profile.skills.join(", ")}`;
     const isString = (v: unknown): v is string => typeof v === "string";
     async function loadCandidates(): Promise<{
       courses: Array<{ code: string; title: string }>;
