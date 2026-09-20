@@ -7,11 +7,14 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { FeedbackTrigger } from "@/components/feedback-box";
 import { ChangePassword } from "@/components/change-password";
 import { StudentProfileCard } from "@/components/student-profile-card";
+import { RankFeedControl } from "@/components/get-started";
 import { ProfileForm, TargetForm } from "./forms";
 
 export const dynamic = "force-dynamic";
 
-const card = "flex flex-col gap-4 rounded-2xl bg-raised p-4 shadow-sm ring-1 ring-hairline scroll-mt-24";
+// SYSTEM.md Components: cards are --radius-card on --raised bounded by
+// --hairline; SYSTEM.md Spacing: the gap inside a section is the 24px block.
+const card = "flex flex-col gap-6 rounded-card bg-raised p-4 shadow-sm ring-1 ring-hairline scroll-mt-24";
 const heading = "font-display text-step-2 text-text";
 const label = "font-label text-[11px] uppercase tracking-label text-text-dim";
 const linkClass = "underline underline-offset-2 hover:text-sage";
@@ -62,6 +65,18 @@ export default async function SettingsPage() {
         <ChangePassword provider={profile.provider} />
 
         <TargetForm monthlyTarget={profile.monthlyTarget} />
+
+        {/* Baseline defect 4: ranking is automatic at the end of the setup
+            stream, so Home no longer leads with a "Rank my feed" card. The
+            action stays reachable here as one quiet secondary line (the same
+            RankFeedControl Home renders — ui_laws.md #16, one component per
+            action). */}
+        <div className="flex flex-wrap items-center gap-3 text-[13px] text-text-dim">
+          <RankFeedControl
+            idle="Re-score every open posting against your current profile and goal."
+            label="Re-rank my feed"
+          />
+        </div>
 
         <form action={signOutAction}>
           <button
