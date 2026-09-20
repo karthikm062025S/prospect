@@ -153,7 +153,7 @@ function Rail({ current, progress }: { current: number; progress?: MotionValue<n
       <p className="font-label text-step-2xs uppercase tracking-label text-text-dim">
         What changes
       </p>
-      {/* D25: digits never render in Departure Mono (old-style figures) or
+      {/* D25: digits never render in a mono face (dotted/old-style figures) or
           Plex Mono (dotted zero). Satoshi with tabular-nums, so "01 / 03" and
           "02 / 03" are the same width. */}
       <p className="font-sans text-step-2xs tabular-nums tracking-label text-text">

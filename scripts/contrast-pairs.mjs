@@ -83,33 +83,35 @@ const themes = {
 };
 
 const pairs = [
-  // ---- v7 D20 landing tokens (item 1 + item 7) ----
-  ["D20 body text / page", "text", "bg", 1, 4.5],
-  ["D20 body text / raised", "text", "raised", 1, 4.5],
-  ["D20 dim text / page", "text-dim", "bg", 1, 4.5],
-  ["D20 dim text / raised", "text-dim", "raised", 1, 4.5],
-  ["D20 sage step number / page", "sage", "bg", 1, 4.5],
-  ["D20 sage step number / raised", "sage", "raised", 1, 4.5],
-  // The accent is never a control's ground on the page: #e69a6f is 2.12:1 on
-  // --bg and cannot carry a 1.4.11 boundary there. Its ONE use as a fill is
-  // the hero's circular arrow, which sits on the ink scrim and wears a 2px
-  // --ink-text ring; both of those are what is gated here.
-  ["D20 accent fill / ink scrim", "accent", "ink", 1, 3],
-  ["D20 arrow glyph / accent fill", "ink", "accent", 1, 3],
-  // WCAG 1.4.11 asks that a control be distinguishable from ADJACENT colours.
-  // The hero arrow's 2px ring is --ink-text against the ink scrim, which is
-  // the pair below; the ring against its own fill is 1.80:1 and is not a
-  // 1.4.11 requirement (the fill is inside the boundary, not adjacent to it).
-  ["D20 arrow ring / ink scrim", "ink-text", "ink", 1, 3],
-  // D22 feedback pill in the nav capsule: accent fill on --raised.
-  ["D22 feedback label / accent fill", "ink", "accent", 1, 4.5],
-  ["D22 feedback ring / capsule", "text", "raised", 1, 3],
-  ["D20 ink-text / ink band", "ink-text", "ink", 1, 4.5],
-  // v8 D13: --danger is body text (error copy, destructive labels), so it is
-  // gated on both grounds in both themes, not merely reported.
-  ["D13 danger text / page", "danger", "bg", 1, 4.5],
-  ["D13 danger text / raised", "danger", "raised", 1, 4.5],
-  // ---- pre-existing v6/v7 pairs ----
+  // ---- Prospect tokens, 2026-09-19 (CONTEXT 20:30). The token NAMES are the
+  // v7/v8 ones on purpose (see the remap comment at the top of globals.css):
+  // --sage is now VT maroon #861F41, --accent is now VT orange #E5751F.
+  ["body text / page", "text", "bg", 1, 4.5],
+  ["body text / raised", "text", "raised", 1, 4.5],
+  ["dim text / page", "text-dim", "bg", 1, 4.5],
+  ["dim text / raised", "text-dim", "raised", 1, 4.5],
+  // --sage carries links, step numbers, heading accents AND the primary
+  // button fill, so it is gated as text on both grounds and as a fill.
+  ["maroon text / page", "sage", "bg", 1, 4.5],
+  ["maroon text / raised", "sage", "raised", 1, 4.5],
+  ["primary label / maroon fill", "bg", "sage", 1, 4.5],
+  ["maroon fill / page", "sage", "bg", 1, 3],
+  ["maroon fill / raised", "sage", "raised", 1, 3],
+  // --accent is FILL ONLY on the page (progress, badge, highlight), never
+  // text there: 3.05:1 on white in light. It IS text-safe on --ink.
+  ["orange fill / page", "accent", "bg", 1, 3],
+  ["orange fill / ink band", "accent", "ink", 1, 3],
+  ["badge label / orange fill", "ink", "accent", 1, 4.5],
+  // The one measured sub-3 value in the system: orange on --raised is 2.85:1
+  // in light. The .accent-fill-on-raised boundary in globals.css is what
+  // carries 1.4.11 there, and this is that ring.
+  ["orange-on-raised ring / raised", "text", "raised", 1, 3],
+  ["ink-text / ink band", "ink-text", "ink", 1, 4.5],
+  ["arrow ring / ink band", "ink-text", "ink", 1, 3],
+  // --danger is body text (error copy, destructive labels) on both grounds.
+  ["danger text / page", "danger", "bg", 1, 4.5],
+  ["danger text / raised", "danger", "raised", 1, 4.5],
+  // ---- pre-existing v6/v7 control pairs, unchanged ----
   ["inactive chip text / page", "text-dim", "bg", 1, 4.5],
   ["inactive chip outline / page", "text-dim", "bg", 1, 3],
   ["active chip text / fill", "bg", "text", 1, 4.5],

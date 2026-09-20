@@ -377,7 +377,7 @@ function RoleRowBase({
                 {row.repost_count > 0 ? (
                   // House chip precedent (components/stale-badge.tsx): hairline
                   // border, font-label, text-dim, digits split into a
-                  // font-sans tabular-nums span (Departure Mono digits misread).
+                  // font-sans tabular-nums span (mono-face digits misread).
                   <span className="inline-flex items-center gap-1 border border-hairline px-1.5 py-0.5 font-label text-[11px] tracking-label uppercase text-text-dim">
                     reposted <span className="font-sans tabular-nums">{row.repost_count}</span>x
                   </span>

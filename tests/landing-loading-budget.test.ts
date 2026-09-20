@@ -28,12 +28,11 @@ function fontBlock(source: string, name: string): string {
 }
 
 // `variable` sits on <html> in the root layout, so next/font preloads every
-// declared face on EVERY route. v8 D1 removed Zilla and Playwrite entirely
-// (they are no longer declared), so only the preload posture of the
-// remaining faces is asserted here.
+// declared face on EVERY route. Prospect 2026-09-19 is down to three declared
+// faces, so only their preload posture is asserted here.
 test("fonts that paint above the fold on /welcome stay preloaded", () => {
   const source = read(LAYOUT);
-  for (const name of ["satoshi", "instrumentSerif", "departure"]) {
+  for (const name of ["satoshi", "dmSans", "plexMono"]) {
     assert.doesNotMatch(
       fontBlock(source, name),
       /preload:\s*false/,
@@ -72,8 +71,8 @@ test("the hero art ships one crop, not both", () => {
 });
 
 // v8 D1: Playwrite is removed entirely. The handwritten line now renders in
-// Instrument Serif (already preloaded above; upright since 2026-09-05), so there is nothing left
-// to defer.
+// the display face (already preloaded above; upright since 2026-09-05), so
+// there is nothing left to defer.
 test("the handwritten line has no separate deferred face", () => {
   assert.doesNotMatch(read(PAGE), /className="font-hand/, "font-hand is removed (v8 D1)");
   assert.match(read("components/landing/hand-line.tsx"), /font-display /);
