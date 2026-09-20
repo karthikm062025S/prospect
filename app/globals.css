@@ -102,15 +102,21 @@
   --color-ink-text: var(--ink-text);
 
   --font-sans: var(--font-satoshi);
-  /* Prospect 2026-09-19 (CONTEXT 20:30): three faces, one role each. The old
-     serif display face and the second mono face are retired, so IBM Plex Mono
-     carries BOTH mono roles (--font-mono for code-like data, --font-label for
-     uppercase micro labels) and DM Sans variable takes the display role.
-     `font-label`, `font-mono` and `font-display` keep their names; only the
-     family behind each one changed. */
+  /* v7 L7 mono verdict: Departure Mono does NOT replace IBM Plex Mono for data
+     values. Measured on the real Home table at localhost:3001 (dark, 100% zoom,
+     1522px): swapping --font-plex-mono to Departure widened every mono run
+     (advance at 13px = 8.27px vs Plex's 6.50px, +27%), which wrapped the
+     one-line velocity strip onto two lines and clipped the "RECENTLY ADDED"
+     sort control. Departure's x-height ratio is actually BETTER (0.538 vs 0.462
+     at 13px) and it is legible on both themes — it fails on width, not on
+     legibility. So Plex stays the data face and Departure takes --font-label
+     (uppercase labels / nav / eyebrows only), per D12's fallback. Mission
+     D-UI12 (22:30): T0's sans-weight display face and Plex-as-label were
+     rejected on sight ("use my design system"); this reverts to the house
+     system. */
   --font-mono: var(--font-plex-mono);
-  --font-label: var(--font-plex-mono);
-  --font-display: var(--font-dm-sans);
+  --font-label: var(--font-departure);
+  --font-display: var(--font-instrument-serif);
 }
 
 /* ---------------------------------------------------------------------------
@@ -247,26 +253,6 @@
 body {
   background-color: var(--bg);
   color: var(--text);
-}
-
-/* Prospect display + label defaults (CONTEXT 20:30 "Type"). `font-display` is
-   now DM Sans variable, which is useless at its 400 default: the reference's
-   headings are black-weight with tight tracking. `font-label` is now Plex Mono
-   and wants its Medium cut to hold up at 11-12px uppercase.
-
-   Both are wrapped in :where() so they have ZERO specificity — any component
-   that spells an explicit `font-black`, `font-extrabold` or `tracking-*`
-   utility still wins, which is what lanes C and D need. This is a DEFAULT,
-   not a lock. Tracking stays on the SYSTEM.md ladder (-0.02em display,
-   +0.08em label); the reference's 0.16em eyebrow tracking is a per-component
-   choice, not a token change. */
-:where(.font-display) {
-  font-weight: 800;
-  letter-spacing: var(--tracking-display);
-  font-optical-sizing: auto;
-}
-:where(.font-label) {
-  font-weight: 500;
 }
 
 /* VT orange is 3.05:1 on --bg but 2.85:1 on --raised, so an accent FILL that

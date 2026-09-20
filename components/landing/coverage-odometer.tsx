@@ -11,8 +11,8 @@ import { formatStat, roundToTen } from "@/lib/public-stats-format";
 // the value cell differs — digit columns that roll from 0 to the real count
 // once, when the band comes into view.
 //
-// D25: the digits are font-display (DM Sans, lining figures). Plex
-// Mono's dotted zero never renders a
+// D25: the digits are font-display (Instrument Serif, lining figures). Plex
+// Mono's dotted zero and Departure Mono's old-style figures never render a
 // digit on this page. Column width is reserved with `1ch` inside
 // SlidingNumber, so a 1 and a 0 occupy the same column and nothing reflows.
 
