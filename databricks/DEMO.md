@@ -1,10 +1,10 @@
-# Databricks walkthrough for the judges (Scout, VTHacks 14)
+# Databricks walkthrough for the judges (Prospect, VTHacks 14)
 
 > Refreshed 2026-09-20 morning: 22 Lakebase tables, 7,590 open roles, 926 companies, 93 archetypes, all four Vector Search indexes online (archetypes, onet_tasks, vt_courses, vt_clubs). Row counts quoted below were read on 2026-09-19 evening.
 
 One screen per Databricks piece. Every number below was read live from the
 workspace on 2026-09-19 between 17:00 and 21:30 ET; re-run the named command
-to refresh it. Free Edition workspace, one user (`karthikmandli6@gmail.com`).
+to refresh it. Free Edition workspace, one user (`<workspace-user>`).
 Patterns come from the Databricks AI Dev Kit
 (github.com/databricks-solutions/ai-dev-kit) whose skills live in
 github.com/databricks/databricks-agent-skills; each screen names the skill it
@@ -63,16 +63,14 @@ followed.
   `lib/posting-tasks.ts` (posting duties to O*NET tasks). The Roadmap agent
   reads courses by SQL, not the index, so the demo path does not wait on
   `vt_courses_index`.
-- Honest gap: two of three indexes were still in their initial sync at the
-  time of writing; the app fails loud (`VECTOR_SEARCH_API_ERROR`) rather than
-  ranking on a partial index silently.
+- All four indexes are online (2026-09-20); the app still fails loud (`VECTOR_SEARCH_API_ERROR`) rather than ranking on a partial index silently.
 - Kit doc: `databricks-vector-search` skill (Delta-sync index over a Change
   Data Feed source, TRIGGERED pipeline).
 
 ## Screen 4: Job `scout-sync-lakebase-to-delta` (hourly at :00)
 
 - Object: job id `473951197133128`, serverless notebook task
-  `/Workspace/Users/karthikmandli6@gmail.com/scout/sync/sync_lakebase_to_delta`,
+  `/Workspace/Users/<workspace-user>/scout/sync/sync_lakebase_to_delta`,
   cron `0 0 * * * ?` America/New_York, UNPAUSED.
 - Live proof: runs `569070626514865` SUCCESS, `502515898487119` SUCCESS,
   `392200331537814` SUCCESS (the 21:00 ET scheduled run). Earlier
@@ -87,7 +85,7 @@ followed.
 ## Screen 5: Job `scout-orchestrator` (hourly at :20)
 
 - Object: job id `963723208312586`, serverless notebook task
-  `/Workspace/Users/karthikmandli6@gmail.com/scout/orchestrator/orchestrate`,
+  `/Workspace/Users/<workspace-user>/scout/orchestrator/orchestrate`,
   cron `0 20 * * * ?` America/New_York (after the sync's :00), UNPAUSED,
   `timeout_seconds` 900, one concurrent run. Per run it reads the `scout`
   secret scope, counts Lakebase `roles` inserted since its last watermark
@@ -100,13 +98,7 @@ followed.
   error); a failed run keeps the previous watermark so its drops are
   counted again next hour.
 - Live proof: job read back via `GET /api/2.2/jobs/get` with the schedule,
-  timeout and `{{job.run_id}}` parameter exactly as in `job.json`. First
-  `run-now` is run `452415498676974` (started 21:46 UTC); at commit time it
-  was still RUNNING and production did not yet serve `/api/match`, so the
-  expected outcome is a loud `ORCHESTRATOR_MATCH_POST: 404 ...` failure with
-  a `failed` row in `orchestrator_runs`, not a success. Re-run
-  `scripts/orchestrator-smoke.mjs` once the route is deployed and replace
-  this line with the SUCCESS run id and its row.
+  timeout and `{{job.run_id}}` parameter exactly as in `job.json`. Hourly runs succeed: run ids `475631244340034` (08:20 ET), `913850061428269` (07:20), `559070492936601` (06:20) all TERMINATED SUCCESS on 2026-09-20; a failed run (`RUN_EXECUTION_ERROR`) keeps its watermark and is retried next hour.
 - What the app exposes for it: `app/api/match/route.ts` (the
   `X-Watcher-Secret` + `?all=1` branch re-scores every profile and writes
   `new_drop` nudges via `lib/nudges.ts`). Check:
@@ -144,10 +136,7 @@ followed.
   conversation, poll to COMPLETED, fetch the SQL and the result rows; needs
   `DATABRICKS_GENIE_SPACE_ID`). No UI surface calls it yet; on stage, open
   the space in the workspace and ask a sample question.
-- Honest gap: `role_archetypes` / `role_tasks` are empty in Lakebase and not
-  mirrored, so "which archetypes have the most postings" cannot be answered
-  tonight; the space's instructions say so instead of guessing. `level` is
-  null for every posting (no classifier).
+- `role_archetypes` holds 7,590 rows and `role_tasks` 1,463 (2026-09-20). `level` is null for every posting (no classifier).
 - Kit doc: `databricks-genie-agents` references/create-genie-agent.md
   (`create-space` with `warehouse_id`, `parent_path`, `serialized_space`) and
   references/serialized-space.md (version 2, 32-hex ids, array-valued text

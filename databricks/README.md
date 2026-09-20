@@ -14,7 +14,7 @@ The app database (Lakebase) mirrors into Delta bronze/silver every hour. Do thes
    `base_parameter` in `job.json` instead of a secret, and change
    `_get_lakebase_url()` in the notebook to `dbutils.widgets.get("lakebase_url")`
    — less secure (visible in job run history), documented tradeoff only.
-2. **Import the notebook + create the job.** From the `wt-l4` worktree, in PowerShell:
+2. **Import the notebook + create the job.** From the repo root, in PowerShell:
    ```
    $env:DATABRICKS_HOST = "https://<workspace>.databricks.com"
    $env:DATABRICKS_TOKEN = "dapi..."

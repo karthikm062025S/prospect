@@ -86,7 +86,7 @@ source docstring is in the file; summary below.
   rows — turning a comment into a fabricated course row would violate rule 1. Only rows with a real
   VT course code are counted as line items.
 
-## vt_clubs.csv — NOT BUILT (Karthik's call, addendum 2, 17:05)
+## vt_clubs.csv — delivered by the team after this session (765 rows live; the section below is history)
 
 GobblerConnect (`gobblerconnect.vt.edu`) WAS investigated before the cut arrived, for the record:
 - `robots.txt` allows crawling (only disallows `/upload/`, `/student_docs/`, `/downloads/`,
