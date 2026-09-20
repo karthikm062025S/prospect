@@ -11,6 +11,7 @@ import { mergeUserRoles, type UserRoleState } from "@/lib/user-roles";
 import { velocity } from "@/lib/velocity";
 import { safeHttpUrl, type Company, type Role } from "@/lib/types";
 import { deriveFamily, familySignals } from "@/lib/family";
+import { deriveTierTags } from "@/lib/company-tier";
 import { deriveSeason } from "@/lib/season";
 import { overlayCorrections, parseCorrection, type Correction } from "@/lib/corrections";
 import { HomeList } from "@/components/home-list";
@@ -154,6 +155,8 @@ export default async function HomePage() {
     // never trusted here any more.
     families: familySignals(role.title),
     family: deriveFamily(role.title),
+    // VTHacks speed pass: dream-tier tags for the TIER pill ("big 4" etc.).
+    tierTags: deriveTierTags(companyById.get(role.company_id)?.name ?? "", companyById.get(role.company_id)?.tier ?? null),
     apply_clicked_at: role.apply_clicked_at,
     // Task 3 T2/T3 (lane L2): derived at read time, never stored.
     liveness: liveness(role, now).label,

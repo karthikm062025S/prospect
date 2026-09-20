@@ -6,6 +6,7 @@ import { query } from "@/lib/db";
 import { safeHttpUrl } from "@/lib/types";
 import { deriveSeason } from "@/lib/season";
 import { deriveFamily, familySignals, type Family } from "@/lib/family";
+import { deriveTierTags } from "@/lib/company-tier";
 import type { Season } from "@/lib/season";
 import { liveness } from "@/lib/liveness";
 import { nowMs as getNowMs } from "@/lib/dashboard";
@@ -123,6 +124,8 @@ async function loadCompactFeed(nowMs: number, userId: string): Promise<HomeRow[]
     // old tech-only taxonomy's stored family/families columns).
     families: familySignals(role.title),
     family: deriveFamily(role.title),
+    // VTHacks speed pass: same dream-tier tags Home computes.
+    tierTags: deriveTierTags(role.company_name ?? "", role.company_tier),
     apply_clicked_at: null,
     company_tier: role.company_tier,
     company_url: role.company_url,

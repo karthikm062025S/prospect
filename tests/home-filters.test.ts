@@ -82,7 +82,49 @@ test("filterCounts returns zero All counts for an empty input", () => {
   assert.deepEqual(filterCounts([], { season: "all", family: "all" }), {
     season: { all: 0 },
     family: { all: 0 },
+    tier: { all: 0 },
   });
+});
+
+// --- VTHacks speed pass (2026-09-20): the TIER pill ("I want to see big 4 as
+// a filter", Karthik). Same membership rule as family — a company can carry
+// several tags at once.
+const TIER_ROWS = [
+  { id: "deloitte", season: "summer_2027", families: ["consulting"], tierTags: ["big4"] },
+  { id: "mckinsey", season: "summer_2027", families: ["consulting"], tierTags: ["mbb_consulting"] },
+  { id: "google", season: "fall_2027", families: ["software"], tierTags: ["big_tech"] },
+  { id: "no-tag", season: "summer_2027", families: ["other"], tierTags: [] },
+] as const;
+
+test("applyFilters keeps every row when tier is omitted or 'all'", () => {
+  assert.deepEqual(
+    applyFilters(TIER_ROWS, { season: "all", family: "all" }).map((r) => r.id),
+    TIER_ROWS.map((r) => r.id),
+  );
+  assert.deepEqual(
+    applyFilters(TIER_ROWS, { season: "all", family: "all", tier: "all" }).map((r) => r.id),
+    TIER_ROWS.map((r) => r.id),
+  );
+});
+
+test("applyFilters filters by tier membership, intersected with season and family", () => {
+  assert.deepEqual(
+    applyFilters(TIER_ROWS, { season: "all", family: "all", tier: "big4" }).map((r) => r.id),
+    ["deloitte"],
+  );
+  assert.deepEqual(
+    applyFilters(TIER_ROWS, { season: "fall_2027", family: "all", tier: "big4" }).map((r) => r.id),
+    [],
+  );
+});
+
+test("a row with no tierTags is never returned for a specific tier", () => {
+  assert.deepEqual(applyFilters(TIER_ROWS, { season: "all", family: "all", tier: "startup" }), []);
+});
+
+test("filterCounts.tier counts each row once per tag it carries, measured under season+family only", () => {
+  const counts = filterCounts(TIER_ROWS, { season: "all", family: "all", tier: "all" });
+  assert.deepEqual(counts.tier, { all: 4, big4: 1, mbb_consulting: 1, big_tech: 1 });
 });
 
 // --- Task 2 / D3-D4 (lane L1, 2026-09-15): a role can be two families at

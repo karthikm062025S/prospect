@@ -57,6 +57,10 @@ export type HomeRow = {
   // stored classification) matches; app/(app)/page.tsx is the only producer
   // and always sets it (families ?? familySignals(title)).
   families: Family[];
+  // VTHacks speed pass (2026-09-20): dream-tier tags (lib/company-tier.ts),
+  // derived from the company name + stored companies.tier — "Big 4" etc. as a
+  // Home filter facet (Karthik: "I want to see big 4 as a filter").
+  tierTags: string[];
   apply_clicked_at: string | null;
   company_tier: string | null;
   company_url: string | null;
