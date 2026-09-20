@@ -37,12 +37,39 @@ function setTheme(next: Theme) {
 // D4: the toggle left the app bar and lives in the account menu, so it needs a
 // row skin (label left, current value right) alongside the original icon pill.
 // The default variant is unchanged for every other caller.
-export function ThemeToggle({ variant }: { variant?: "menu" } = {}) {
+// "settings" (redesign D9/D10): the Settings "Appearance and data" card mock
+// shows a segmented Light/Dark control rather than the menu's single flip
+// button. Same setTheme() call, just a different skin — each segment is
+// min-h-11 (44px) even though the mock's own pill is 32px tall, because the
+// accessibility floor (44px touch targets) outranks a mock's literal pixel
+// value.
+export function ThemeToggle({ variant }: { variant?: "menu" | "settings" } = {}) {
   const theme = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
   const isDark = theme === "dark";
 
   function toggle() {
     setTheme(isDark ? "light" : "dark");
+  }
+
+  if (variant === "settings") {
+    const segment = (active: boolean) =>
+      `inline-flex min-h-11 items-center rounded-pill px-4 font-sans text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage ${
+        active ? "bg-sage/15 text-sage" : "text-text-dim hover:text-text"
+      }`;
+    return (
+      <div
+        role="group"
+        aria-label="Theme"
+        className="inline-flex gap-1 rounded-pill border border-hairline bg-raised p-1"
+      >
+        <button type="button" aria-pressed={!isDark} onClick={() => setTheme("light")} className={segment(!isDark)}>
+          Light
+        </button>
+        <button type="button" aria-pressed={isDark} onClick={() => setTheme("dark")} className={segment(isDark)}>
+          Dark
+        </button>
+      </div>
+    );
   }
 
   if (variant === "menu") {
