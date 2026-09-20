@@ -3,7 +3,7 @@
 import { useRef } from "react";
 import { motion, useScroll, useTransform, type MotionValue } from "motion/react";
 
-import { Wordmark, WORDMARK_BASELINE } from "@/components/brand/wordmark";
+import { Wordmark } from "@/components/brand/wordmark";
 import AuthNotice from "@/components/landing/auth-notice";
 import { BrandMark, ROW_A } from "@/components/landing/brand-marks";
 import { Rise } from "@/components/landing/rise";
@@ -43,14 +43,19 @@ const RATE = { sky: 0.1, wordmark: 0.2, ridges: 0.4, hills: 0.55, near: 0.8 } as
 // rows 239-253 of 576 across the wordmark's span, measured off ridges.png's
 // alpha (L1). The painting is object-cover and height-bound at both 9:16 and
 // 16:9, so a fraction of the hero's height lands on the same brushstroke. The
-// wordmark's baseline is placed a hair under the crest, so every letter reads
-// in full (D10) and the two "p" descenders are the part tucked behind the
-// ridges at rest (D6); the sink on scroll takes the rest.
-const RIDGE_LINE = 0.43;
-// The mid-hills crest is at 0.54-0.56 of the height in the centre, so the copy
-// block starts at it, over the hills and the river; on a 390x844 phone that
-// leaves the eight marks inside the fold (D10: everything viewable).
-const COPY_TOP = 0.53;
+// wordmark's INK BOTTOM -- not its baseline -- is placed just above the crest's
+// highest row (239/576 = 0.415), so at rest every letter including the two "p"
+// descenders is fully visible (D10, Karthik 2026-09-20). The sink behind the
+// ridges is scroll-only (RATE.ridges > RATE.wordmark), unchanged.
+const RIDGE_LINE = 0.405;
+// The ink bottom is 1648/2236 of the box (the "p" descender tip); the baseline
+// at 1370/2236 is where the x-height letters sit. Placing by the descender is
+// what guarantees no letter is clipped.
+const WORDMARK_INK_BOTTOM = 1648 / 2236;
+// The copy block starts one even gap (6.5% of the hero) under the wordmark's
+// foot, clear of the ridge band (0.415-0.439) and over the mid hills; on a
+// 390x844 phone that still leaves the eight marks inside the fold (D10).
+const COPY_TOP = 0.47;
 
 // The sun behind the mark: the sky's own brightest orange (rgb 245 172 81 at
 // the horizon), faded out radially. The maroon letters clear 4.5:1 on that
@@ -65,9 +70,11 @@ const SUN_GLOW =
 const GHOST_PILL =
   "inline-flex h-12 items-center rounded-pill border border-ink-text/40 px-5 text-step-0 font-medium text-ink-text hover:border-ink-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-text focus-visible:ring-offset-2 focus-visible:ring-offset-ink";
 
-// Eight marks, the reference's logo-strip count. ROW_A is the boards-strip's
-// own list, so every name here is verified against scripts/endpoints.json by
-// tests/boards-strip.test.ts and carries a real vector mark.
+// Eight marks, the reference's logo-strip count. ROW_A now leads with a
+// cross-industry set (consulting, semis, payments, healthcare, industrial,
+// media, telecom, retail) so the foot does not read as "just big tech"
+// (Karthik 2026-09-20); every name is verified against scripts/endpoints.json
+// by tests/boards-strip.test.ts and carries a real vector mark.
 const MARKS = ROW_A.slice(0, 8);
 
 // Bottom-weighted, so the sky stays as bright as the painting for the maroon
@@ -159,7 +166,7 @@ export function Hero({
           className="absolute left-1/2 w-[min(88vw,860px)] sm:w-[clamp(480px,56vw,860px)]"
           style={{
             top: `${RIDGE_LINE * 100}%`,
-            transform: `translate(-50%, -${(WORDMARK_BASELINE * 100).toFixed(2)}%)`,
+            transform: `translate(-50%, -${(WORDMARK_INK_BOTTOM * 100).toFixed(2)}%)`,
           }}
         >
           <div

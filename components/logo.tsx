@@ -1,26 +1,16 @@
 import Link from "next/link";
 
-// Grid S: one square-ended path with the sage counter marker. The geometry is
-// shared with app/icon.svg and the generated Apple/Open Graph assets.
+import { Mark as BrandMark } from "@/components/brand/wordmark";
+
+// Redesign 2026-09-20 (Karthik D10): the nav brand is the REAL Prospect logo,
+// not the old Grid S glyph. `Mark` is the "o" with its nugget from
+// components/brand/wordmark.tsx -- the same geometry as app/icon.svg and the
+// hero wordmark -- and the label beside it is set in the display face.
 export function LogoMark({ size = 22 }: { size?: number }) {
   return (
-    <svg
-      viewBox="0 0 64 64"
-      width={size}
-      height={size}
-      fill="none"
-      aria-hidden="true"
-      className="shrink-0"
-    >
-      <path
-        d="M52 12H16V32H48V52H12"
-        stroke="currentColor"
-        strokeWidth="5"
-        strokeLinecap="square"
-        strokeLinejoin="miter"
-      />
-      <rect x="45.5" y="17.5" width="9" height="9" fill="var(--sage, #2d5a43)" />
-    </svg>
+    <span className="flex shrink-0" style={{ width: size, height: size }}>
+      <BrandMark label="Prospect" className="block size-full" />
+    </span>
   );
 }
 

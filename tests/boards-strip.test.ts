@@ -3,7 +3,8 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { normalizeCompanyName } from "../lib/brand-mark.ts";
 
-// v8 D6 HARD RULE: the marquee is two DISJOINT rows of 10 distinct companies
+// Redesign 2026-09-20 HARD RULE: the marquee is two DISJOINT rows of 25 distinct,
+// cross-industry companies
 // (ROW_A/ROW_B), every one with its exact name in scripts/endpoints.json AND a
 // real vector mark (an inline Simple Icons path, or a file in public/brand/
 // resolved through lib/brand-mark.ts). This test is the gate; it reads the
@@ -38,9 +39,9 @@ function hasMark(name: string): boolean {
   return Boolean(BRAND_INDEX[normalizeCompanyName(name)]);
 }
 
-test("ROW_A and ROW_B each have exactly 10 companies", () => {
-  assert.equal(rowA.length, 10, `ROW_A has ${rowA.length}`);
-  assert.equal(rowB.length, 10, `ROW_B has ${rowB.length}`);
+test("ROW_A and ROW_B each have exactly 25 companies", () => {
+  assert.equal(rowA.length, 25, `ROW_A has ${rowA.length}`);
+  assert.equal(rowB.length, 25, `ROW_B has ${rowB.length}`);
 });
 
 test("no company appears in both rows or is duplicated", () => {

@@ -55,38 +55,86 @@ const PATHS: Record<string, string> = {
     "M8.948 8.798v-1.43a6.7 6.7 0 0 1 .424-.018c3.922-.124 6.493 3.374 6.493 3.374s-2.774 3.851-5.75 3.851c-.398 0-.787-.062-1.158-.185v-4.346c1.528.185 1.837.857 2.747 2.385l2.04-1.714s-1.492-1.952-4-1.952a6.016 6.016 0 0 0-.796.035m0-4.735v2.138l.424-.027c5.45-.185 9.01 4.47 9.01 4.47s-4.08 4.964-8.33 4.964c-.37 0-.733-.035-1.095-.097v1.325c.3.035.61.062.91.062 3.957 0 6.82-2.023 9.593-4.408.459.371 2.34 1.263 2.73 1.652-2.633 2.208-8.772 3.984-12.253 3.984-.335 0-.653-.018-.971-.053v1.864H24V4.063zm0 10.326v1.131c-3.657-.654-4.673-4.46-4.673-4.46s1.758-1.944 4.673-2.262v1.237H8.94c-1.528-.186-2.73 1.245-2.73 1.245s.68 2.412 2.739 3.11M2.456 10.9s2.164-3.197 6.5-3.533V6.201C4.153 6.59 0 10.653 0 10.653s2.35 6.802 8.948 7.42v-1.237c-4.84-.6-6.492-5.936-6.492-5.936z",
 };
 
-// v8 D6: two DISJOINT rows of 10 distinct, widely recognized companies. Every
-// one of the 20 has both (a) its exact name in scripts/endpoints.json and (b)
-// a real vector mark — the 7 Simple Icons paths above, or a vendored mark in
-// public/brand/ resolved through lib/brand-mark's brandMarkSrc. No text-only
-// entries remain. Verified by scripts/check-marquee.mjs and tests/boards-strip.test.ts.
+// Redesign 2026-09-20 (Karthik): the strip must read as "every industry", not
+// "just big tech". Two DISJOINT rows of 25 distinct companies spanning
+// consulting (Accenture), semis and hardware (NVIDIA, Broadcom, HP), payments
+// and fintech (Mastercard, PayPal, Stripe, Robinhood, Brex), healthcare and
+// pharma (Abbott, Abbvie), industrial (Caterpillar, Trimble), defense and gov
+// (Palantir), telecom (Verizon, AT&T), logistics (UPS), retail and commerce
+// (Target, Etsy, Instacart), travel and mobility (Airbnb, Lyft, DoorDash,
+// Tripadvisor), media and gaming (Netflix, Spotify, Twitch, Roblox, Unity),
+// social (Reddit, Pinterest, Discord), AI labs (Anthropic, xAI, ElevenLabs,
+// Cerebras) and enterprise/dev infrastructure.
+//
+// The Big 4 (Deloitte, PwC, EY, KPMG) are NOT here: neither scripts/endpoints.json
+// nor the vendored public/brand/ pack has them, and the HARD RULE below forbids
+// inventing either. Accenture is the consulting entry that exists in both.
+//
+// The first eight of ROW_A are also the hero's foot marks (MARKS in
+// components/landing/hero.tsx = ROW_A.slice(0, 8)), so that slice is itself a
+// cross-industry set, not a tech run.
+//
+// Every one of the 50 has both (a) its exact name in scripts/endpoints.json and
+// (b) a real vector mark -- the 7 Simple Icons paths above, or a vendored mark
+// in public/brand/ resolved through lib/brand-mark's brandMarkSrc. No text-only
+// entries. Verified by tests/boards-strip.test.ts.
 export const ROW_A = [
-  "Stripe",
-  "Databricks",
-  "Snowflake",
-  "Palantir",
-  "Airbnb",
-  "Netflix",
+  "Accenture",
   "NVIDIA",
+  "Mastercard",
+  "Abbott",
+  "Caterpillar",
+  "Netflix",
+  "Verizon",
+  "Target",
+  "Palantir",
+  "UPS",
+  "Stripe",
+  "Airbnb",
   "Anthropic",
-  "Figma",
-  "Datadog",
+  "Databricks",
+  "Spotify",
+  "PayPal",
+  "Abbvie",
+  "AT&T",
+  "Broadcom",
+  "Etsy",
+  "Lyft",
+  "Snowflake",
+  "HP",
+  "Trimble",
+  "Cloudflare",
 ];
 
 export const ROW_B = [
+  "Robinhood",
   "DoorDash",
-  "Affirm",
-  "Brex",
-  "Airtable",
-  "Cloudflare",
-  "Duolingo",
-  "Roblox",
+  "Instacart",
+  "Twitch",
   "Reddit",
   "Pinterest",
-  "Robinhood",
+  "Roblox",
+  "Unity",
+  "Figma",
+  "Notion",
+  "Datadog",
+  "MongoDB",
+  "GitHub",
+  "GitLab",
+  "Okta",
+  "Fortinet",
+  "Akamai",
+  "Dropbox",
+  "Discord",
+  "Duolingo",
+  "xAI",
+  "ElevenLabs",
+  "Cerebras",
+  "Brex",
+  "Tripadvisor",
 ];
 
-/** All 20 boards, for the sr-only list and the test. */
+/** All 50 boards, for the sr-only list and the test. */
 export const ALL_BOARDS = [...ROW_A, ...ROW_B];
 
 export function BrandMark({ name, size = 20 }: { name: string; size?: number }) {
