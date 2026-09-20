@@ -1,5 +1,9 @@
 "use client";
 
+// Restyled to planning/mocks/settings.html (L9, 2026-09-20): ProfileForm is a
+// two-up grid (name/school) + full-width grad term below, TargetForm is an
+// input+help rowline. Same updateProfileAction/updateTargetAction calls, same
+// field names, no validation change.
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 import { updateProfileAction, updateTargetAction, type ActionResult } from "./actions";
@@ -8,7 +12,7 @@ const INITIAL_STATE: ActionResult = { ok: true };
 
 const label = "font-label text-[11px] uppercase tracking-label text-text-dim";
 const inputClass =
-  "min-h-11 border border-hairline bg-bg px-2 font-sans text-sm text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage";
+  "min-h-11 rounded-lg border border-hairline bg-bg px-3 font-sans text-sm text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage";
 
 function SubmitButton({ children }: { children: React.ReactNode }) {
   const { pending } = useFormStatus();
@@ -45,29 +49,31 @@ export function ProfileForm({
   const [state, formAction] = useActionState(updateProfileAction, INITIAL_STATE);
 
   return (
-    <form action={formAction} className="flex flex-col gap-3">
-      <div className="flex flex-col gap-1">
-        <label htmlFor="full_name" className={label}>
-          Full name
-        </label>
-        <input
-          id="full_name"
-          name="full_name"
-          required
-          maxLength={80}
-          defaultValue={fullName}
-          className={inputClass}
-        />
+    <form action={formAction} className="flex flex-col gap-4">
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="full_name" className={label}>
+            Full name
+          </label>
+          <input
+            id="full_name"
+            name="full_name"
+            required
+            maxLength={80}
+            defaultValue={fullName}
+            className={inputClass}
+          />
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="school" className={label}>
+            School
+          </label>
+          <input id="school" name="school" maxLength={80} defaultValue={school} className={inputClass} />
+        </div>
       </div>
 
-      <div className="flex flex-col gap-1">
-        <label htmlFor="school" className={label}>
-          School
-        </label>
-        <input id="school" name="school" maxLength={80} defaultValue={school} className={inputClass} />
-      </div>
-
-      <div className="flex flex-col gap-1">
+      <div className="flex flex-col gap-1.5 sm:w-[calc(50%-8px)]">
         <label htmlFor="grad_term" className={label}>
           Graduation term
         </label>
@@ -81,8 +87,10 @@ export function ProfileForm({
         />
       </div>
 
-      <SubmitButton>Save profile</SubmitButton>
-      <StatusMessage state={state} />
+      <div className="flex flex-wrap items-center gap-3">
+        <SubmitButton>Save profile</SubmitButton>
+        <StatusMessage state={state} />
+      </div>
     </form>
   );
 }
@@ -91,22 +99,28 @@ export function TargetForm({ monthlyTarget }: { monthlyTarget: number | null }) 
   const [state, formAction] = useActionState(updateTargetAction, INITIAL_STATE);
 
   return (
-    <form action={formAction} className="flex flex-col gap-1">
+    <form action={formAction} className="flex flex-col gap-2">
       <label htmlFor="monthly_target" className={label}>
         Monthly application target
       </label>
-      <input
-        id="monthly_target"
-        name="monthly_target"
-        type="number"
-        min={1}
-        max={500}
-        defaultValue={monthlyTarget ?? ""}
-        className={`${inputClass} max-w-40`}
-      />
-      <p className="text-sm text-text-dim">Leave empty for no target.</p>
-      <SubmitButton>Save target</SubmitButton>
-      <StatusMessage state={state} />
+      <div className="flex flex-wrap items-center gap-4">
+        <input
+          id="monthly_target"
+          name="monthly_target"
+          type="number"
+          min={1}
+          max={500}
+          defaultValue={monthlyTarget ?? ""}
+          className={`${inputClass} w-28`}
+        />
+        <p className="text-sm text-text-dim">
+          Home and Applications measure your pace against this number. Leave empty for no target.
+        </p>
+      </div>
+      <div className="flex flex-wrap items-center gap-3">
+        <SubmitButton>Save target</SubmitButton>
+        <StatusMessage state={state} />
+      </div>
     </form>
   );
 }
