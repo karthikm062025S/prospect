@@ -38,7 +38,7 @@ const flag = (name: string) => {
   return i >= 0 ? args[i + 1] : undefined;
 };
 const N = Number(flag("n") ?? 3);
-const PARSE_MODEL = flag("parse-model") ?? "gemini-3.1-pro-preview";
+const PARSE_MODEL = flag("parse-model") ?? "gemini-3.8-flash";
 const AGENT_MODEL = "gemini-3.8-flash";
 const thinkingFlag = flag("thinking");
 const thinking =

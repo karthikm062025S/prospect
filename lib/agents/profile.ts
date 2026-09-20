@@ -248,7 +248,6 @@ const PARSE_MAX_OUTPUT_TOKENS = 8_192;
 // Measured 2026-09-19 (scripts/profile-smoke.ts, 46-course typed transcript):
 // gemini-3.1-pro-preview default thinking > 20 s (timeout), thinkingBudget 0 and
 // MINIMAL refused by the model (400), LOW 12.1 s; gemini-3.8-flash LOW 2.7 s.
-// LOW is the fastest level MODEL_PARSE accepts.
 const PARSE_THINKING = { thinkingLevel: ThinkingLevel.LOW };
 
 /** Exported for tests: a fake `ModelCaller` (lib/agents/harness.ts modelCaller(fakeGenerate)) drives it with no network. */

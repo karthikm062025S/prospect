@@ -209,7 +209,7 @@ export function TabBar({ weekCount, profile }: { weekCount: number; profile: Pro
         <div className="flex shrink-0 items-center gap-3">
           <FeedbackTrigger
             aria-label="Feedback"
-            className="hidden min-h-11 shrink-0 items-center gap-1.5 rounded-pill bg-accent px-4 font-label text-[11px] uppercase tracking-label text-ink hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage md:flex"
+            className="accent-fill-on-raised hidden min-h-11 shrink-0 items-center gap-1.5 rounded-pill bg-accent px-4 font-label text-[11px] uppercase tracking-label text-ink hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage md:flex"
           >
             <ChatIcon />
             Feedback

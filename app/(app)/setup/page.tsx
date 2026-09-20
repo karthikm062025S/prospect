@@ -31,7 +31,7 @@ export default async function SetupPage() {
         <h1 className="font-display text-step-3 text-text">{existing ? "Edit your profile" : "Build your profile"}</h1>
         <p className="font-sans text-sm text-text-dim">
           Upload your resume and unofficial transcript, or type your courses instead. Four agents then read them,
-          rank the live feed for you and plan your roadmap. About 20 seconds.
+          rank the live feed for you and plan your roadmap. Usually under a minute.
         </p>
         {existing && (
           <p className="font-sans text-sm text-text">

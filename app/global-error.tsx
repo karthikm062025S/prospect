@@ -19,7 +19,7 @@ export default function GlobalError({
   return (
     <html lang="en">
       <head>
-        <style>{`button:focus-visible, a:focus-visible { outline: 2px solid #2d5a43; outline-offset: 2px; }`}</style>
+        <style>{`button:focus-visible, a:focus-visible { outline: 2px solid #861F41; outline-offset: 2px; }`}</style>
       </head>
       <body
         style={{
@@ -33,7 +33,7 @@ export default function GlobalError({
           padding: "1.5rem",
           textAlign: "center",
           fontFamily: "system-ui, sans-serif",
-          background: "#f9f6ee",
+          background: "#ffffff",
           color: "#18181b",
         }}
       >
@@ -64,7 +64,7 @@ export default function GlobalError({
               padding: "0 1rem",
               border: "1px solid rgb(24 24 27 / 0.12)",
               background: "transparent",
-              color: "#2d5a43",
+              color: "#861F41",
               fontFamily: "ui-monospace, monospace",
               fontSize: "0.75rem",
               textTransform: "uppercase",

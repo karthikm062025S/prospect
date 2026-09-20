@@ -11,8 +11,8 @@ const applePath = path.join(root, "app", "apple-icon.png");
 const ogPath = path.join(root, "public", "og.png");
 const fontPath = path.join(root, "public", "fonts", "InstrumentSerif-Regular.ttf");
 
-const CREAM = "#f9f6ee";
-const INK = "#18181b";
+const CREAM = "#f5efec";
+const INK = "#1f0e14";
 const iconSvg = await readFile(iconPath, "utf8");
 const fontBase64 = (await readFile(fontPath)).toString("base64");
 
@@ -57,8 +57,8 @@ const ogSvg = `
   <svg x="72" y="183" width="240" height="240" viewBox="0 0 64 64" fill="none">
     ${markContent}
   </svg>
-  <text class="brand" x="370" y="292" font-size="120" fill="${CREAM}">Scout</text>
-  <text class="brand" x="374" y="355" font-size="23.5" fill="${CREAM}">Internship postings, minutes after they go live.</text>
+  <text class="brand" x="370" y="292" font-size="120" fill="${CREAM}">Prospect</text>
+  <text class="brand" x="374" y="355" font-size="23.5" fill="${CREAM}">The career journey for every Virginia Tech student.</text>
 </svg>`;
 
 await sharp(Buffer.from(ogSvg)).png().toFile(ogPath);
