@@ -1,27 +1,26 @@
 @import "tailwindcss";
 
-/* Scout v2 — warm-cream LIGHT (identity theme) + Balanced Grove DARK, switched
-   on [data-theme] (04-uiux-brief.md §1). @theme values point at the runtime
-   custom properties below so `bg-bg`/`text-text`/etc. stay theme-reactive. */
+/* PROSPECT palette, 2026-09-19 (CONTEXT.md "Locked 2026-09-19 20:30", mission
+   D-UI1/D-UI2). White page ground + the Virginia Tech pair: maroon #861F41 and
+   orange #E5751F. @theme values point at the runtime custom properties below
+   so `bg-bg`/`text-text`/etc. stay theme-reactive.
+
+   TOKEN REMAP — the NAMES are unchanged on purpose (40+ files use them); only
+   what they RESOLVE to moved:
+     --sage   was the forest green #2d5a43  ->  now VT maroon #861F41, the
+              primary action / link / heading-accent colour. The name stays
+              because `text-sage`/`bg-sage` are spelled into 40+ files and a
+              rename is a 40-file diff for zero pixels.
+     --accent was the ember-apricot #e69a6f ->  now VT orange #E5751F. Same
+              rule as before and now a HARD one: FILL only (progress, badge,
+              highlight), never text on --bg/--raised. 3.05:1 on white.
+     --bg     was the off-white #f7f7f5     ->  now pure #ffffff.
+     --raised was #ffffff                   ->  now the warm panel #faf7f2.
+     --text / --ink / --danger move from the green-ink family to a maroon-ink
+              family so dark mode is derived from the same hue as the brand,
+              never slate (SYSTEM.md Color, dark rule).
+   Every ratio in the comments below is printed by `node scripts/contrast-pairs.mjs`. */
 @theme {
-  --color-bg: var(--bg);
-  --color-raised: var(--raised);
-  --color-text: var(--text);
-  --color-text-dim: var(--text-dim);
-  --color-hairline: var(--hairline);
-  --color-sage: var(--sage);
-  --color-danger: var(--danger);
-  /* v7 L7 (landing). ONE new accent — the Harloom "Dusk Atelier" accent-glow
-     ember-apricot (design/system/HARLOOM-DESIGN-SYSTEM.md). Used only for the
-     circular arrow CTA, the pinned-reveal progress rule, the handwritten
-     sign-off and the ink-band focus ring. `ink` is the landing's dark band; it
-     is the SAME value in both themes on purpose (the band is an identity
-     surface, not a themed one), so `ink-text` is its only legible foreground. */
-  --color-accent: var(--accent);
-  --color-text-unrevealed: var(--text-unrevealed);
-  --color-text-unrevealed-ink: var(--text-unrevealed-ink);
-  --color-ink: var(--ink);
-  --color-ink-text: var(--ink-text);
 
   /* v5 D31: type scale up one notch. `text-sm` (Tailwind default 0.875rem/14px)
      is the app's body-copy utility (see `body` className in app/layout.tsx),
@@ -83,19 +82,35 @@
 }
 
 @theme inline {
+  /* `inline` is load-bearing for every colour here, not a style choice: a
+     plain @theme emits `--color-bg: var(--bg)` on :root, where the indirection
+     resolves ONCE, so a nested [data-theme] island (the /pairing sheet, any
+     light-on-dark block) would silently keep the document's palette. `inline`
+     makes the utility emit `background-color: var(--bg)` and resolve at the
+     USE site, which is what makes a scoped theme actually switch. */
+  --color-bg: var(--bg);
+  --color-raised: var(--raised);
+  --color-text: var(--text);
+  --color-text-dim: var(--text-dim);
+  --color-hairline: var(--hairline);
+  --color-sage: var(--sage);
+  --color-danger: var(--danger);
+  --color-accent: var(--accent);
+  --color-text-unrevealed: var(--text-unrevealed);
+  --color-text-unrevealed-ink: var(--text-unrevealed-ink);
+  --color-ink: var(--ink);
+  --color-ink-text: var(--ink-text);
+
   --font-sans: var(--font-satoshi);
-  /* v7 L7 mono verdict: Departure Mono does NOT replace IBM Plex Mono for data
-     values. Measured on the real Home table at localhost:3001 (dark, 100% zoom,
-     1522px): swapping --font-plex-mono to Departure widened every mono run
-     (advance at 13px = 8.27px vs Plex's 6.50px, +27%), which wrapped the
-     one-line velocity strip onto two lines and clipped the "RECENTLY ADDED"
-     sort control. Departure's x-height ratio is actually BETTER (0.538 vs 0.462
-     at 13px) and it is legible on both themes — it fails on width, not on
-     legibility. So Plex stays the data face and Departure takes --font-label
-     (uppercase labels / nav / eyebrows only), per D12's fallback. */
+  /* Prospect 2026-09-19 (CONTEXT 20:30): three faces, one role each. The old
+     serif display face and the second mono face are retired, so IBM Plex Mono
+     carries BOTH mono roles (--font-mono for code-like data, --font-label for
+     uppercase micro labels) and DM Sans variable takes the display role.
+     `font-label`, `font-mono` and `font-display` keep their names; only the
+     family behind each one changed. */
   --font-mono: var(--font-plex-mono);
-  --font-label: var(--font-departure);
-  --font-display: var(--font-instrument-serif);
+  --font-label: var(--font-plex-mono);
+  --font-display: var(--font-dm-sans);
 }
 
 /* ---------------------------------------------------------------------------
@@ -138,81 +153,129 @@
 /* Light = default (system prefers-color-scheme: light, and the no-JS floor). */
 :root {
   color-scheme: light;
-  /* v7 D20: the light ground moves to the measured integratedbio off-white
-     (#F7F7F5) and the ink to its near-black green (#222F30), per the design direction note's
-     "not pure white but some kind of off-white". --raised becomes pure white,
-     so --text-dim has to clear 4.5:1 on BOTH grounds, not just on the page. */
-  --bg: #f7f7f5;
-  --raised: #ffffff;
-  --text: #222f30;
-  --text-dim: #62706f; /* 4.81:1 on --bg, 5.16:1 on --raised (scripts/contrast-pairs.mjs) */
-  --hairline: rgb(34 47 48 / 0.12);
-  --sage: #2d5a43;
-  --danger: #a8391f; /* darkened from doc4's alert coral #e07a5f: 2.73:1 on cream fails AA as text, see §1 computed table */
-  --accent: #e69a6f; /* 7.77:1 on --ink (text-safe there); 2.11:1 on --bg, so on the page it is FILL/decoration only, never text */
-  --ink: #222f30;
-  --ink-text: #e8e4df; /* 12.4:1 on --ink */
-  /* Pre-reveal colour for scroll-revealed text, and NOTHING else.
-     Fold 1 item 5: the reference's own value (rgb(201,203,190)) measured
-     1.53:1 here, so pre-reveal statements really were near-invisible on the
-     sheet. Darkened inside the same muted-sage family to 3.12:1 on --bg and
-     3.26:1 on --raised, which keeps a 4.1x step up to --text at 12.90:1. */
-  --text-unrevealed: #85907d;
-  /* The same state on an INK surface (the hero, the art bands). --ink is
-     theme-invariant, so this token is too: a mid sage would sink into the
-     scrim, so the ink surfaces keep the light reference value. */
-  --text-unrevealed-ink: #c9cbbe;
+  /* Prospect: pure white page, warm off-white raised panel (the reference's
+     #FAF7F0 family). --text-dim has to clear 4.5:1 on BOTH grounds. */
+  --bg: #ffffff;
+  --raised: #faf7f2;
+  --text: #241419; /* maroon-tinted near-black: 17.66:1 on --bg, 16.53:1 on --raised */
+  --text-dim: #6b5560; /* 6.79:1 on --bg, 6.35:1 on --raised */
+  --hairline: rgb(36 20 25 / 0.12);
+  --sage: #861F41; /* VT maroon, the action colour: 9.19:1 on --bg, 8.60:1 on --raised */
+  --danger: #ab2118; /* 7.09:1 on --bg, 6.63:1 on --raised */
+  /* VT orange. 3.05:1 on --bg and 2.85:1 on --raised, so it is FILL ONLY on
+     the page, never text there. On --raised it is under the 3:1 non-text
+     boundary too, so an accent fill sitting on a card wears a 1px --text
+     boundary (16.53:1) — the same ring argument the hero arrow already uses. */
+  --accent: #E5751F;
+  --ink: #1f0e14; /* the deep maroon-black band surface; same value in BOTH themes on purpose */
+  --ink-text: #f5efec; /* 16.30:1 on --ink */
+  /* Pre-reveal colour for scroll-revealed text, and NOTHING else. Decorative,
+     3:1 floor (SYSTEM.md). */
+  --text-unrevealed: #9c8890; /* 3.31:1 on --bg, 3.10:1 on --raised */
+  /* The same state on an INK surface. --ink is theme-invariant, so this is too. */
+  --text-unrevealed-ink: #c9bcc0; /* 10.11:1 on --ink */
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     color-scheme: dark;
-    /* v8 D13: dark = the landing's ink family, not slate. The landing's dark
-       bands are --ink, so the app's ground is the same hue family and the text
-       is the landing's warm off-white. Ratios measured by
-       `node scripts/contrast-pairs.mjs`. */
-    --bg: #1a2325;
-    --raised: #232e30;
-    --text: #e8e4df; /* 12.66:1 on --bg, 11.03:1 on --raised */
-    --text-dim: rgb(232 228 223 / 0.66); /* 6.28:1 on --bg, 5.71:1 on --raised */
-    --hairline: rgb(232 228 223 / 0.12);
-    --sage: #8fbaa5; /* 7.43:1 on --bg, 6.47:1 on --raised */
-    --danger: #e89a82; /* 7.15:1 on --bg, 6.23:1 on --raised */
-    --accent: #e69a6f; /* 7.03:1 on --bg, 7.66:1 on --ink (same value as light) */
+    /* Prospect dark = the SAME maroon-ink family as --ink, never slate
+       (SYSTEM.md Color, dark rule). --bg is one step lighter than --ink and
+       --raised one more. #861F41 itself is unreadable here (2.0:1), so --sage
+       lifts to a maroon-rose; --accent keeps the brand orange, which passes.
+       Ratios printed by `node scripts/contrast-pairs.mjs`. */
+    --bg: #2a1720;
+    --raised: #351f29;
+    --text: #f0e9ea; /* 14.13:1 on --bg, 12.72:1 on --raised */
+    --text-dim: rgb(240 233 234 / 0.66); /* 6.81:1 on --bg, 6.35:1 on --raised */
+    --hairline: rgb(240 233 234 / 0.12);
+    --sage: #e79aae; /* 7.76:1 on --bg, 6.98:1 on --raised */
+    --danger: #f09a8c; /* 7.82:1 on --bg, 7.04:1 on --raised */
+    --accent: #E5751F; /* same value as light: 5.55:1 on --bg, 5.00:1 on --raised, 6.10:1 on --ink */
     /* A step DARKER than --bg so the landing's ink bands still read as bands
-       now that the page ground shares their hue family. */
-    --ink: #141b1c;
-    --ink-text: #e8e4df; /* 13.79:1 on --ink */
-    --text-unrevealed: rgb(232 228 223 / 0.45); /* 3.69:1 on --bg, 3.48:1 on --raised (decorative pre-reveal, 3:1 floor) */
-    --text-unrevealed-ink: #c9cbbe; /* 10.61:1 on --ink */
+       now that the page ground shares their hue family. Same value as light. */
+    --ink: #1f0e14;
+    --ink-text: #f5efec; /* 16.30:1 on --ink */
+    --text-unrevealed: rgb(240 233 234 / 0.45); /* 3.88:1 on --bg, 3.74:1 on --raised (decorative pre-reveal, 3:1 floor) */
+    --text-unrevealed-ink: #c9bcc0; /* 10.11:1 on --ink */
   }
 }
 
 [data-theme="dark"] {
   color-scheme: dark;
-  /* v8 D13: dark = the landing's ink family, not slate. The landing's dark
-     bands are --ink, so the app's ground is the same hue family and the text
-     is the landing's warm off-white. Ratios measured by
-     `node scripts/contrast-pairs.mjs`. */
-  --bg: #1a2325;
-  --raised: #232e30;
-  --text: #e8e4df; /* 12.66:1 on --bg, 11.03:1 on --raised */
-  --text-dim: rgb(232 228 223 / 0.66); /* 6.28:1 on --bg, 5.71:1 on --raised */
-  --hairline: rgb(232 228 223 / 0.12);
-  --sage: #8fbaa5; /* 7.43:1 on --bg, 6.47:1 on --raised */
-  --danger: #e89a82; /* 7.15:1 on --bg, 6.23:1 on --raised */
-  --accent: #e69a6f; /* 7.03:1 on --bg, 7.66:1 on --ink (same value as light) */
+  /* Prospect dark = the SAME maroon-ink family as --ink, never slate
+     (SYSTEM.md Color, dark rule). --bg is one step lighter than --ink and
+     --raised one more. #861F41 itself is unreadable here (2.0:1), so --sage
+     lifts to a maroon-rose; --accent keeps the brand orange, which passes.
+     Ratios printed by `node scripts/contrast-pairs.mjs`. */
+  --bg: #2a1720;
+  --raised: #351f29;
+  --text: #f0e9ea; /* 14.13:1 on --bg, 12.72:1 on --raised */
+  --text-dim: rgb(240 233 234 / 0.66); /* 6.81:1 on --bg, 6.35:1 on --raised */
+  --hairline: rgb(240 233 234 / 0.12);
+  --sage: #e79aae; /* 7.76:1 on --bg, 6.98:1 on --raised */
+  --danger: #f09a8c; /* 7.82:1 on --bg, 7.04:1 on --raised */
+  --accent: #E5751F; /* same value as light: 5.55:1 on --bg, 5.00:1 on --raised, 6.10:1 on --ink */
   /* A step DARKER than --bg so the landing's ink bands still read as bands
-     now that the page ground shares their hue family. */
-  --ink: #141b1c;
-  --ink-text: #e8e4df; /* 13.79:1 on --ink */
-  --text-unrevealed: rgb(232 228 223 / 0.45); /* 3.69:1 on --bg, 3.48:1 on --raised (decorative pre-reveal, 3:1 floor) */
-  --text-unrevealed-ink: #c9cbbe; /* 10.61:1 on --ink */
+     now that the page ground shares their hue family. Same value as light. */
+  --ink: #1f0e14;
+  --ink-text: #f5efec; /* 16.30:1 on --ink */
+  --text-unrevealed: rgb(240 233 234 / 0.45); /* 3.88:1 on --bg, 3.74:1 on --raised (decorative pre-reveal, 3:1 floor) */
+  --text-unrevealed-ink: #c9bcc0; /* 10.11:1 on --ink */
+}
+
+/* The light palette again, scoped, so a nested light sheet works. :root above
+   is the document default; this block is what lets a DESCENDANT opt back into
+   light while the document is dark (the /pairing side-by-side sheet, and any
+   future light-on-dark island). Same values as :root — keep the two in sync. */
+[data-theme="light"] {
+  color-scheme: light;
+  --bg: #ffffff;
+  --raised: #faf7f2;
+  --text: #241419;
+  --text-dim: #6b5560;
+  --hairline: rgb(36 20 25 / 0.12);
+  --sage: #861F41;
+  --danger: #ab2118;
+  --accent: #E5751F;
+  --ink: #1f0e14;
+  --ink-text: #f5efec;
+  --text-unrevealed: #9c8890;
+  --text-unrevealed-ink: #c9bcc0;
 }
 
 body {
-  background-color: var(--color-bg);
-  color: var(--color-text);
+  background-color: var(--bg);
+  color: var(--text);
+}
+
+/* Prospect display + label defaults (CONTEXT 20:30 "Type"). `font-display` is
+   now DM Sans variable, which is useless at its 400 default: the reference's
+   headings are black-weight with tight tracking. `font-label` is now Plex Mono
+   and wants its Medium cut to hold up at 11-12px uppercase.
+
+   Both are wrapped in :where() so they have ZERO specificity — any component
+   that spells an explicit `font-black`, `font-extrabold` or `tracking-*`
+   utility still wins, which is what lanes C and D need. This is a DEFAULT,
+   not a lock. Tracking stays on the SYSTEM.md ladder (-0.02em display,
+   +0.08em label); the reference's 0.16em eyebrow tracking is a per-component
+   choice, not a token change. */
+:where(.font-display) {
+  font-weight: 800;
+  letter-spacing: var(--tracking-display);
+  font-optical-sizing: auto;
+}
+:where(.font-label) {
+  font-weight: 500;
+}
+
+/* VT orange is 3.05:1 on --bg but 2.85:1 on --raised, so an accent FILL that
+   sits on a raised card cannot carry a 1.4.11 boundary on its own. This class
+   is that boundary: a 1px --text ring (16.53:1 on --raised), the same argument
+   the hero arrow's ring already makes. Accent fills on --bg or --ink do not
+   need it. */
+.accent-fill-on-raised {
+  box-shadow: inset 0 0 0 1px var(--text);
 }
 
 /* Native <dialog> — plain Tailwind only, no component library. */
