@@ -340,7 +340,7 @@ export async function runMatchAgent(
   const { getProfile, startAgentRun, finishAgentRun } = await import("../student-profile");
   const { listArchetypes, upsertArchetype, setRoleArchetype, parseAssignDecision } = await import("../archetypes");
   const { queryIndex } = await import("../vector-search");
-  const { gemini, MODEL_AGENT } = await import("../gemini");
+  const { gemini, MODEL_AGENT, FAST_CONFIG } = await import("../gemini");
   const { frameJobTextAsData, mapPostingTasks } = await import("../posting-tasks");
   const { deriveLevel } = await import("../family");
   const { getRoadmap, listNodes } = await import("../roadmaps");
@@ -374,6 +374,7 @@ export async function runMatchAgent(
       model: MODEL_AGENT,
       contents: [{ text: buildTargetArchetypePrompt(goalText, targetCandidates) }],
       config: {
+        ...FAST_CONFIG,
         responseMimeType: "application/json",
         responseSchema: {
           type: "OBJECT",
@@ -490,6 +491,7 @@ export async function runMatchAgent(
         model: MODEL_AGENT,
         contents: [{ text: prompt }],
         config: {
+          ...FAST_CONFIG,
           responseMimeType: "application/json",
           responseSchema: {
             type: "OBJECT",

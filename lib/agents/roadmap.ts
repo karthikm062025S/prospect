@@ -126,7 +126,7 @@ export async function runRoadmapAgent(
 ): Promise<RoadmapAgentResult> {
   const { startAgentRun, finishAgentRun, getProfile } = await import("../student-profile");
   const { loadCourseCandidates, loadClubCandidates, courseCodesExist, clubNamesExist } = await import("../catalog");
-  const { gemini, MODEL_AGENT } = await import("../gemini");
+  const { gemini, MODEL_AGENT, FAST_CONFIG } = await import("../gemini");
   const { semestersFromTerm, seasonFromDate, parseSemesterLabel } = await import("../semesters");
   const { upsertRoadmap, deleteFutureNodes, addNode } = await import("../roadmaps");
 
@@ -180,7 +180,7 @@ export async function runRoadmapAgent(
     const certs = await findCertifications(gemini, MODEL_AGENT, profile.goal, profile.major);
     onStep({ step: "certifications", label: `${certs.length} certifications found`, count: certs.length });
 
-    const plan = await planSemesters(gemini, MODEL_AGENT, { profile, targetSemesters, courses, clubs, certs });
+    const plan = await planSemesters(gemini, MODEL_AGENT, { profile, targetSemesters, courses, clubs, certs, fast: FAST_CONFIG });
     onStep({ step: "planning", label: `${plan.length} nodes proposed`, count: plan.length });
 
     const courseRefs = plan.filter((n) => n.kind === "course" && n.ref).map((n) => n.ref as string);
@@ -273,6 +273,7 @@ async function planSemesters(
     courses: Array<{ code: string; title: string }>;
     clubs: Array<{ name: string; description: string }>;
     certs: CertCandidate[];
+    fast: typeof import("../gemini").FAST_CONFIG;
   },
 ): Promise<PlanNode[]> {
   const courseList = ctx.courses.map((c) => `${c.code}: ${c.title}`).join("\n") || "none";
@@ -297,6 +298,7 @@ async function planSemesters(
       },
     ],
     config: {
+      ...ctx.fast,
       responseMimeType: "application/json",
       responseSchema: {
         type: "ARRAY",

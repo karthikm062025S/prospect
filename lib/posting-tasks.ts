@@ -109,7 +109,7 @@ function assertOnetIndexUsable(): Promise<void> {
 }
 
 export async function mapPostingTasks(input: PostingTasksInput, q: QueryFn): Promise<Record<Label, number>> {
-  const { gemini, MODEL_AGENT } = await import("./gemini");
+  const { gemini, MODEL_AGENT, FAST_CONFIG } = await import("./gemini");
   const { queryIndex } = await import("./vector-search");
   const { executeStatement } = await import("./databricks-sql");
   const { labelTask, summarizeLabels } = await import("./exposure");
@@ -120,6 +120,7 @@ export async function mapPostingTasks(input: PostingTasksInput, q: QueryFn): Pro
     model: MODEL_AGENT,
     contents: [{ text: buildDutyExtractionPrompt(jobText) }],
     config: {
+      ...FAST_CONFIG,
       responseMimeType: "application/json",
       responseSchema: {
         type: "OBJECT",
