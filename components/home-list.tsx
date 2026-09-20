@@ -45,7 +45,6 @@ import { FAMILY_LABEL, FAMILY_ORDER, type Family } from "@/lib/family";
 import { TIER_LABEL, TIER_ORDER, type TierTag } from "@/lib/company-tier";
 import { ALL_HOME_FILTER, applyFilters, filterCounts } from "@/lib/home-filters";
 import { SEASON_LABEL, SEASON_ORDER, type Season } from "@/lib/season";
-import styles from "./applications-split.module.css";
 
 // Lane handoffs 2026-09-20 (L9 logged first; adopted here): min-h-11 (44px)
 // -- the toolbar/list-footer button shape, same height as
@@ -982,7 +981,7 @@ export function HomeList({
           }}
           className={
             selected
-              ? `${styles.pane} fixed inset-0 z-40 overflow-y-auto bg-bg px-6 py-4 focus-visible:outline-none md:static md:z-auto md:bg-transparent ${PANE_COLUMN}`
+              ? `pane fixed inset-0 z-40 overflow-y-auto bg-bg px-6 py-4 focus-visible:outline-none md:static md:z-auto md:bg-transparent ${PANE_COLUMN}`
               : `hidden md:block ${PANE_COLUMN}`
           }
         >

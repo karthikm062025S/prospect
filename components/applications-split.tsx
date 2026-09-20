@@ -48,7 +48,6 @@ import { FilterChips } from "@/components/filter-chips";
 import { SearchInput } from "@/components/search-input";
 import { StaleBadge } from "@/components/stale-badge";
 import { FileTextIcon } from "@/components/icons";
-import styles from "./applications-split.module.css";
 
 const barButton =
   "inline-flex min-h-11 items-center border border-hairline px-3 font-sans text-sm font-medium hover:bg-raised focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage focus-visible:ring-offset-2 focus-visible:ring-offset-bg disabled:cursor-not-allowed disabled:text-text-dim disabled:hover:bg-transparent";
@@ -282,7 +281,7 @@ export function ApplicationsSplit({
           chips sit INSIDE the list column above the pinned toolbar so the
           detail pane gets the full height. Below md nothing here applies:
           <main> scrolls the page and the pane is the fixed slide-over (DX4). */}
-      <div className={`grid gap-6 md:-mx-1 md:h-full md:min-h-0 md:grid-rows-[minmax(0,1fr)] md:overflow-hidden md:px-1 ${selected ? "md:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]" : "md:grid-cols-1"}`}>
+      <div className={`grid gap-6 md:-mx-1 md:h-full md:min-h-0 md:grid-rows-[minmax(0,1fr)] md:grid-cols-[minmax(0,6fr)_minmax(0,5fr)] md:overflow-hidden md:px-1`}>
         <section aria-label="Applications" className="flex min-w-0 flex-col gap-6 pt-4 pb-6 md:-mx-1 md:min-h-0 md:overflow-y-auto md:px-1 md:pr-2">
           {/* mocks/applications.html header: eyebrow + serif h1 + a small
               stat trio, all built from props already on the page (no new
@@ -318,12 +317,14 @@ export function ApplicationsSplit({
 
           {/* D29 status chips — one shared visual with Home's All/Saved/Hidden. */}
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <FilterChips
-              items={chipItems}
-              active={chip}
-              onSelect={(key) => setChip(key as StatusChip)}
-              ariaLabel="Filter by stage"
-            />
+            <div className="inline-flex rounded-pill border border-hairline bg-raised p-1">
+              <FilterChips
+                items={chipItems}
+                active={chip}
+                onSelect={(key) => setChip(key as StatusChip)}
+                ariaLabel="Filter by stage"
+              />
+            </div>
             <Link
               href="/"
               className="inline-flex min-h-11 items-center gap-2 rounded-pill border border-transparent bg-sage px-4 font-sans text-sm font-medium text-bg hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage focus-visible:ring-offset-2 focus-visible:ring-offset-raised"
@@ -441,7 +442,7 @@ export function ApplicationsSplit({
           }}
           className={
             selected
-              ? `${styles.pane} fixed inset-0 z-40 overflow-y-auto bg-bg px-6 py-4 focus-visible:outline-none md:static md:z-auto md:bg-transparent ${PANE_COLUMN}`
+              ? `pane fixed inset-0 z-40 overflow-y-auto bg-bg px-6 py-4 focus-visible:outline-none md:static md:z-auto md:bg-transparent ${PANE_COLUMN}`
               : `hidden md:block ${PANE_COLUMN}`
           }
         >
