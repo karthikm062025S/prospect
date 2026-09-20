@@ -63,20 +63,30 @@ function requiredEnv(name: string): string {
 // retried with 500ms·2^n + jitter, 4 times, then thrown under the same name.
 const RETRY_LIMIT = 4;
 const RETRY_BASE_MS = 500;
+// demo-crasher fix 2026-09-20: a hung request must fail by name inside the
+// agent's own budget, not at the route ceiling.
+const REQUEST_TIMEOUT_MS = 20_000;
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 async function call(path: string, init?: RequestInit): Promise<Record<string, unknown>> {
   const host = requiredEnv("DATABRICKS_HOST").replace(/\/$/, "");
   const token = requiredEnv("DATABRICKS_TOKEN");
   for (let attempt = 0; ; attempt++) {
-    const res = await fetch(`${host}${path}`, {
-      ...init,
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-        ...(init?.headers ?? {}),
-      },
-    });
+    let res: Response;
+    try {
+      res = await fetch(`${host}${path}`, {
+        ...init,
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+          ...(init?.headers ?? {}),
+        },
+        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+      });
+    } catch (error) {
+      const message = (error as Error)?.message ?? String(error);
+      throw new Error(`VECTOR_SEARCH_API_ERROR: ${path}: ${message}`);
+    }
     const body = (await res.json().catch(() => ({}))) as Record<string, unknown>;
     if (res.status === 429 && attempt < RETRY_LIMIT) {
       await sleep(RETRY_BASE_MS * 2 ** attempt + Math.random() * RETRY_BASE_MS);

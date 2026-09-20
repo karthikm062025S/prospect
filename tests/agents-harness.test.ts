@@ -161,6 +161,81 @@ test("a MAX_TOKENS overflow is retried once with thinking off and a brevity nudg
   assert.match(String(generate.calls[1].config!.systemInstruction), /under 60 words/);
 });
 
+/** A fake model whose answer changes per call: the self-correction tests need a wrong answer, then a right one. */
+function fakeModelSequence(texts: string[]): GenerateFn & { calls: Parameters<GenerateFn>[0][] } {
+  const calls: Parameters<GenerateFn>[0][] = [];
+  const fn = (async (params: Parameters<GenerateFn>[0]) => {
+    calls.push(params);
+    return { text: texts[calls.length - 1] ?? texts.at(-1)!, candidates: [{ finishReason: "STOP" as never }] };
+  }) as GenerateFn & { calls: Parameters<GenerateFn>[0][] };
+  fn.calls = calls;
+  return fn;
+}
+
+test("self-correction: an answer the validator rejects is retried once with the exact rejection, then decoded", async () => {
+  const long = "x".repeat(401);
+  const generate = fakeModelSequence([`{"definition":"${long}"}`, '{"definition":"short"}']);
+  const value = await callModel(
+    { ...base, label: "match.target", schema: z.object({ definition: z.string().max(400) }), responseSchema: { type: "OBJECT" } },
+    generate,
+  );
+  assert.deepEqual(value, { definition: "short" });
+  assert.equal(generate.calls.length, 2);
+  const retryInstruction = String(generate.calls[1].config!.systemInstruction);
+  assert.match(retryInstruction, /previous answer was rejected because: definition: /);
+  assert.match(retryInstruction, /400/);
+  // The retry keeps the call's own thinking setting (thinking off looped match.target into RECITATION, 2026-09-19).
+  assert.equal(generate.calls[1].config!.thinkingConfig, undefined);
+});
+
+test("self-correction: a second rejected answer is the named AGENT_OUTPUT_INVALID error, never a third call", async () => {
+  const generate = fakeModelSequence(['{"n":"a"}', '{"n":"b"}']);
+  await assert.rejects(
+    callModel({ ...base, label: "roadmap.plan", schema: z.object({ n: z.number() }), responseSchema: { type: "OBJECT" } }, generate),
+    /^Error: AGENT_OUTPUT_INVALID: roadmap\.plan: n: /,
+  );
+  assert.equal(generate.calls.length, 2);
+});
+
+test("self-correction also covers a non-JSON first answer", async () => {
+  const generate = fakeModelSequence(["I refuse", '{"n":9}']);
+  const value = await callModel({ ...base, label: "transcript", schema: z.object({ n: z.number() }), responseSchema: { type: "OBJECT" } }, generate);
+  assert.deepEqual(value, { n: 9 });
+  assert.match(String(generate.calls[1].config!.systemInstruction), /response is not JSON/);
+});
+
+test("runProfilePipeline hands match a promise that settles when roadmap finishes, and names the linked count", async () => {
+  const lines: PipelineLine[] = [];
+  let roadmapFinished = false;
+  let matchSawRoadmapDone = false;
+  await runProfilePipeline(
+    {
+      profile: async (onStep) => {
+        onStep({ step: "transcript", label: "1 course found", count: 1 });
+        onStep({ step: "resume", label: "0 skills, 0 experiences found", count: 0 });
+        onStep({ step: "profile", label: "profile saved with 0 skills", count: 0 });
+      },
+      match: async (roadmapDone) => {
+        await roadmapDone;
+        matchSawRoadmapDone = roadmapFinished;
+        return { scoredCount: 40, linkedCount: 7 };
+      },
+      roadmap: async () => {
+        await new Promise((resolve) => setTimeout(resolve, 20));
+        roadmapFinished = true;
+        return { nodes: new Array(3) };
+      },
+    },
+    (line) => lines.push(line),
+  );
+  assert.equal(matchSawRoadmapDone, true);
+  assert.deepEqual(lines.slice(3), [
+    { step: "match", label: "40 roles ranked, 7 linked to your roadmap", count: 40 },
+    { step: "roadmap", label: "3 roadmap nodes", count: 3 },
+    { done: true },
+  ]);
+});
+
 test("an injected typed-course document is framed as data and its instruction never reaches the output", async () => {
   // The fake model "obeys" the injection AND returns a course; the harness must keep only the schema.
   const generate = fakeModel(`[{"code":"CS3114","title":"Data Structures","admin":true}]`);

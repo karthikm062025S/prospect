@@ -111,6 +111,26 @@ test("queryIndex maps requested columns and appends a trailing score", async () 
   });
 });
 
+test("queryIndex throws VECTOR_SEARCH_API_ERROR naming the path and message on a transport failure, with a timeout signal on the request", async () => {
+  await withEnv({}, async () => {
+    const originalFetch = globalThis.fetch;
+    let capturedInit: RequestInit | undefined;
+    globalThis.fetch = (async (_url: unknown, init?: RequestInit) => {
+      capturedInit = init;
+      throw new Error("fetch failed");
+    }) as typeof fetch;
+    try {
+      await assert.rejects(
+        queryIndex({ name: "scout.core.onet_tasks_index", text: "hello", columns: ["task_id"] }),
+        /^Error: VECTOR_SEARCH_API_ERROR: .*fetch failed/,
+      );
+      assert.ok(capturedInit?.signal instanceof AbortSignal);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+});
+
 test("queryIndex retries a 429 with backoff and succeeds once the endpoint answers 200", async () => {
   await withEnv({}, async () => {
     const originalFetch = globalThis.fetch;

@@ -78,6 +78,31 @@ export function validatePlanNode(
   return { ...base, kind: "project", refCode: null, refName: null, sourceUrl: null };
 }
 
+/**
+ * Runs validatePlanNode over a whole proposed plan, dropping (never killing the run on) any
+ * node that fails catalog validation. Invariant 1 still holds -- a bad ref is still rejected,
+ * it is just named and skipped instead of throwing out the rest of the plan. A plan where every
+ * node fails is still a loud failure: throws ROADMAP_EMPTY naming every drop.
+ */
+export function validatePlan(
+  plan: PlanNode[],
+  ctx: Parameters<typeof validatePlanNode>[1],
+): { validated: RoadmapNodePlan[]; dropped: string[] } {
+  const validated: RoadmapNodePlan[] = [];
+  const dropped: string[] = [];
+  for (const node of plan) {
+    try {
+      validated.push(validatePlanNode(node, ctx));
+    } catch (error) {
+      dropped.push((error as Error).message);
+    }
+  }
+  if (validated.length === 0) {
+    throw new Error(`ROADMAP_EMPTY: every proposed node failed catalog validation: ${dropped.join("; ")}`);
+  }
+  return { validated, dropped };
+}
+
 /** One "NAME | WHY | https://url" line per certification; malformed or URL-less lines are dropped, never guessed. */
 export function parseCertLines(text: string): CertCandidate[] {
   const certs: CertCandidate[] = [];
@@ -224,10 +249,14 @@ export async function runRoadmapAgent(
       clubsNotice ? Promise.resolve(new Set<string>()) : clubNamesExist(clubRefs),
     ]);
     const certsByName = new Map(certs.map((c) => [c.name, c] as const));
-    const validated = plan.map((node) => validatePlanNode(node, { courseCodes, clubNames, certsByName }));
+    // 2026-09-20 demo-crasher fix: a bad ref no longer fails the run; it is dropped and named in the step label (Invariant 1 still holds: the node is rejected).
+    const { validated, dropped } = validatePlan(plan, { courseCodes, clubNames, certsByName });
+    for (const message of dropped) console.log(`[agent] roadmap dropped node: ${message}`);
     onStep({
       step: "validating",
-      label: `${validated.length} nodes validated against the catalog`,
+      label: dropped.length
+        ? `${validated.length} nodes validated against the catalog, ${dropped.length} dropped (${dropped.join("; ")})`
+        : `${validated.length} nodes validated against the catalog`,
       count: validated.length,
     });
 

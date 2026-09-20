@@ -77,7 +77,7 @@ export async function POST(request: Request) {
           await runProfilePipeline(
             {
               profile: (onStep) => runProfileAgent({ userId, resumePdf, transcriptPdf, typedCourses, form: parsedForm }, onStep),
-              match: () => runMatchAgent({ userId }, query, () => {}),
+              match: (roadmapDone) => runMatchAgent({ userId, roadmapDone }, query, () => {}),
               roadmap: () => runRoadmapAgent({ userId }, () => {}),
             },
             (line) => controller.enqueue(encoder.encode("step" in line ? encodeStepLine(line) : `${JSON.stringify(line)}\n`)),

@@ -96,8 +96,30 @@ ${BREVITY_NUDGE}` },
     );
     return decode(input, second);
   }
-  return decode(input, first);
+  // Self-correction (2026-09-20, demo-crasher fix): an answer the validator
+  // rejects (over a length cap, a missing field, not JSON) gets the exact
+  // rejection back and ONE more try inside the same timeout; a second
+  // rejection is the named AGENT_OUTPUT_INVALID error. Measured before the
+  // fix: match.target failed the first submit on a >400-char definition and
+  // passed the resubmit, so the retry is the resubmit, done for the user.
+  const decoded = tryDecode(input, first);
+  if (decoded.ok) return decoded.value;
+  console.log(`[agent] ${label} output rejected (${decoded.error}), retrying once with the validator's message`);
+  const second = await generateOnce(
+    { ...input, systemInstruction: `${input.systemInstruction}
+
+${CORRECTION_NUDGE}
+The previous answer was rejected because: ${decoded.error}` },
+    generate,
+    signal,
+    timeout,
+  );
+  return decode(input, second);
 }
+
+export const CORRECTION_NUDGE =
+  "Your previous answer failed validation. Return a corrected JSON answer that satisfies the stated shape and " +
+  "length limits exactly. Keep every string field short.";
 
 type ModelText = { text: string; finishReason: string };
 
@@ -137,25 +159,29 @@ async function generateOnce<T>(
   return { text: response.text ?? "", finishReason: String(response.candidates?.[0]?.finishReason ?? "unknown") };
 }
 
-function decode<T>(input: CallModelInput<T>, { text, finishReason }: ModelText): T {
-  const { label } = input;
+function decode<T>(input: CallModelInput<T>, text: ModelText): T {
+  const decoded = tryDecode(input, text);
+  if (!decoded.ok) throw new Error(`AGENT_OUTPUT_INVALID: ${input.label}: ${decoded.error}`);
+  return decoded.value;
+}
+
+/** The validator as a value: `error` is the exact message the self-correction retry hands back to the model. */
+function tryDecode<T>(input: CallModelInput<T>, { text, finishReason }: ModelText): { ok: true; value: T } | { ok: false; error: string } {
   let candidate: unknown = text;
   if (input.responseSchema !== undefined) {
     try {
       candidate = JSON.parse(text);
     } catch {
-      throw new Error(
-        `AGENT_OUTPUT_INVALID: ${label}: response is not JSON (finishReason=${finishReason}, ${text.length} chars: ${text.slice(0, 80)})`,
-      );
+      return { ok: false, error: `response is not JSON (finishReason=${finishReason}, ${text.length} chars: ${text.slice(0, 80)})` };
     }
   }
   const parsed = input.schema.safeParse(candidate);
   if (!parsed.success) {
     const issue = parsed.error.issues[0];
     const path = issue.path.length > 0 ? `${issue.path.join(".")}: ` : "";
-    throw new Error(`AGENT_OUTPUT_INVALID: ${label}: ${path}${issue.message}`);
+    return { ok: false, error: `${path}${issue.message}` };
   }
-  return parsed.data;
+  return { ok: true, value: parsed.data };
 }
 
 // --- The profile stream's step order (MISSION D-UI3) ------------------------
@@ -168,7 +194,8 @@ export type PipelineLine = PipelineStep | { done: true } | { error: string };
 export type PipelineDeps = {
   /** Emits transcript, resume, profile (in that order) through onStep. */
   profile: (onStep: (step: PipelineStep) => void) => Promise<unknown>;
-  match: () => Promise<{ scoredCount: number; unassignedCount?: number; unmappedCount?: number }>;
+  /** `roadmapDone` settles when the roadmap agent has finished (ok or not); match awaits it before linking roadmap nodes to postings. */
+  match: (roadmapDone: Promise<void>) => Promise<{ scoredCount: number; unassignedCount?: number; unmappedCount?: number; linkedCount?: number }>;
   roadmap: () => Promise<{ nodes: ReadonlyArray<unknown> }>;
 };
 
@@ -176,8 +203,10 @@ export type PipelineDeps = {
  * Drives the five steps in order and emits exactly one line per step, then
  * `{done:true}`; the first failure becomes one named `{error}` line after the
  * lines already emitted, and nothing after it. Match and roadmap both read only
- * the saved profile (roadmap does not consume match's archetype target), so
- * they run in parallel; their lines are still emitted match-first.
+ * the saved profile, so they run in parallel; match's LAST phase (before-you-apply)
+ * consumes the roadmap agent's nodes, so it is handed `roadmapDone` and waits on
+ * it there (2026-09-20: this was a race -- a first run usually read an empty
+ * roadmap). Lines are still emitted match-first.
  */
 export async function runProfilePipeline(deps: PipelineDeps, emit: (line: PipelineLine) => void): Promise<void> {
   // m3: log in `finally` so a step that throws still reports how long it ran.
@@ -191,12 +220,19 @@ export async function runProfilePipeline(deps: PipelineDeps, emit: (line: Pipeli
   };
   try {
     await timed("profile", () => deps.profile(emit));
-    const [match, roadmap] = await Promise.allSettled([timed("match", deps.match), timed("roadmap", deps.roadmap)]);
+    const roadmapRun = timed("roadmap", deps.roadmap);
+    const roadmapDone = roadmapRun.then(
+      () => undefined,
+      () => undefined,
+    );
+    const [match, roadmap] = await Promise.allSettled([timed("match", () => deps.match(roadmapDone)), roadmapRun]);
     if (match.status === "rejected") throw match.reason;
     const ranked = match.value.scoredCount;
     const unassigned = match.value.unassignedCount ?? 0;
+    const linked = match.value.linkedCount ?? 0;
     const matchLabel =
       `${ranked} role${ranked === 1 ? "" : "s"} ranked` +
+      (linked > 0 ? `, ${linked} linked to your roadmap` : "") +
       (unassigned > 0 ? `, ${unassigned} not yet archetype-matched (the hourly rank refines them)` : "");
     emit({ step: "match", label: matchLabel, count: ranked });
     if (roadmap.status === "rejected") throw roadmap.reason;

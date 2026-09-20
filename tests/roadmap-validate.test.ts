@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { validatePlanNode, parseCertLines, parsePlanResponse } from "../lib/agents/roadmap.ts";
+import { validatePlanNode, validatePlan, parseCertLines, parsePlanResponse } from "../lib/agents/roadmap.ts";
 
 function ctx(overrides: Partial<Parameters<typeof validatePlanNode>[1]> = {}) {
   return {
@@ -109,4 +109,22 @@ test("parsePlanResponse throws on malformed JSON rather than guessing", () => {
 test("parsePlanResponse throws when a node is missing a required field", () => {
   const text = JSON.stringify([{ semester: "Fall 2026", kind: "course" }]);
   assert.throws(() => parsePlanResponse(text));
+});
+
+test("validatePlan drops a bad node and keeps the good one, naming the drop", () => {
+  const plan = [
+    { semester: "Fall 2026", kind: "course" as const, ref: "CS 3114", title: "Data Structures", why: "core requirement", movesToward: [] },
+    { semester: "Fall 2026", kind: "course" as const, ref: "CS 9999", title: "Fake Course", why: "x", movesToward: [] },
+  ];
+  const { validated, dropped } = validatePlan(plan, ctx());
+  assert.equal(validated.length, 1);
+  assert.match(dropped[0], /Course not found in catalog: CS 9999/);
+});
+
+test("validatePlan throws ROADMAP_EMPTY when every node fails catalog validation", () => {
+  const plan = [
+    { semester: "Fall 2026", kind: "course" as const, ref: "CS 9999", title: "Fake Course", why: "x", movesToward: [] },
+    { semester: "Fall 2026", kind: "club" as const, ref: "Not A Real Club", title: "x", why: "x", movesToward: [] },
+  ];
+  assert.throws(() => validatePlan(plan, ctx()), /ROADMAP_EMPTY/);
 });
