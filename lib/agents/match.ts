@@ -64,13 +64,21 @@ export function resolveLevel(postingLevel: string | null, title: string, deriveL
 
 // --- Archetype similarity ----------------------------------------------------
 
-/** Identical archetype id is always similarity 1.0, regardless of the stored vector score; otherwise the stored/queried vector similarity, clamped, or 0 with no evidence. */
+/**
+ * Identical archetype id is always similarity 1.0, regardless of the stored
+ * vector score; a different archetype uses the stored vector similarity,
+ * clamped, or 0 with no evidence. A posting with NO archetype yet (the hourly
+ * job has not reached it -- D-S1/D-S2) uses `titleFallback`, the pure
+ * titleSimilarity below (0..0.6), so a fresh feed still ranks meaningfully.
+ */
 export function resolveArchetypeSimilarity(
   targetArchetypeId: string,
   postingArchetypeId: string | null,
   vectorSimilarity: number | null,
+  titleFallback = 0,
 ): number {
-  if (postingArchetypeId && postingArchetypeId === targetArchetypeId) return 1;
+  if (!postingArchetypeId) return Math.max(0, Math.min(0.6, titleFallback));
+  if (postingArchetypeId === targetArchetypeId) return 1;
   if (typeof vectorSimilarity === "number" && Number.isFinite(vectorSimilarity)) {
     return Math.max(0, Math.min(1, vectorSimilarity));
   }
@@ -280,6 +288,25 @@ function titleWords(title: string): string[] {
     .filter((word) => word.length > 2 && !STOPWORDS.has(word));
 }
 
+/**
+ * Pure title-keyword similarity for a posting that has no archetype yet
+ * (D-S2): the best token-overlap fraction of the posting title against the
+ * target archetype's name or any alias, scaled to 0..0.6 -- always below a
+ * real vector/archetype match. "Backend Software Engineer" vs "Software
+ * Engineering Intern" -> {software} of {backend, software} = 0.5 -> 0.3.
+ */
+export function titleSimilarity(title: string, archetypeName: string, aliases: readonly string[] = []): number {
+  const postingWords = new Set(titleWords(title));
+  let best = 0;
+  for (const name of [archetypeName, ...aliases]) {
+    const nameWords = Array.from(new Set(titleWords(name)));
+    if (nameWords.length === 0) continue;
+    const shared = nameWords.filter((word) => postingWords.has(word)).length;
+    best = Math.max(best, shared / nameWords.length);
+  }
+  return 0.6 * best;
+}
+
 /** A roadmap node "matters" for a posting when it names the target archetype directly, or shares >=2 keywords with the posting title. */
 export function nodeMatchesPosting(
   node: { moves_toward: readonly string[]; title: string },
@@ -328,7 +355,6 @@ type PostingRow = {
   source_posted_at: string | null;
   created_at: string;
   visa_class: string | null;
-  jd: string | null;
   archetype_id: string | null;
   confidence: number | null;
   archetype_name: string | null;
@@ -337,7 +363,6 @@ type PostingRow = {
 
 const TOP_N = 40;
 const REQUIREMENTS_BATCH = 10;
-const ASSIGN_CONCURRENCY = 10;
 const MODEL_TIMEOUT_MS = 20_000;
 // Requirements extraction runs with thinking off on gemini-3.8-flash (measured 2026-09-19,
 // scripts/profile-smoke.ts: 6/6 clean, p50 4.7 s). The target-archetype call does NOT: with
@@ -410,17 +435,21 @@ export function extractRequirements(
     },
   });
 }
+const LABEL_TOP_N = 20;
+/** Home/Journey feed window (D-S9): score only postings from the last 30 days. */
+const FEED_WINDOW = "coalesce(r.source_posted_at, r.created_at) > now() - interval '30 days'";
 
 /**
  * profile -> target archetype (vector top-3 + one Gemini confirm-or-propose,
- * reusing lib/archetypes.ts's validated decision schema) -> bulk vector-only
- * archetype assignment for postings that have none yet -> score the full open
- * feed (pure scorePosting) -> requirements extraction on the top 40 (batched
- * Gemini calls, 10 postings per call) classified against the profile's own
- * evidence -> posting-task labels on the top 40 via lib/posting-tasks.ts
- * mapPostingTasks (skipped when already cached) -> before-you-apply roadmap
- * nodes on the top 40 -> one atomic replace of every match_scores row for
- * this user.
+ * reusing lib/archetypes.ts's validated decision schema) -> score the open
+ * feed of the last 30 days (pure scorePosting; a posting with no archetype
+ * yet scores by titleSimilarity -- bulk assignment lives in
+ * assignArchetypesBatch, NEVER in this user path, D-S1) -> requirements
+ * extraction on the top 40 (4 batched Gemini calls in parallel, 10 postings
+ * per call) classified against the profile's own evidence -> before-you-apply
+ * roadmap nodes on the top 40 -> one atomic replace of every match_scores row
+ * for this user. Task labels (O*NET + AEI) are NOT part of this path: the
+ * route schedules labelTopPostings after the response (D-S3).
  *
  * Not covered by the unit suite past the pure pieces above (it calls the
  * real Gemini API, the real Vector Search endpoint and the real DB) -- see
@@ -432,13 +461,12 @@ export async function runMatchAgent(
   onStep: (step: MatchStep) => void,
 ): Promise<MatchAgentResult> {
   const { getProfile, startAgentRun, finishAgentRun } = await import("../student-profile");
-  const { listArchetypes, upsertArchetype, setRoleArchetype } = await import("../archetypes");
+  const { listArchetypes, upsertArchetype } = await import("../archetypes");
   const { queryIndex } = await import("../vector-search");
   const { gemini, MODEL_AGENT } = await import("../gemini");
   const { modelCaller } = await import("./harness");
   const call: ModelCaller = modelCaller((params) => gemini().models.generateContent(params));
-  const interactive = input.mode === "interactive";
-  const { frameJobTextAsData, mapPostingTasks } = await import("../posting-tasks");
+  const { frameJobTextAsData } = await import("../posting-tasks");
   const { deriveLevel } = await import("../family");
   const { getRoadmap, listNodes } = await import("../roadmaps");
   const { replaceScores } = await import("../match-scores");
@@ -456,14 +484,11 @@ export async function runMatchAgent(
     });
 
     // --- target archetype ----------------------------------------------------
-    const registry = await listArchetypes(q);
     const goalText = `Goal: ${profile.goal}\nMajor: ${profile.major}\nSkills: ${profile.skills.join(", ")}`;
-    const targetCandidateRows = await queryIndex({
-      name: "scout.core.archetypes_index",
-      text: goalText,
-      columns: ["id", "name", "definition"],
-      numResults: 3,
-    });
+    const [registry, targetCandidateRows] = await Promise.all([
+      listArchetypes(q),
+      queryIndex({ name: "scout.core.archetypes_index", text: goalText, columns: ["id", "name", "definition"], numResults: 3 }),
+    ]);
     const targetCandidates = targetCandidateRows
       .filter((row): row is { id: string; name: string; definition: string } => typeof row.name === "string")
       .map((row) => ({ name: row.name, definition: String(row.definition ?? "") }));
@@ -475,7 +500,7 @@ export async function runMatchAgent(
             if (!match) {
               throw new Error(`ARCHETYPE_NOT_FOUND: Gemini confirmed "${targetDecision.name}" which is not in the registry`);
             }
-            return { id: match.id, name: match.name };
+            return { id: match.id, name: match.name, aliases: match.aliases };
           })()
         : await upsertArchetype(q, {
             name: targetDecision.name,
@@ -483,62 +508,39 @@ export async function runMatchAgent(
             aliases: targetDecision.aliases,
             status: "provisional",
             evidence_role_ids: [],
-          }).then((a) => ({ id: a.id, name: a.name }));
+          }).then((a) => ({ id: a.id, name: a.name, aliases: a.aliases }));
     onStep({ step: "target", label: `goal matched to ${target.name} among ${registry.length}`, count: registry.length });
 
-    // --- bulk vector-only archetype assignment for postings with none yet ---
-    const unassigned = await q<{ id: string; title: string }>(
-      `select r.id, r.title from roles r
-       left join role_archetypes ra on ra.role_id = r.id
-       where r.lifecycle = 'open' and ra.role_id is null`,
-      [],
-      "roles",
-    );
-    let assignedCount = 0;
-    for (let i = 0; !interactive && i < unassigned.length; i += ASSIGN_CONCURRENCY) {
-      const chunk = unassigned.slice(i, i + ASSIGN_CONCURRENCY);
-      const results = await Promise.all(
-        chunk.map(async (role) => {
-          const candidates = await queryIndex({
-            name: "scout.core.archetypes_index",
-            text: role.title,
-            columns: ["id", "name"],
-            numResults: 1,
-          });
-          const best = candidates[0];
-          if (!best || typeof best.id !== "string") return false;
-          await setRoleArchetype(q, role.id, best.id, typeof best.score === "number" ? best.score : null, "vector");
-          return true;
-        }),
-      );
-      assignedCount += results.filter(Boolean).length;
-    }
-    onStep({
-      step: "assign",
-      label: interactive
-        ? `${unassigned.length} postings still unassigned; the hourly Orchestrator assigns them`
-        : `${assignedCount} postings newly assigned an archetype by vector`,
-      count: assignedCount,
-    });
-
-    // --- score the full open feed --------------------------------------------
+    // --- score the open feed of the last 30 days -----------------------------
     const postingRows = await q<PostingRow>(
       `select r.id as role_id, r.title, r.level, r.source_posted_at, r.created_at, r.visa_class,
-              r.jd_snapshot as jd, ra.archetype_id, ra.confidence, a.name as archetype_name,
+              ra.archetype_id, ra.confidence, a.name as archetype_name,
               c.tier as company_tier
        from roles r
        left join role_archetypes ra on ra.role_id = r.id
        left join archetypes a on a.id = ra.archetype_id
        left join companies c on c.id = r.company_id
-       where r.lifecycle = 'open'`,
+       where r.lifecycle = 'open' and ${FEED_WINDOW}`,
       [],
       "roles",
     );
+    const withArchetype = postingRows.filter((row) => row.archetype_id !== null).length;
+    onStep({
+      step: "assign",
+      label: `${withArchetype} postings already carry an archetype; the rest scored by title until the hourly job assigns them`,
+      count: withArchetype,
+    });
+
     const nowMs = Date.now();
     const scored = postingRows
       .map((row) => {
         const level = resolveLevel(row.level, row.title, deriveLevel);
-        const archetypeSimilarity = resolveArchetypeSimilarity(target.id, row.archetype_id, row.confidence);
+        const archetypeSimilarity = resolveArchetypeSimilarity(
+          target.id,
+          row.archetype_id,
+          row.confidence,
+          titleSimilarity(row.title, target.name, target.aliases),
+        );
         const result = scorePosting({
           archetypeSimilarity,
           archetypeName: row.archetype_name,
@@ -558,8 +560,16 @@ export async function runMatchAgent(
     onStep({ step: "score", label: `${scored.length} postings scored`, count: scored.length });
 
     const top = scored.slice(0, TOP_N);
+    // JD text only for the top 40 (measured live 2026-09-20: selecting
+    // jd_snapshot for every one of ~7,000 rows was 4.8 s of the run).
+    const jdRows = await q<{ id: string; jd: string | null }>(
+      "select id, jd_snapshot as jd from roles where id = any($1::uuid[])",
+      [top.map((t) => t.row.role_id)],
+      "roles",
+    );
+    const jdByRole = new Map(jdRows.map((r) => [r.id, r.jd]));
 
-    // --- requirements on the top 40, batched; the batches are independent, so all at once ---
+    // --- requirements on the top 40, 4 batches of 10 in parallel -------------
     const requirementsByRole = new Map<string, { met: string[]; unknown: string[] }>();
     const evidence = evidenceTermsFromProfile(profile);
     const batches: Array<typeof top> = [];
@@ -569,7 +579,7 @@ export async function runMatchAgent(
         extractRequirements(
           call,
           MODEL_AGENT,
-          batch.map((t) => ({ roleId: t.row.role_id, title: t.row.title, jd: t.row.jd })),
+          batch.map((t) => ({ roleId: t.row.role_id, title: t.row.title, jd: jdByRole.get(t.row.role_id) ?? null })),
           frameJobTextAsData,
           index,
         ),
@@ -588,35 +598,15 @@ export async function runMatchAgent(
     }
     onStep({ step: "requirements", label: `checked on the top ${top.length}`, count: top.length });
 
-    // --- posting tasks / labels on the top 40 (cached across students) ------
-    let mappedNew = 0;
-    let cachedCount = 0;
-    let unmeasured = 0;
-    let unmapped = 0;
-    for (const t of top) {
-      const existing = await q<{ label: string }>(
-        "select label from role_tasks where role_id = $1",
-        [t.row.role_id],
-        "role_tasks",
-      );
-      if (existing.length > 0) {
-        cachedCount += 1;
-        unmeasured += existing.filter((r) => r.label === "unscored").length;
-      } else if (interactive) {
-        unmapped += 1;
-      } else {
-        const summary = await mapPostingTasks({ roleId: t.row.role_id, title: t.row.title, jd: t.row.jd }, q);
-        mappedNew += 1;
-        unmeasured += summary.unscored;
-      }
-    }
-    onStep({
-      step: "tasks",
-      label: interactive
-        ? `${cachedCount} cached, ${unmapped} not yet mapped (the hourly Orchestrator maps them)`
-        : `mapped ${mappedNew} new, ${cachedCount} cached, ${unmeasured} unmeasured`,
-      count: mappedNew + cachedCount,
-    });
+    // --- posting tasks / labels: off the user path (D-S3) --------------------
+    // Cards show "labels not measured yet" until labelTopPostings (scheduled by
+    // the route after the response) fills role_tasks for the top 20.
+    const [{ n: cachedCount }] = await q<{ n: number }>(
+      "select count(distinct role_id)::int as n from role_tasks where role_id = any($1::uuid[])",
+      [top.slice(0, LABEL_TOP_N).map((t) => t.row.role_id)],
+      "role_tasks",
+    );
+    onStep({ step: "tasks", label: `labels fill in the background for the top ${LABEL_TOP_N}`, count: cachedCount });
 
     // --- before you apply, top 40 only ---------------------------------------
     const roadmap = await getRoadmap(input.userId, q);
@@ -659,7 +649,7 @@ export async function runMatchAgent(
 
     await finishAgentRun(
       runId,
-      { status: "ok", counts: { scored: scored.length, requirements_checked: top.length, tasks_mapped: mappedNew } },
+      { status: "ok", counts: { scored: scored.length, requirements_checked: top.length, tasks_cached: cachedCount } },
       q,
     );
     return { runId, targetArchetype: target.name, scoredCount: scored.length, topCount: top.length };
@@ -669,4 +659,95 @@ export async function runMatchAgent(
     );
     throw error;
   }
+}
+
+// --- Bulk archetype assignment: NEVER on the user path (D-S1) ----------------
+
+export type AssignBatchDeps = {
+  queryIndex: typeof import("../vector-search").queryIndex;
+  setRoleArchetype: typeof import("../archetypes").setRoleArchetype;
+};
+
+/**
+ * Assigns up to `limit` unassigned OPEN postings (newest first) their vector
+ * top-1 archetype, `concurrency` at a time in sequential chunks. Called only
+ * from the watcher branch of app/api/match/route.ts (limit 200) and from
+ * scripts/assign-archetypes.mjs. `deps` is injected the same way roadmap.ts
+ * injects its Gemini client: the script passes the real modules (plain node
+ * cannot resolve this file's extensionless dynamic imports), tests pass fakes.
+ * Returns how many were assigned and how many unassigned postings remain.
+ */
+export async function assignArchetypesBatch(
+  q: QueryFn,
+  opts: { limit: number; concurrency: number },
+  deps?: AssignBatchDeps,
+): Promise<{ assigned: number; remaining: number }> {
+  const queryIndex = deps?.queryIndex ?? (await import("../vector-search")).queryIndex;
+  const setRoleArchetype = deps?.setRoleArchetype ?? (await import("../archetypes")).setRoleArchetype;
+  const rows = await q<{ id: string; title: string; total: number }>(
+    `select r.id, r.title, count(*) over ()::int as total from roles r
+     left join role_archetypes ra on ra.role_id = r.id
+     where r.lifecycle = 'open' and ra.role_id is null
+     order by coalesce(r.source_posted_at, r.created_at) desc
+     limit $1`,
+    [Math.trunc(opts.limit)],
+    "roles",
+  );
+  const total = rows[0]?.total ?? 0;
+  let assigned = 0;
+  for (let i = 0; i < rows.length; i += opts.concurrency) {
+    const results = await Promise.all(
+      rows.slice(i, i + opts.concurrency).map(async (role) => {
+        const [best] = await queryIndex({ name: "scout.core.archetypes_index", text: role.title, columns: ["id", "name"], numResults: 1 });
+        if (!best || typeof best.id !== "string") return false;
+        await setRoleArchetype(q, role.id, best.id, typeof best.score === "number" ? best.score : null, "vector");
+        return true;
+      }),
+    );
+    assigned += results.filter(Boolean).length;
+  }
+  return { assigned, remaining: total - assigned };
+}
+
+// --- Task labels after the response (D-S3) ---------------------------------
+
+/**
+ * Maps role_tasks (lib/posting-tasks.ts mapPostingTasks) for this user's
+ * top-`limit` scored postings that have no labels yet, `concurrency` at a
+ * time. Per-posting failures are logged by name and skipped; the function
+ * never throws into a response (the route calls it inside `after()`).
+ */
+export async function labelTopPostings(
+  q: QueryFn,
+  userId: string,
+  opts: { limit: number; concurrency: number },
+): Promise<{ labelled: number; failed: number }> {
+  const { mapPostingTasks } = await import("../posting-tasks");
+  const rows = await q<{ role_id: string; title: string; jd: string | null }>(
+    `select ms.role_id, r.title, r.jd_snapshot as jd
+     from match_scores ms
+     join roles r on r.id = ms.role_id
+     left join role_tasks rt on rt.role_id = ms.role_id
+     where ms.user_id = $1 and rt.role_id is null
+     order by ms.score desc
+     limit $2`,
+    [userId, Math.trunc(opts.limit)],
+    "match_scores",
+  );
+  let labelled = 0;
+  let failed = 0;
+  for (let i = 0; i < rows.length; i += opts.concurrency) {
+    await Promise.all(
+      rows.slice(i, i + opts.concurrency).map(async (row) => {
+        try {
+          await mapPostingTasks({ roleId: row.role_id, title: row.title, jd: row.jd }, q);
+          labelled += 1;
+        } catch (error) {
+          failed += 1;
+          console.error(`labelTopPostings: ${row.role_id} ${(error as Error).message}`);
+        }
+      }),
+    );
+  }
+  return { labelled, failed };
 }

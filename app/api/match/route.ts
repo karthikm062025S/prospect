@@ -1,10 +1,10 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { resolveUid } from "@/lib/require-user";
 import { isCorrectPassword } from "@/lib/gate";
 import { query } from "@/lib/db";
 import { resolveMatchAuth } from "@/lib/match-auth";
-import { runMatchAgent, encodeStepLine } from "@/lib/agents/match";
+import { runMatchAgent, encodeStepLine, assignArchetypesBatch, labelTopPostings } from "@/lib/agents/match";
 import { topScores } from "@/lib/match-scores";
 import { insertNudge } from "@/lib/nudges";
 
@@ -19,10 +19,19 @@ import { insertNudge } from "@/lib/nudges";
 // per-profile error; the watcher branch collects per-profile errors by name
 // and keeps going to the next profile, exactly like app/api/watcher/route.ts
 // does per-row.
+//
+// Speed pass (build/MISSION-speed-2026-09-20.md): the user branch never
+// assigns archetypes in bulk (D-S1) and never labels tasks inline (D-S3) --
+// labels for the top 20 run in `after()` once the stream has finished. The
+// watcher branch tops up archetype assignment (<=200 postings, concurrency
+// 2) once per run and labels the top 40 per profile inline.
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
 const TOP_N_FOR_NUDGES = 20;
+const LABEL_USER = { limit: 20, concurrency: 2 } as const;
+const LABEL_WATCHER = { limit: 40, concurrency: 2 } as const;
+const ASSIGN_WATCHER = { limit: 200, concurrency: 2 } as const;
 
 export async function POST(request: Request) {
   const url = new URL(request.url);
@@ -56,6 +65,17 @@ export async function POST(request: Request) {
             controller.enqueue(encoder.encode(encodeStepLine(step))),
           );
           controller.enqueue(encoder.encode(`${JSON.stringify({ done: true })}\n`));
+          // Labels for the top 20 fill in after the response; a failure is
+          // logged by name and never reaches the stream.
+          try {
+            after(() =>
+              labelTopPostings(query, auth.userId, LABEL_USER).catch((error: Error) =>
+                console.error(`labelTopPostings: ${error.message}`),
+              ),
+            );
+          } catch (error) {
+            console.error(`labelTopPostings: after() unavailable: ${(error as Error).message}`);
+          }
         } catch (error) {
           controller.enqueue(encoder.encode(`${JSON.stringify({ error: (error as Error).message })}\n`));
         } finally {
@@ -77,7 +97,16 @@ export async function POST(request: Request) {
 
   let rescored = 0;
   let nudges = 0;
+  let labelled = 0;
   const errors: string[] = [];
+
+  // Capped archetype top-up (D-S1): the backlog itself is scripts/assign-archetypes.mjs.
+  let assigned = { assigned: 0, remaining: -1 };
+  try {
+    assigned = await assignArchetypesBatch(query, ASSIGN_WATCHER);
+  } catch (error) {
+    errors.push(`assignArchetypesBatch: ${(error as Error).message}`);
+  }
 
   for (const { user_id: userId } of profileRows) {
     try {
@@ -89,6 +118,7 @@ export async function POST(request: Request) {
       );
 
       await runMatchAgent({ userId }, query, () => {});
+      labelled += (await labelTopPostings(query, userId, LABEL_WATCHER)).labelled;
 
       if (previousRunAt) {
         const newTop = await topScores(query, userId, TOP_N_FOR_NUDGES);
@@ -121,5 +151,13 @@ export async function POST(request: Request) {
     }
   }
 
-  return NextResponse.json({ profiles: profileRows.length, rescored, nudges, errors });
+  return NextResponse.json({
+    profiles: profileRows.length,
+    rescored,
+    nudges,
+    labelled,
+    archetypes_assigned: assigned.assigned,
+    archetypes_remaining: assigned.remaining,
+    errors,
+  });
 }

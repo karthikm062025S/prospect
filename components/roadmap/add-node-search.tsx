@@ -1,10 +1,12 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export type CatalogHit = { kind: "course"; code: string; title: string } | { kind: "club"; name: string; description: string };
 
-/** Typeahead over the real catalog (server actions call loadCourseCandidates/loadClubCandidates). Never invents a hit. */
+const DEBOUNCE_MS = 250;
+
+/** Typeahead over the real catalog (one searchCatalogAction per settled keystroke, debounced; a stale response never overwrites a newer one). Never invents a hit. */
 export function AddNodeSearch({
   semester,
   onSearch,
@@ -20,23 +22,37 @@ export function AddNodeSearch({
   const [hits, setHits] = useState<CatalogHit[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [adding, setAdding] = useState<string | null>(null);
-  const [isPending, startTransition] = useTransition();
+  const [searching, setSearching] = useState(false);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const seq = useRef(0);
+
+  useEffect(() => () => {
+    if (timer.current) clearTimeout(timer.current);
+  }, []);
 
   function runSearch(next: string) {
     setQuery(next);
     setError(null);
-    if (next.trim().length < 2) {
+    if (timer.current) clearTimeout(timer.current);
+    const keyword = next.trim();
+    if (keyword.length < 2) {
+      seq.current += 1; // any in-flight answer is now stale
       setHits([]);
+      setSearching(false);
       return;
     }
-    startTransition(async () => {
-      const res = await onSearch(next.trim());
+    setSearching(true);
+    timer.current = setTimeout(async () => {
+      const mine = ++seq.current;
+      const res = await onSearch(keyword);
+      if (mine !== seq.current) return; // a newer keystroke owns the box
+      setSearching(false);
       if (res.ok) setHits(res.data);
       else {
         setHits([]);
         setError(res.error);
       }
-    });
+    }, DEBOUNCE_MS);
   }
 
   async function add(hit: CatalogHit) {
@@ -75,8 +91,8 @@ export function AddNodeSearch({
           {error}
         </p>
       ) : null}
-      {isPending ? <p className="text-[13px] text-text-dim">Searching…</p> : null}
-      {!isPending && query.trim().length >= 2 && hits.length === 0 && !error ? (
+      {searching ? <p className="text-[13px] text-text-dim">Searching…</p> : null}
+      {!searching && query.trim().length >= 2 && hits.length === 0 && !error ? (
         <p className="text-[13px] text-text-dim">No matches in the VT catalog.</p>
       ) : null}
       <ul className="flex flex-col gap-1">

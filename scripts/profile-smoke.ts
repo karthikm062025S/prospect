@@ -30,7 +30,6 @@ const roadmap = await load<typeof import("../lib/agents/roadmap")>("../lib/agent
 const postingTasks = await load<typeof import("../lib/posting-tasks")>("../lib/posting-tasks.ts");
 const vectorSearch = await load<typeof import("../lib/vector-search")>("../lib/vector-search.ts");
 const catalog = await load<typeof import("../lib/catalog")>("../lib/catalog.ts");
-const databricksSql = await load<typeof import("../lib/databricks-sql")>("../lib/databricks-sql.ts");
 const { GoogleGenAI, ThinkingLevel } = await import("@google/genai");
 
 const args = process.argv.slice(2);
@@ -91,7 +90,7 @@ const candidates = candidateRows
   .filter((row): row is { id: string; name: string; definition: string } => typeof row.name === "string")
   .map((row) => ({ name: row.name, definition: String(row.definition ?? "") }));
 const keywords = Array.from(new Set([stored.major, ...stored.skills, ...stored.goal.split(/\s+/)].map((k) => k.trim()).filter((k) => k.length > 2)));
-const courses = await catalog.loadCourseCandidates({ keywords, limit: 200, exec: databricksSql.executeStatement });
+const courses = await catalog.loadCourseCandidates({ keywords, limit: 200 });
 console.log(`${candidates.length} archetype candidates, ${courses.length} course candidates\n`);
 
 // --- legs ---------------------------------------------------------------------

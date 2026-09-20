@@ -117,3 +117,13 @@ test("replaceScores with an empty array deletes the prior set and leaves nothing
   const rows = await listScores(q, USER_A);
   assert.equal(rows.length, 0);
 });
+
+test("replaceScores writes a feed larger than pg's 65,535-parameter statement cap (13 params/row -> chunked inserts)", async () => {
+  const { q } = await makeDb();
+  const n = 5500;
+  await q(`insert into roles (id) select gen_random_uuid() from generate_series(1, ${n})`);
+  const ids = await q<{ id: string }>("select id from roles");
+  await replaceScores(q, USER_A, ids.map((r, i) => row(r.id, i / n)));
+  const [{ count }] = await q<{ count: number }>("select count(*)::int as count from match_scores where user_id = $1", [USER_A]);
+  assert.equal(count, n);
+});

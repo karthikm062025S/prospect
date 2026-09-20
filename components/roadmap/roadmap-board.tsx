@@ -15,8 +15,7 @@ import {
   setNodeNotesAction,
   deleteNodeAction,
   addNodeAction,
-  searchCoursesAction,
-  searchClubsAction,
+  searchCatalogAction,
 } from "@/app/(app)/journey/actions";
 
 const STEP_KEYS: RoadmapStepKey[] = ["profile", "catalog", "certifications", "planning", "validating"];
@@ -136,13 +135,13 @@ export function RoadmapBoard({
       .finally(() => setNodePending(false));
   }
 
-  async function search(kind: "course" | "club", keyword: string) {
-    const res = kind === "course" ? await searchCoursesAction(keyword) : await searchClubsAction(keyword);
+  async function search(keyword: string) {
+    const res = await searchCatalogAction(keyword);
     if (!res.ok) return { ok: false as const, error: res.error };
-    const hits: CatalogHit[] =
-      kind === "course"
-        ? (res.data as Array<{ code: string; title: string }>).map((c) => ({ kind: "course" as const, code: c.code, title: c.title }))
-        : (res.data as Array<{ name: string; description: string }>).map((c) => ({ kind: "club" as const, name: c.name, description: c.description }));
+    const hits: CatalogHit[] = [
+      ...res.data.courses.map((c) => ({ kind: "course" as const, code: c.code, title: c.title })),
+      ...res.data.clubs.map((c) => ({ kind: "club" as const, name: c.name, description: c.description })),
+    ];
     return { ok: true as const, data: hits };
   }
 
@@ -221,7 +220,7 @@ export function RoadmapBoard({
       {addingSemester ? (
         <AddNodeSearch
           semester={addingSemester}
-          onSearch={(keyword) => search("course", keyword).then((c) => (c.ok ? search("club", keyword).then((cl) => (cl.ok ? { ok: true as const, data: [...c.data, ...cl.data] } : c)) : c))}
+          onSearch={search}
           onAdd={(hit) => addHit(addingSemester, hit)}
           onCancel={() => setAddingSemester(null)}
         />

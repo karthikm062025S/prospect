@@ -14,6 +14,13 @@ export const MODEL_PARSE = "gemini-3.8-flash";
 export const MODEL_AGENT = "gemini-3.8-flash";
 export const MODEL_LABEL = "gemini-3.1-flash-lite";
 
+// Pure extraction / JSON-schema calls need no reasoning tokens. js-genai
+// ThinkingConfig: thinkingBudget 0 = disabled. Proven live 2026-09-20 on
+// gemini-3.8-flash with a responseSchema call (thoughtsTokenCount 0; the
+// alternative thinkingLevel: "MINIMAL" is refused with a 400 by this model).
+// Never spread into the grounded certifications call (roadmap.ts).
+export const FAST_CONFIG = { thinkingConfig: { thinkingBudget: 0 } } as const;
+
 let client: GoogleGenAI | undefined;
 
 /** The one Gemini client. Throws loudly when the key is missing -- no default, no silent skip. */
