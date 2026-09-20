@@ -124,7 +124,6 @@ test("a second RECITATION block is the named error, never a third call", async (
   assert.equal(generate.calls.length, 2);
 });
 
-<<<<<<< HEAD
 test("M2: a RECITATION retry shares ONE timeout across both attempts, so the whole step is bounded by timeoutMs", async () => {
   const calls: Parameters<GenerateFn>[0][] = [];
   let secondCallStarted = false;
@@ -150,7 +149,8 @@ test("M2: a RECITATION retry shares ONE timeout across both attempts, so the who
   assert.equal(secondCallStarted, true);
   assert.equal(calls.length, 2);
   assert.equal(calls[0].config!.abortSignal!.aborted, true);
-=======
+});
+
 test("a MAX_TOKENS overflow is retried once with thinking off and a brevity nudge, then decoded", async () => {
   const generate = fakeModel('{"n":3}', { finishReasons: ["MAX_TOKENS", "STOP"] });
   const value = await callModel({ ...base, label: "match.target", schema: z.object({ n: z.number() }), responseSchema: { type: "OBJECT" } }, generate);
@@ -159,7 +159,6 @@ test("a MAX_TOKENS overflow is retried once with thinking off and a brevity nudg
   assert.equal(generate.calls[0].config!.thinkingConfig, undefined);
   assert.deepEqual(generate.calls[1].config!.thinkingConfig, { thinkingBudget: 0 });
   assert.match(String(generate.calls[1].config!.systemInstruction), /under 60 words/);
->>>>>>> master
 });
 
 test("an injected typed-course document is framed as data and its instruction never reaches the output", async () => {

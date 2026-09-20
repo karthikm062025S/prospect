@@ -59,31 +59,8 @@ export const BREVITY_NUDGE =
   "Keep every string field under 60 words. Never repeat a sentence. Return the JSON object and stop.";
 
 export async function callModel<T>(input: CallModelInput<T>, generate: GenerateFn): Promise<T> {
-<<<<<<< HEAD
   // M2: ONE signal + timeout promise for the whole call, shared across the
   // RECITATION retry below, so AGENT_TIMEOUT bounds the whole step (not 2x timeoutMs).
-=======
-  const first = await generateOnce(input, generate);
-  if (first.finishReason === "RECITATION") {
-    console.log(`[agent] ${input.label} finishReason=RECITATION, retrying once with a paraphrase nudge`);
-    const second = await generateOnce({ ...input, systemInstruction: `${input.systemInstruction}\n\n${PARAPHRASE_NUDGE}` }, generate);
-    return decode(input, second);
-  }
-  if (first.finishReason === "MAX_TOKENS") {
-    console.log(`[agent] ${input.label} finishReason=MAX_TOKENS (${first.text.length} chars), retrying once with thinking off`);
-    const second = await generateOnce(
-      { ...input, thinking: { thinkingBudget: 0 }, systemInstruction: `${input.systemInstruction}\n\n${BREVITY_NUDGE}` },
-      generate,
-    );
-    return decode(input, second);
-  }
-  return decode(input, first);
-}
-
-type ModelText = { text: string; finishReason: string };
-
-async function generateOnce<T>(input: CallModelInput<T>, generate: GenerateFn): Promise<ModelText> {
->>>>>>> master
   const { label, timeoutMs } = input;
   const signal = AbortSignal.timeout(timeoutMs);
   const timeout = new Promise<never>((_, reject) => {
@@ -94,15 +71,32 @@ async function generateOnce<T>(input: CallModelInput<T>, generate: GenerateFn): 
     );
   });
   const first = await generateOnce(input, generate, signal, timeout);
-  if (first.finishReason !== "RECITATION") return decode(input, first);
-  console.log(`[agent] ${input.label} finishReason=RECITATION, retrying once with a paraphrase nudge`);
-  const second = await generateOnce(
-    { ...input, systemInstruction: `${input.systemInstruction}\n\n${PARAPHRASE_NUDGE}` },
-    generate,
-    signal,
-    timeout,
-  );
-  return decode(input, second);
+  if (first.finishReason === "RECITATION") {
+    console.log(`[agent] ${input.label} finishReason=RECITATION, retrying once with a paraphrase nudge`);
+    const second = await generateOnce(
+      { ...input, systemInstruction: `${input.systemInstruction}
+
+${PARAPHRASE_NUDGE}` },
+      generate,
+      signal,
+      timeout,
+    );
+    return decode(input, second);
+  }
+  if (first.finishReason === "MAX_TOKENS") {
+    // Same single signal + timeout: the retry never extends the step's budget (M2).
+    console.log(`[agent] ${input.label} finishReason=MAX_TOKENS (${first.text.length} chars), retrying once with thinking off`);
+    const second = await generateOnce(
+      { ...input, thinking: { thinkingBudget: 0 }, systemInstruction: `${input.systemInstruction}
+
+${BREVITY_NUDGE}` },
+      generate,
+      signal,
+      timeout,
+    );
+    return decode(input, second);
+  }
+  return decode(input, first);
 }
 
 type ModelText = { text: string; finishReason: string };
