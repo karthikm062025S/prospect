@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { requireUser } from "@/lib/require-user";
+import { requireProfile, requireUser } from "@/lib/require-user";
 import { getProfile } from "@/lib/student-profile";
 import { getRoadmap, listNodes, type RoadmapNode } from "@/lib/roadmaps";
 import { query } from "@/lib/db";
@@ -144,6 +144,7 @@ function ErrorState({ message }: { message: string }) {
 
 export default async function JourneyPage() {
   const userId = await requireUser();
+  await requireProfile(userId);
 
   let profile;
   try {

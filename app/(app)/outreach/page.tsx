@@ -1,5 +1,5 @@
 import { query } from "@/lib/db";
-import { requireUser } from "@/lib/require-user";
+import { requireProfile, requireUser } from "@/lib/require-user";
 import type { Outreach } from "@/lib/types";
 import { addOutreachAction } from "./actions";
 import { OutreachList, type OutreachGroup } from "@/components/outreach-list";
@@ -51,6 +51,7 @@ function groupByCompany(rows: Outreach[], today: string): OutreachGroup[] {
 
 export default async function OutreachPage() {
   const uid = await requireUser();
+  await requireProfile(uid);
   const today = new Date().toISOString().slice(0, 10);
 
   // A failed read throws (named) into the route's error boundary.

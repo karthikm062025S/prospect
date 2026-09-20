@@ -1,4 +1,8 @@
 import { z } from "zod";
+// UI/UX D-UI5: the form constants live in lib/profile-options.ts (pure, no
+// imports) so the /setup client and this schema read the same values. The
+// explicit .ts suffix is D24: Node tests load this file directly.
+import { GOAL_MAX, WORK_AUTH_VALUES, normaliseSkill } from "../profile-options.ts";
 
 // ponytail: "../gemini" and "../student-profile" are imported DYNAMICALLY inside
 // runProfileAgent, never as a static top-level import. A static extensionless
@@ -14,6 +18,7 @@ export const DREAM_TIERS = ["FAANG", "Big 4", "startups", "research labs", "gove
 export type ProfileForm = {
   major: string;
   gradTerm: string;
+  /** One of WORK_AUTH_VALUES; kept `string` here so callers building a form from argv (scripts/) compile, the schema enforces the enum. */
   workAuthorization: string;
   roleTypes: Array<(typeof ROLE_TYPES)[number]>;
   targetTerm: { season: string; year: number };
@@ -31,12 +36,25 @@ export type ProfileForm = {
 export const ProfileFormSchema = z.object({
   major: z.string().min(1, "major is required"),
   gradTerm: z.string().min(1, "gradTerm is required"),
-  workAuthorization: z.string().min(1, "workAuthorization is required"),
+  workAuthorization: z.enum(WORK_AUTH_VALUES, { error: "workAuthorization must be one of the listed statuses" }),
   roleTypes: z.array(z.enum(ROLE_TYPES)).min(1, "roleTypes is required"),
   targetTerm: z.object({ season: z.string().min(1), year: z.number().int() }),
-  goal: z.string().min(1, "goal is required"),
+  goal: z.string().min(1, "goal is required").max(GOAL_MAX, `goal is over ${GOAL_MAX} characters`),
   dreamTier: z.array(z.enum(DREAM_TIERS)).min(1, "dreamTier is required"),
-  skills: z.array(z.string()).optional(),
+  // Each typed skill is fuzzy-corrected against the vocabulary or refused by
+  // name (CONTEXT 20:30: "normalised once more server-side").
+  skills: z
+    .array(
+      z.string().transform((raw, ctx) => {
+        const result = normaliseSkill(raw);
+        if (!result.ok) {
+          ctx.addIssue({ code: "custom", message: result.reason });
+          return z.NEVER;
+        }
+        return result.skill;
+      }),
+    )
+    .optional(),
 });
 
 export type ProfileAgentInput = {

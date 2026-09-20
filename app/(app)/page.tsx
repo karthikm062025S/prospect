@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { query } from "@/lib/db";
-import { requireUser } from "@/lib/require-user";
+import { requireProfile, requireUser } from "@/lib/require-user";
 import { readProfile } from "@/lib/profile";
 import { ProfileBanner } from "@/components/profile-banner";
 import { nowMs } from "@/lib/dashboard";
@@ -27,6 +27,7 @@ const ROLE_COLUMNS =
 
 export default async function HomePage() {
   const uid = await requireUser();
+  await requireProfile(uid);
   const supabase = await createClient();
   const {
     data: { user },
