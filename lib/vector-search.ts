@@ -57,23 +57,37 @@ function requiredEnv(name: string): string {
   return value;
 }
 
+// PAT traffic on a Free Edition endpoint is capped at "a few tens of QPS" and
+// a text query is bottlenecked by the embedding endpoint (docs.databricks.com
+// ai-search/high-qps, Context7 2026-09-20): a 429 REQUEST_LIMIT_EXCEEDED is
+// retried with 500ms·2^n + jitter, 4 times, then thrown under the same name.
+const RETRY_LIMIT = 4;
+const RETRY_BASE_MS = 500;
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
 async function call(path: string, init?: RequestInit): Promise<Record<string, unknown>> {
   const host = requiredEnv("DATABRICKS_HOST").replace(/\/$/, "");
   const token = requiredEnv("DATABRICKS_TOKEN");
-  const res = await fetch(`${host}${path}`, {
-    ...init,
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-      ...(init?.headers ?? {}),
-    },
-  });
-  const body = (await res.json().catch(() => ({}))) as Record<string, unknown>;
-  if (!res.ok) {
-    const message = typeof body.message === "string" ? body.message : JSON.stringify(body);
-    throw new Error(`VECTOR_SEARCH_API_ERROR: ${res.status} ${message}`);
+  for (let attempt = 0; ; attempt++) {
+    const res = await fetch(`${host}${path}`, {
+      ...init,
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+        ...(init?.headers ?? {}),
+      },
+    });
+    const body = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+    if (res.status === 429 && attempt < RETRY_LIMIT) {
+      await sleep(RETRY_BASE_MS * 2 ** attempt + Math.random() * RETRY_BASE_MS);
+      continue;
+    }
+    if (!res.ok) {
+      const message = typeof body.message === "string" ? body.message : JSON.stringify(body);
+      throw new Error(`VECTOR_SEARCH_API_ERROR: ${res.status} ${message}`);
+    }
+    return body;
   }
-  return body;
 }
 
 /** Creates a Delta-sync index on the one `scout-vs` endpoint. Throws named errors; never swallows. */

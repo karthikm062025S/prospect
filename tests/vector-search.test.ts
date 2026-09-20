@@ -110,3 +110,22 @@ test("queryIndex maps requested columns and appends a trailing score", async () 
     }
   });
 });
+
+test("queryIndex retries a 429 with backoff and succeeds once the endpoint answers 200", async () => {
+  await withEnv({}, async () => {
+    const originalFetch = globalThis.fetch;
+    let calls = 0;
+    globalThis.fetch = (async () => {
+      calls += 1;
+      if (calls <= 2) return new Response(JSON.stringify({ message: "REQUEST_LIMIT_EXCEEDED" }), { status: 429 });
+      return new Response(JSON.stringify({ result: { data_array: [["a1", 0.5]] } }), { status: 200 });
+    }) as typeof fetch;
+    try {
+      const rows = await queryIndex({ name: "scout.core.archetypes_index", text: "x", columns: ["id"], numResults: 1 });
+      assert.equal(calls, 3);
+      assert.equal(rows[0].id, "a1");
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+});
