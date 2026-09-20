@@ -21,16 +21,20 @@ export function LoadingSteps({ states }: { states: StepStates }) {
   const current = Math.min(doneCount + 1, STEP_KEYS.length);
   return (
     <div className="flex flex-col gap-3">
-      <p className="font-label text-[11px] uppercase tracking-label text-text-dim" aria-live="polite">
+      {/* Visual label lives on the card heading (setup-form.tsx); this stays
+          sr-only so screen readers still get the live step count (Law 11, 20)
+          without the mock's static "Running · every step shows a real count"
+          losing its place to a redundant visible line. */}
+      <p className="sr-only" aria-live="polite">
         Step {current} of {STEP_KEYS.length}
       </p>
       <ol className="flex flex-col gap-3" aria-label="Building your profile">
-        {STEP_KEYS.map((key) => {
+        {STEP_KEYS.map((key, index) => {
           const state = states[key];
           return (
-            <li key={key} className="flex items-center gap-3 font-sans text-sm" aria-live="polite">
-              <StepIcon state={state} />
-              <span className={`flex-1 ${state.status === "error" ? "text-danger" : state.status === "pending" ? "text-text-dim" : "text-text"}`}>
+            <li key={key} className="grid grid-cols-[24px_1fr_auto] items-center gap-3 font-sans text-sm" aria-live="polite">
+              <StepIcon state={state} index={index + 1} />
+              <span className={`min-w-0 ${state.status === "error" ? "text-danger" : state.status === "pending" ? "text-text-dim" : "text-text"}`}>
                 {state.status === "done"
                   ? state.label
                   : state.status === "error"
@@ -48,21 +52,32 @@ export function LoadingSteps({ states }: { states: StepStates }) {
   );
 }
 
-function StepIcon({ state }: { state: StepState }) {
-  const base = "h-5 w-5 shrink-0 rounded-full border";
+function StepIcon({ state, index }: { state: StepState; index: number }) {
+  const base = "flex h-6 w-6 shrink-0 items-center justify-center rounded-full border font-label text-[11px]";
   if (state.status === "done") {
-    return <span className={`${base} border-sage bg-sage`} aria-hidden />;
+    return (
+      <span className={`${base} border-sage bg-sage text-bg`} aria-hidden>
+        {index}
+      </span>
+    );
   }
   if (state.status === "error") {
-    return <span className={`${base} border-danger bg-danger`} aria-hidden />;
+    return (
+      <span className={`${base} border-danger bg-danger text-bg`} aria-hidden>
+        {index}
+      </span>
+    );
   }
   if (state.status === "running") {
     return (
-      <span
-        className={`${base} border-sage border-t-transparent motion-safe:animate-spin motion-reduce:border-t-sage`}
-        aria-hidden
-      />
+      <span className={`${base} border-accent text-text motion-safe:animate-pulse`} aria-hidden>
+        {index}
+      </span>
     );
   }
-  return <span className={`${base} border-hairline`} aria-hidden />;
+  return (
+    <span className={`${base} border-hairline text-text-dim`} aria-hidden>
+      {index}
+    </span>
+  );
 }

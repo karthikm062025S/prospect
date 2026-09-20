@@ -3,9 +3,6 @@
 import { useId, useState } from "react";
 import { normaliseSkill, suggestSkills } from "@/lib/profile-options";
 
-const inputClass =
-  "min-h-11 w-full rounded-lg border border-hairline bg-bg px-3 font-sans text-sm text-text placeholder:text-text-dim focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage";
-
 /**
  * A chip input for skills, backed by the real vocabulary in
  * lib/profile-options.ts (CONTEXT 20:30 "Profile form"). Every add goes
@@ -51,48 +48,54 @@ export function SkillsTypeahead({
   return (
     <div className="flex flex-col gap-2">
       <input type="hidden" name={name} value={JSON.stringify(skills)} />
-      {skills.length > 0 && (
-        <ul className="flex flex-wrap gap-2" aria-label="Selected skills">
-          {skills.map((skill) => (
-            <li key={skill}>
-              <button
-                type="button"
-                onClick={() => removeSkill(skill)}
-                className="inline-flex min-h-11 items-center gap-2 rounded-pill border border-transparent bg-sage px-4 font-sans text-sm font-medium text-bg hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage focus-visible:ring-offset-2 focus-visible:ring-offset-raised"
-                aria-label={`Remove ${skill}`}
-              >
-                {skill}
-                <span aria-hidden>×</span>
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-      <input
-        value={draft}
-        onChange={(e) => {
-          setDraft(e.target.value);
-          if (refusal) setRefusal(null);
-        }}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === ",") {
-            e.preventDefault();
-            addSkill(draft);
-          }
-        }}
-        onBlur={() => {
-          if (draft.trim()) addSkill(draft);
-        }}
-        placeholder="Type a skill and press Enter"
-        spellCheck
-        role="combobox"
-        aria-expanded={matches.length > 0}
-        aria-controls={listId}
-        aria-autocomplete="list"
-        aria-invalid={Boolean(refusal)}
-        aria-describedby={[describedBy, refusal ? errorId : null].filter(Boolean).join(" ") || undefined}
-        className={`${inputClass} ${refusal ? "border-danger" : ""}`}
-      />
+      {/* One bordered "tags" box (D9 mock): the chips and the typeahead input
+          share it, instead of a chip list stacked above a separate field. */}
+      <div
+        className={`flex min-h-[52px] flex-wrap items-center gap-2 rounded-lg border bg-bg p-2 focus-within:ring-2 focus-within:ring-sage ${refusal ? "border-danger" : "border-hairline"}`}
+      >
+        {skills.length > 0 && (
+          <ul className="contents" aria-label="Selected skills">
+            {skills.map((skill) => (
+              <li key={skill} className="contents">
+                <button
+                  type="button"
+                  onClick={() => removeSkill(skill)}
+                  className="inline-flex min-h-11 items-center gap-2 rounded-pill border border-transparent bg-sage/10 px-4 font-sans text-sm font-medium text-sage hover:bg-sage/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage focus-visible:ring-offset-2 focus-visible:ring-offset-raised"
+                  aria-label={`Remove ${skill}`}
+                >
+                  {skill}
+                  <span aria-hidden>×</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+        <input
+          value={draft}
+          onChange={(e) => {
+            setDraft(e.target.value);
+            if (refusal) setRefusal(null);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === ",") {
+              e.preventDefault();
+              addSkill(draft);
+            }
+          }}
+          onBlur={() => {
+            if (draft.trim()) addSkill(draft);
+          }}
+          placeholder="Add a skill"
+          spellCheck
+          role="combobox"
+          aria-expanded={matches.length > 0}
+          aria-controls={listId}
+          aria-autocomplete="list"
+          aria-invalid={Boolean(refusal)}
+          aria-describedby={[describedBy, refusal ? errorId : null].filter(Boolean).join(" ") || undefined}
+          className="min-h-11 min-w-[120px] flex-1 bg-transparent font-sans text-sm text-text placeholder:text-text-dim focus-visible:outline-none"
+        />
+      </div>
       {refusal && (
         <p id={errorId} role="alert" className="font-sans text-sm text-danger">
           {refusal}. Pick one of the suggestions or check the spelling.

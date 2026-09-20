@@ -22,6 +22,7 @@ export function PdfDropZone({
   what,
   required = false,
   error,
+  className = "",
 }: {
   id: string;
   name: string;
@@ -31,6 +32,8 @@ export function PdfDropZone({
   what: string;
   required?: boolean;
   error?: string;
+  /** D10: lets the caller stretch this box to match a sibling's height in an equal-height grid. */
+  className?: string;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
@@ -74,31 +77,39 @@ export function PdfDropZone({
     accept(dropped);
   }
 
-  function remove() {
-    if (inputRef.current) inputRef.current.value = "";
-    accept(null);
-    inputRef.current?.focus();
+  // D9: mock's affordance is "Replace" (reopen the picker over the current
+  // file), not a separate clear step -- a cancelled picker just keeps the
+  // file that was already there, and both fields are required so an empty
+  // end state was never a real destination anyway.
+  function openPicker(event: React.MouseEvent) {
+    event.preventDefault();
+    inputRef.current?.click();
   }
 
   return (
-    <div className="flex flex-col gap-2">
-      <span id={`${id}-label`} className="font-label text-[11px] uppercase tracking-label text-text-dim">
+    <div className={`flex h-full flex-col gap-2 ${className}`}>
+      <span id={`${id}-label`} className="font-sans text-sm font-medium text-text">
         {label}
         {required && (
-          <span className="normal-case tracking-normal"> (required)</span>
+          <span className="font-normal text-text-dim"> (required)</span>
         )}
       </span>
       <label
         htmlFor={id}
         data-dragging={dragging}
+        data-filled={Boolean(file)}
         onDragOver={(event) => {
           event.preventDefault();
           setDragging(true);
         }}
         onDragLeave={() => setDragging(false)}
         onDrop={onDrop}
-        className={`flex min-h-24 cursor-pointer flex-col items-center justify-center gap-2 rounded-card border border-dashed bg-bg p-6 text-center transition-colors duration-[120ms] hover:border-sage has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-sage has-[:focus-visible]:ring-offset-2 has-[:focus-visible]:ring-offset-raised data-[dragging=true]:border-sage data-[dragging=true]:bg-sage/5 motion-reduce:transition-none ${
-          shownError ? "border-danger" : "border-text-dim"
+        className={`flex min-h-24 flex-1 cursor-pointer items-center gap-3 rounded-card border p-6 transition-colors duration-[120ms] hover:border-sage has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-sage has-[:focus-visible]:ring-offset-2 has-[:focus-visible]:ring-offset-raised data-[dragging=true]:border-sage data-[dragging=true]:bg-sage/5 motion-reduce:transition-none ${
+          shownError
+            ? "flex-col justify-center border-danger border-dashed text-center"
+            : file
+              ? "flex-row justify-between border-transparent bg-sage/10 text-left"
+              : "flex-col justify-center border-hairline border-dashed bg-raised text-center"
         }`}
       >
         <input
@@ -116,25 +127,33 @@ export function PdfDropZone({
         />
         {file ? (
           <>
-            <span className="font-sans text-sm font-medium text-text break-all">{file.name}</span>
-            <span className="font-sans text-xs tabular-nums text-text-dim">{(file.size / MB).toFixed(1)} MB, PDF</span>
+            <span className="flex items-center gap-3 overflow-hidden">
+              <span aria-hidden className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-bg text-sage">
+                ✓
+              </span>
+              <span className="flex min-w-0 flex-col">
+                <span className="truncate font-sans text-sm font-medium text-text">{file.name}</span>
+                <span className="font-sans text-xs text-text-dim">{(file.size / MB).toFixed(1)} MB · read in memory, never stored</span>
+              </span>
+            </span>
+            <button
+              type="button"
+              onClick={openPicker}
+              className="inline-flex min-h-11 shrink-0 items-center rounded-pill border border-hairline bg-bg px-4 font-sans text-sm font-medium text-text hover:border-sage focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage focus-visible:ring-offset-2 focus-visible:ring-offset-raised"
+            >
+              Replace
+            </button>
           </>
         ) : (
           <>
-            <span className="font-sans text-sm text-text">Drop your {what} here, or click to choose a file</span>
+            <span aria-hidden className="flex h-10 w-10 items-center justify-center rounded-full bg-bg text-text-dim">
+              ↑
+            </span>
+            <span className="font-sans text-sm font-medium text-text">Drop your {what} here</span>
             <span className="font-sans text-xs text-text-dim">PDF only, up to {PDF_MAX_BYTES / MB} MB</span>
           </>
         )}
       </label>
-      {file && (
-        <button
-          type="button"
-          onClick={remove}
-          className="inline-flex min-h-11 items-center self-start rounded-pill border border-text-dim px-4 font-sans text-sm text-text hover:bg-bg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage focus-visible:ring-offset-2 focus-visible:ring-offset-raised"
-        >
-          Remove {file.name}
-        </button>
-      )}
       <p id={helpId} className="font-sans text-xs text-text-dim">
         {help}
       </p>
