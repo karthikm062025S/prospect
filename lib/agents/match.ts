@@ -145,6 +145,8 @@ export type ScorePostingInput = {
   nowMs: number;
   /** roles.visa_class -- a VISIBLE reason line, never a filter (CONTEXT "Jobs column"). */
   visaClass: string | null;
+  /** isSeniorTitle(title): a senior req never level-matches a student. */
+  senior?: boolean;
 };
 
 export type ScorePostingResult = {
@@ -156,9 +158,24 @@ export type ScorePostingResult = {
   reasons: string[];
 };
 
+// A student never level-matches a senior req (measured 2026-09-20: "Senior
+// Manager"/"Director" postings topped a consulting student's feed because every
+// title without a term-of-art derives to full_time).
+const SENIOR_TITLE =
+  /\b(senior|sr\.?|staff|principal|director|vp|vice president|head of|chief|executive|lead|manager|managing)\b/i;
+export function isSeniorTitle(title: string): boolean {
+  return SENIOR_TITLE.test(title) && !/\b(intern|internship|co-?op|new grad|graduate|entry|associate|analyst|trainee)\b/i.test(title);
+}
+
+/** Vector top-1 assignment has no floor, so a low-confidence archetype (e.g. 0.55) is treated as weak evidence: 0 at <=0.45, full at >=0.75. */
+export function confidenceWeight(confidence: number | null): number {
+  if (typeof confidence !== "number" || !Number.isFinite(confidence)) return 1;
+  return Math.max(0, Math.min(1, (confidence - 0.45) / 0.3));
+}
+
 export function scorePosting(input: ScorePostingInput): ScorePostingResult {
   const archetypeSimilarity = Math.max(0, Math.min(1, input.archetypeSimilarity));
-  const levelMatch = levelsForRoleTypes(input.studentRoleTypes).has(input.postingLevel);
+  const levelMatch = !input.senior && levelsForRoleTypes(input.studentRoleTypes).has(input.postingLevel);
   const tierMatch = tierMatches(input.dreamTier, input.companyTier);
   const recency = recencyScore(input.sourcePostedAt, input.createdAt, input.nowMs);
 
@@ -176,6 +193,7 @@ export function scorePosting(input: ScorePostingInput): ScorePostingResult {
     }
   }
   if (levelMatch) reasons.push(`${LEVEL_LABEL[input.postingLevel]} matches your role types`);
+  else if (input.senior) reasons.push("Senior-level title");
   if (tierMatch && input.companyTier) reasons.push(`${input.companyTier} matches your dream tier`);
   reasons.push(daysAgoLabel(input.sourcePostedAt, input.createdAt, input.nowMs));
   if (input.visaClass) reasons.push(`Sponsorship: ${input.visaClass}`);
@@ -359,6 +377,7 @@ type PostingRow = {
   source_posted_at: string | null;
   created_at: string;
   visa_class: string | null;
+  location: string | null;
   archetype_id: string | null;
   confidence: number | null;
   archetype_name: string | null;
@@ -527,17 +546,20 @@ export async function runMatchAgent(
       columns: ["id"],
       numResults: 200,
     });
-    const rawScores = targetRows.map((row) => (typeof row.score === "number" ? row.score : NaN)).filter(Number.isFinite);
-    const [lo, hi] = [Math.min(...rawScores), Math.max(...rawScores)];
+    // Rank-based, not min-max: raw gte similarities compress into ~0.5-0.65
+    // across the registry, so min-max still gave mid-pack archetypes ~0.6 and
+    // "Software Engineer" postings outranked consulting ones for a consulting
+    // goal (2026-09-20). The nearest archetype to the target is 1.0, the 10th
+    // nearest ~0.17, everything past NEAR_ARCHETYPES is 0.
+    const NEAR_ARCHETYPES = 12;
     const archetypeScoreById = new Map<string, number>();
-    for (const row of targetRows) {
-      if (typeof row.id !== "string" || typeof row.score !== "number") continue;
-      archetypeScoreById.set(row.id, hi > lo ? (row.score - lo) / (hi - lo) : 1);
-    }
+    targetRows
+      .filter((row) => typeof row.id === "string")
+      .forEach((row, rank) => archetypeScoreById.set(row.id as string, Math.max(0, 1 - rank / NEAR_ARCHETYPES)));
 
     // --- score the open feed of the last 30 days -----------------------------
-    const postingRows = await q<PostingRow>(
-      `select r.id as role_id, r.title, r.level, r.source_posted_at, r.created_at, r.visa_class,
+    const allPostingRows = await q<PostingRow>(
+      `select r.id as role_id, r.title, r.level, r.source_posted_at, r.created_at, r.visa_class, r.location,
               ra.archetype_id, ra.confidence, a.name as archetype_name,
               c.tier as company_tier
        from roles r
@@ -548,6 +570,9 @@ export async function runMatchAgent(
       [],
       "roles",
     );
+    // US-only, the same read-time rule Home and the Journey feed apply (lib/us-location.ts).
+    const { isUsLocation } = await import("../us-location");
+    const postingRows = allPostingRows.filter((row) => isUsLocation(row.location));
     const withArchetype = postingRows.filter((row) => row.archetype_id !== null).length;
     onStep({
       step: "assign",
@@ -559,14 +584,18 @@ export async function runMatchAgent(
     const scored = postingRows
       .map((row) => {
         const level = resolveLevel(row.level, row.title, deriveLevel);
+        const titleSim = titleSimilarity(row.title, target.name, target.aliases);
+        const targetSim = row.archetype_id ? (archetypeScoreById.get(row.archetype_id) ?? null) : null;
         const archetypeSimilarity = resolveArchetypeSimilarity(
           target.id,
           row.archetype_id,
-          row.archetype_id ? (archetypeScoreById.get(row.archetype_id) ?? null) : null,
-          titleSimilarity(row.title, target.name, target.aliases),
+          // A weakly assigned archetype is weak evidence; the title can still carry it.
+          targetSim === null ? null : Math.max(targetSim * confidenceWeight(row.confidence), titleSim),
+          titleSim,
         );
         const result = scorePosting({
           archetypeSimilarity,
+          senior: isSeniorTitle(row.title),
           archetypeName: row.archetype_name,
           targetArchetypeName: target.name,
           postingLevel: level,

@@ -13,6 +13,8 @@ import {
   parseRequirementsResponse,
   nodeMatchesPosting,
   titleSimilarity,
+  isSeniorTitle,
+  confidenceWeight,
 } from "../lib/agents/match.ts";
 
 const NOW = Date.parse("2026-09-19T18:00:00.000Z");
@@ -139,6 +141,41 @@ test("nodeMatchesPosting: a node naming the target archetype, or sharing 2+ titl
     nodeMatchesPosting({ moves_toward: [], title: "Photography Club" }, "Data Scientist", "Backend Software Engineer Intern"),
     false,
   );
+});
+
+test("isSeniorTitle: senior reqs are flagged, student-level titles are not", () => {
+  assert.equal(isSeniorTitle("M&A Operations, Senior Manager"), true);
+  assert.equal(isSeniorTitle("Director Gross Margin Program Management"), true);
+  assert.equal(isSeniorTitle("Executive Travel Manager"), true);
+  assert.equal(isSeniorTitle("Technology Consulting Intern - 2027"), false);
+  assert.equal(isSeniorTitle("Leadership Development Program Associate"), false);
+  assert.equal(isSeniorTitle("Data Analyst"), false);
+});
+
+test("confidenceWeight: a low-confidence archetype assignment is weak evidence", () => {
+  assert.equal(confidenceWeight(null), 1);
+  assert.equal(confidenceWeight(0.9), 1);
+  assert.equal(confidenceWeight(0.45), 0);
+  assert.equal(confidenceWeight(0.6).toFixed(2), "0.50");
+});
+
+test("scorePosting: a senior title never level-matches and says so", () => {
+  const result = scorePosting({
+    archetypeSimilarity: 1,
+    archetypeName: "Management Consultant",
+    targetArchetypeName: "Management Consultant",
+    postingLevel: "full_time",
+    studentRoleTypes: ["full-time"],
+    dreamTier: [],
+    companyTier: null,
+    sourcePostedAt: null,
+    createdAt: new Date(NOW).toISOString(),
+    nowMs: NOW,
+    visaClass: null,
+    senior: true,
+  });
+  assert.equal(result.levelMatch, false);
+  assert.ok(result.reasons.includes("Senior-level title"));
 });
 
 test("titleSimilarity: best token overlap against the archetype name or an alias, scaled to 0..0.6", () => {
