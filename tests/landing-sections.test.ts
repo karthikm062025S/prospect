@@ -22,7 +22,7 @@ test("the ten bands exist in the reference's order", () => {
   const page = read(PAGE);
   const order = [
     "<Hero ",
-    "<WordmarkBand />",
+    "<StatementBand />",
     "<ScreenshotStrip />",
     "<StatsRow ",
     'id="feed"',
@@ -64,10 +64,16 @@ test("every band names its own heading for assistive tech", () => {
   assert.match(read("components/landing/showcase.tsx"), /const headingId = `\$\{id\}-heading`;/);
 });
 
-test("the H1 reveals word by word and goes static under reduced motion", () => {
+test("the hero wordmark reveals per character, the statement per word, and both go static under reduced motion", () => {
+  // Redesign 2026-09-19: the H1 is the wordmark (character granularity is the
+  // hero's alone, SYSTEM.md Motion grammar); the sentence moved to the cream
+  // StatementBand and keeps its word-by-word reveal.
   const hero = read("components/landing/hero.tsx");
   assert.match(hero, /as="h1"/);
-  assert.match(hero, /granularity="word"/);
+  assert.match(hero, /granularity="char"/);
+  const statement = read("components/landing/wordmark-strip.tsx");
+  assert.match(statement, /export function StatementBand/);
+  assert.match(statement, /granularity="word"/);
   // The reveal primitive's reduced-motion branch: useSettled() is
   // prefers-reduced-motion OR the in-app Settled setting, and the settled path
   // paints the REVEALED colour with no observer and no per-unit transition.
