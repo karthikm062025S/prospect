@@ -1,18 +1,18 @@
 import type { StaticImageData } from "next/image";
 
-import heroWideLight from "../../public/art/naruto-whirlpools-wide-poster-light.png";
-import heroWideDark from "../../public/art/naruto-whirlpools-wide-poster-dark.png";
-import heroTallLight from "../../public/art/naruto-whirlpools-tall-poster-light.png";
-import heroTallDark from "../../public/art/naruto-whirlpools-tall-poster-dark.png";
-import geeseLight from "../../public/art/descending-geese-poster-light.png";
-import geeseDark from "../../public/art/descending-geese-poster-dark.png";
+import heroWideLight from "../../public/art/twilight-wide-poster-light.png";
+import heroWideDark from "../../public/art/twilight-wide-poster-dark.png";
+import heroTallLight from "../../public/art/twilight-tall-poster-light.png";
+import heroTallDark from "../../public/art/twilight-tall-poster-dark.png";
 import celestialLight from "../../public/art/celestial-northern-poster-light.png";
 import celestialDark from "../../public/art/celestial-northern-poster-dark.png";
 import wavesLight from "../../public/art/rising-waves-poster-light.png";
 import wavesDark from "../../public/art/rising-waves-poster-dark.png";
 
-// v7 D20 item 3. The art series: four public-domain works, one treatment,
-// two themes.
+// v7 D20 item 3. The art series: public-domain works, one treatment, two
+// themes. Redesign 2026-09-19: the hero carries a painted twilight sky (the
+// Wishlabs composition, our museum art) in the same dither; the geese band is
+// folded into the hero and its posters stay on disk, unreferenced.
 //
 // Fold 1 removes credit lines and identity metadata from the rendered page,
 // including alt text. Alt text describes only what the image shows.
@@ -47,19 +47,13 @@ export type ArtWork = {
 export const HERO_WIDE: ArtWork = {
   light: heroWideLight,
   dark: heroWideDark,
-  alt: "Dithered woodblock print of a whirlpool and breaking waves",
+  alt: "Dithered painting of a crimson twilight sky over a dark wooded lake",
 };
 
 export const HERO_TALL: ArtWork = {
   light: heroTallLight,
   dark: heroTallDark,
   alt: HERO_WIDE.alt,
-};
-
-export const GEESE: ArtWork = {
-  light: geeseLight,
-  dark: geeseDark,
-  alt: "Dithered woodblock print of four geese banking in flight",
 };
 
 export const CELESTIAL: ArtWork = {

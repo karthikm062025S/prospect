@@ -212,6 +212,14 @@ const HERO_NARROW_V = [
   [0.55, 0.82],
   [1, 0.24],
 ];
+// .scout-sky-scrim (redesign 2026-09-19): one bottom-up veil in every
+// viewport; the wordmark sits in open sky at mid-frame, the marks at the foot.
+const SKY_V = [
+  [0, 0.8],
+  [0.35, 0.62],
+  [0.7, 0.5],
+  [1, 0.35],
+];
 // .scout-scrim
 const BAND_V = [
   [0, 0.8],
@@ -229,24 +237,17 @@ const EVEN_V = [
 
 const BANDS = [
   {
-    label: "hero H1 over whirlpool",
-    slug: "naruto-whirlpools-wide",
-    // Copy column: left 72% of the frame, bottom 62% of it.
-    rect: { x0: 0, x1: 0.72, y0: 0.38, y1: 1 },
-    scrim: (x, yFromBottom) =>
-      1 - (1 - alphaAt(HERO_H, x)) * (1 - alphaAt(HERO_V, yFromBottom)),
+    label: "hero wordmark + marks over twilight",
+    slug: "twilight-wide",
+    // Wordmark at mid-frame, tagline and CTAs below it, board marks at the foot.
+    rect: { x0: 0.08, x1: 0.92, y0: 0.28, y1: 0.97 },
+    scrim: (_x, yFromBottom) => alphaAt(SKY_V, yFromBottom),
   },
   {
-    label: "hero H1 over whirlpool (9:16)",
-    slug: "naruto-whirlpools-tall",
-    rect: { x0: 0, x1: 1, y0: 0.38, y1: 1 },
-    scrim: (_x, yFromBottom) => alphaAt(HERO_NARROW_V, yFromBottom),
-  },
-  {
-    label: "band line over geese",
-    slug: "descending-geese",
-    rect: { x0: 0, x1: 1, y0: 0.55, y1: 1 },
-    scrim: (_x, yFromBottom) => alphaAt(BAND_V, yFromBottom),
+    label: "hero wordmark + marks over twilight (9:16)",
+    slug: "twilight-tall",
+    rect: { x0: 0, x1: 1, y0: 0.3, y1: 0.97 },
+    scrim: (_x, yFromBottom) => alphaAt(SKY_V, yFromBottom),
   },
   {
     label: "coverage over star chart",

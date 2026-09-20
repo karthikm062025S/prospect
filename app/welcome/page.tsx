@@ -14,7 +14,7 @@ import { Rise } from "@/components/landing/rise";
 import { Showcase } from "@/components/landing/showcase";
 import { StatsRow } from "@/components/landing/stats-row";
 import { UnderTheHood } from "@/components/landing/under-the-hood";
-import { ScreenshotStrip, WordmarkBand } from "@/components/landing/wordmark-strip";
+import { ScreenshotStrip, StatementBand } from "@/components/landing/wordmark-strip";
 import { ScrollProgress } from "@/components/motion/scroll-progress";
 import { BackToTop, FeedbackLink } from "@/components/landing/feedback";
 import { SettledProvider } from "@/components/motion/settled";
@@ -129,7 +129,7 @@ export default async function WelcomePage({
         <Hero liveLine={liveLine} signedIn={signedIn} />
 
         {/* 2 + 3 ---------------------------------------------------------- */}
-        <WordmarkBand />
+        <StatementBand />
         <ScreenshotStrip />
 
         {/* 4 --------------------------------------------------------------- */}

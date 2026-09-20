@@ -645,3 +645,17 @@ html {
     rgb(31 14 20 / 0.66) 100%
   );
 }
+
+/* Redesign 2026-09-19: the hero is the Wishlabs composition (wordmark in open
+   sky, marks at the foot) over a painted twilight, so it needs ONE bottom-up
+   veil in every viewport instead of the old bottom-left copy-column veils.
+   Stops are mirrored by SKY_V in scripts/contrast-pairs.mjs. */
+.scout-sky-scrim {
+  background: linear-gradient(
+    to top,
+    rgb(31 14 20 / 0.8) 0%,
+    rgb(31 14 20 / 0.62) 35%,
+    rgb(31 14 20 / 0.5) 70%,
+    rgb(31 14 20 / 0.35) 100%
+  );
+}

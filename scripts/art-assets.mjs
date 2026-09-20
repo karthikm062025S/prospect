@@ -87,6 +87,23 @@ const BAYER = [
 // excludes the print's own title cartouche, artist seal and paper margin, so no
 // museum text is ever rendered as if it were Scout's.
 const WORKS = [
+  // Prospect redesign, 2026-09-19 (Karthik: the Wishlabs hero composition with
+  // museum art in the VT sky). Church, "Twilight in the Wilderness", 1860, CMA
+  // 1965.233, CC0. A painted sky sits mid-dark, so the default gamma crushed it
+  // to ink; these two carry their own, softer curve (source in design/art/scout/SOURCES.md pass 3).
+  {
+    slug: "twilight-wide",
+    file: "cma-141639-church-twilight-wilderness.jpg",
+    crop: { left: 60, top: 40, width: 3280, height: 1845 }, // 16:9, frame edge trimmed
+    gamma: { light: 1.0, dark: 1.5 },
+  },
+  {
+    slug: "twilight-tall",
+    file: "cma-141639-church-twilight-wilderness.jpg",
+    crop: { left: 1100, top: 40, width: 1140, height: 2027 }, // 9:16, centre
+    posterWidth: 900,
+    gamma: { light: 1.0, dark: 1.5 },
+  },
   {
     slug: "naruto-whirlpools-wide",
     file: "aic-130577-hiroshige-naruto-whirlpools.jpg",
@@ -171,7 +188,7 @@ async function build() {
 
     for (const theme of ["light", "dark"]) {
       const invert = work.paperGround === true;
-      const gamma = invert ? GAMMA.inverted : GAMMA[theme];
+      const gamma = invert ? GAMMA.inverted : (work.gamma?.[theme] ?? GAMMA[theme]);
       const buffer = await ditherToRamp(cropped, RAMPS[theme], gamma, invert, posterWidth);
       const name = `${work.slug}-poster-${theme}.png`;
       // Written straight through: re-encoding the buffer with sharp again

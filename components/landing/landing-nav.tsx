@@ -44,6 +44,7 @@ const FEEDBACK_PILL =
 const MORE = [
   { label: "Privacy", href: "/privacy" },
   { label: "Terms", href: "/terms" },
+  { label: "Help and FAQ", href: "/faq" },
 ] as const;
 
 // The Framer "Pill Dropdown Nav" pattern: one frosted pill, a shared `layoutId`

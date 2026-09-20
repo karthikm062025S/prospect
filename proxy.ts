@@ -29,6 +29,8 @@ function isPublicPath(pathname: string) {
     pathname.startsWith("/fonts/") ||
     // v7 D20: the landing's art posters are public assets.
     pathname.startsWith("/art/") ||
+    // Redesign 2026-09-19: the landing's real app captures (public/mocks) too.
+    pathname.startsWith("/mocks/") ||
     PUBLIC_FILES.has(pathname)
   );
 }

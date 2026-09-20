@@ -1,16 +1,13 @@
-import { ArtBand } from "@/components/landing/art-band";
-import { GEESE } from "@/components/landing/art";
 import { ScrollVelocityMarquee } from "@/components/motion/scroll-velocity-marquee";
 import { Rise } from "@/components/landing/rise";
+import { TextReveal } from "@/components/motion/text-reveal";
 import { listMockShots } from "@/components/landing/mocks";
 
-// Section 2: "Welcome to" + the giant wordmark over a full-bleed art band, then
-// a horizontal strip of REAL app screenshots.
-// Spec: build/research/wishlabs/components/02-wordmark.md.
-//
-// The band reuses the existing `ArtBand` machinery (parallax layer, <picture>
-// theme sources, measured ink scrim) rather than a new full-bleed component —
-// the work it carries is the geese print, re-dithered into the VT ramp.
+// Section 2, redesign 2026-09-19: the "Welcome to" + wordmark moved INTO the
+// hero (the reference opens on the wordmark), so this band is the reference's
+// cream statement block: one word-revealed sentence, one sub line, on --bg.
+// Then the horizontal strip of REAL app screenshots.
+// Spec: build/research/wishlabs/components/02-wordmark.md (layout + rhythm).
 //
 // The marquee is the existing client primitive: it couples to scroll velocity,
 // pauses on pointer and on focus, and renders ONE static wrapped row under
@@ -23,28 +20,33 @@ import { listMockShots } from "@/components/landing/mocks";
 // screenshot is still legible at that size on a 390 phone.
 const SHOT = "mr-4 h-44 w-80 shrink-0 rounded-card border border-hairline object-cover";
 
-export function WordmarkBand() {
+const STATEMENT = "Find the roles worth your time. Build the skills AI can't replace.";
+const STATEMENT_SUB =
+  "Upload a resume and an unofficial transcript. Four agents rank the live opportunity feed for your goal and turn what is missing into a semester plan of real Virginia Tech courses, clubs and certifications.";
+
+export function StatementBand() {
   return (
-    <ArtBand work={GEESE} labelledBy="welcome-heading" id="welcome" align="center">
-      <div className="text-center">
+    <section id="welcome" aria-labelledby="welcome-heading" className="bg-bg px-gutter py-section">
+      <div className="mx-auto w-full max-w-page text-center">
         <Rise>
-          <p className="font-label text-step-2xs uppercase tracking-label text-ink-text/75">
-            Welcome to
+          <p className="font-label text-step-2xs uppercase tracking-label text-text-dim">
+            Every major. Every role.
           </p>
         </Rise>
-        <h2
+        <TextReveal
+          as="h2"
           id="welcome-heading"
-          className="font-display mt-3 text-step-hero leading-hero text-ink-text"
-        >
-          Prospect
-        </h2>
+          text={STATEMENT}
+          granularity="word"
+          className="font-display mx-auto mt-4 max-w-[18ch] text-balance text-step-5 leading-display text-text lg:text-step-6"
+        />
         <Rise delay={0.06}>
-          <p className="mx-auto mt-4 max-w-[46ch] text-pretty text-step-1 text-ink-text/90">
-            The career journey for every Virginia Tech student, in one place.
+          <p className="mx-auto mt-6 max-w-[60ch] text-pretty text-step-1 leading-body text-text-dim">
+            {STATEMENT_SUB}
           </p>
         </Rise>
       </div>
-    </ArtBand>
+    </section>
   );
 }
 
