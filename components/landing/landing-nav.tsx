@@ -15,9 +15,12 @@ import { CaretDownIcon, ChatCircleIcon } from "@/components/landing/icons";
 import { openFeedback } from "@/components/landing/feedback";
 import { FeedbackTrigger } from "@/components/feedback-box";
 
+// Lane C, 2026-09-19: the landing's section ids changed with the rebuild, so
+// "#how-to" (a band that no longer exists) becomes "#roadmap". A nav link to a
+// missing id is a dead control, which is exactly what ui_laws 3 and 16 forbid.
 const LINKS = [
   { label: "Live feed", href: "#feed" },
-  { label: "How to use", href: "#how-to" },
+  { label: "Roadmap", href: "#roadmap" },
   { label: "Features", href: "#features" },
 ] as const;
 

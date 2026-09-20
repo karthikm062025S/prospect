@@ -1,30 +1,22 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArtBand } from "@/components/landing/art-band";
-import { BoardsList, BoardsStrip } from "@/components/landing/boards-strip";
-import { CELESTIAL, GEESE, RISING_WAVES } from "@/components/landing/art";
-import { CoverageOdometer } from "@/components/landing/coverage-odometer";
-import { FeedPreview } from "@/components/landing/feed-preview";
+import { CELESTIAL, RISING_WAVES } from "@/components/landing/art";
+import { BeforeAfter } from "@/components/landing/before-after";
+import { FeatureCards } from "@/components/landing/feature-cards";
+import { LabelLegend, LABEL_SOURCE } from "@/components/landing/label-legend";
 import { SignInCta, SIGN_IN_REASON } from "@/components/landing/sign-in-cta";
 import { SignInDialog } from "@/components/landing/sign-in-dialog";
-import { HandLine } from "@/components/landing/hand-line";
 import { Hero } from "@/components/landing/hero";
 import { LandingNav } from "@/components/landing/landing-nav";
 import { OpenOnHero } from "@/components/landing/open-on-hero";
-import { PinnedSteps } from "@/components/landing/pinned-steps";
 import { Rise } from "@/components/landing/rise";
-import { SheetTexture } from "@/components/landing/sheet-texture";
-import { ProgressiveBlur } from "@/components/motion/progressive-blur";
+import { Showcase } from "@/components/landing/showcase";
+import { StatsRow } from "@/components/landing/stats-row";
+import { UnderTheHood } from "@/components/landing/under-the-hood";
+import { ScreenshotStrip, WordmarkBand } from "@/components/landing/wordmark-strip";
 import { ScrollProgress } from "@/components/motion/scroll-progress";
-import { BackToTop, FeedbackButton, FeedbackLink } from "@/components/landing/feedback";
-import {
-  ArticleIcon,
-  BookmarkSimpleIcon,
-  FunnelIcon,
-  LockKeyIcon,
-  MagnifyingGlassIcon,
-  SignInIcon,
-} from "@/components/landing/icons";
+import { BackToTop, FeedbackLink } from "@/components/landing/feedback";
 import { SettledProvider } from "@/components/motion/settled";
 import { TextReveal } from "@/components/motion/text-reveal";
 import { createClient } from "@/lib/supabase/server";
@@ -32,13 +24,24 @@ import { getPublicFeed } from "@/lib/public-feed";
 import { getPublicStats } from "@/lib/public-stats";
 import { formatStat } from "@/lib/public-stats-format";
 
-// v7 D20: the public landing, design pass 2. Every D19 content decision is
-// unchanged (outcome copy, live feed preview, 3-step how-to); what changed is
-// the visual layer: the four-work public-domain art series, the token type
-// scale, the scroll-tied reveals and the sheet-over-art layering.
+// Lane C, 2026-09-19: the landing rebuilt in the reference's section order.
+// Layout, rhythm, type scale and motion are cloned from wishlabs.ai; the words,
+// the imagery and the palette are ours (extraction + per-section specs live in
+// build/research/wishlabs/). The order, top to bottom:
+//   1 hero            full-bleed art, eyebrow, word-revealed H1, two CTAs, live count
+//   2 welcome         "Welcome to" + the giant wordmark over an art band
+//   3 screenshots     the marquee of real app captures
+//   4 stats           three real numbers
+//   5 feed            ranked feed, eyebrow + big heading + screenshot
+//   6 roadmap         the labels, mirrored band
+//   7 labels          the before / after slider on a real posting
+//   8 features        three cards
+//   9 under the hood  Databricks + the four agents
+//  10 privacy         the honest band where the reference put testimonials
+//  11 get started     closing CTA, then the footer
 //
-// Server component. Every animated piece is an island under
-// components/landing/ or components/motion/.
+// Server component. Every animated piece is an island under components/landing/
+// or components/motion/.
 const SITE_URL = process.env.VERCEL_PROJECT_PRODUCTION_URL
   ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
   : "http://localhost:3000";
@@ -56,58 +59,25 @@ export const metadata: Metadata = {
   },
 };
 
-// Horizontal rhythm: --gutter (24px below 640, 48px above) around a 1280px
-// container. Vertical: --section-y (72px below 1024, 128px above).
-const BAND = "px-gutter py-section";
 const INNER = "mx-auto w-full max-w-page";
 
-// D19.3: every title is an outcome and every body opens with what the reader
-// gets, not with what the product has.
-const FEATURES = [
-  {
-    Icon: FunnelIcon,
-    title: "You only see roles ranked for you",
-    body: "The live feed covers internships, co-ops, new-grad, full-time and research roles in every major, ranked best to least for your goal.",
-  },
-  {
-    Icon: LockKeyIcon,
-    title: "Your profile stays private",
-    body: "Your resume, transcript, goal and applications are yours. Everyone sees the same live feed; nobody sees your profile.",
-  },
-  {
-    Icon: ArticleIcon,
-    title: "Every recommendation explains itself",
-    body: "Each posting carries Human Edge labels, and each roadmap step says why it matters and which roles it moves you toward.",
-  },
+const FEED_POINTS = [
+  "Every watched board is re-read every 30 minutes, so a posting reaches you while it is still open.",
+  "Each row says in words why it fits your goal, instead of handing you a bare score.",
+  "Requirements are split into met and unknown, so you can see what a posting does not tell you.",
 ] as const;
 
-// D19.3/4: the literal how-to.
-const STEPS = [
-  {
-    n: "01",
-    Icon: MagnifyingGlassIcon,
-    title: "Upload",
-    body: "Add a resume, an unofficial transcript, your role types, target term and a one-sentence goal.",
-  },
-  {
-    n: "02",
-    Icon: SignInIcon,
-    title: "Sign in to save your profile",
-    body: "Email and password, about ten seconds, and Prospect asks you for nothing else.",
-  },
-  {
-    n: "03",
-    Icon: BookmarkSimpleIcon,
-    title: "Get your feed and your roadmap",
-    body: "See the live feed ranked for you and the semester roadmap that closes the gaps.",
-  },
+const ROADMAP_POINTS = [
+  "Every task on a role is labelled Human-led, AI-assisted or Automatable.",
+  "What is missing becomes a semester plan of real courses, clubs, projects and certifications.",
+  "Each step says why it is there and which roles it moves you toward.",
 ] as const;
 
-const EYEBROW = "font-label text-step-2xs uppercase tracking-label text-text-dim";
-// The scale steps are fixed px, so the responsive move is choosing a lower
-// step below 1024 rather than a clamp: 40px at 390, 56px at 1440.
-const H2 =
-  "font-display mt-4 max-w-[18ch] text-balance text-step-4 leading-display tracking-display text-text lg:text-step-5";
+const PRIVACY_POINTS = [
+  "Your resume and transcript are read in memory and never stored as files.",
+  "The structured profile that comes out of them is yours. Everyone sees the same public feed; nobody sees your profile.",
+  "Ask us to delete it and it is deleted.",
+] as const;
 
 export default async function WelcomePage({
   searchParams,
@@ -121,23 +91,18 @@ export default async function WelcomePage({
     createClient(),
   ]);
 
-  // v9: /welcome?view=landing lets a signed-in visitor back onto the landing
-  // (the logo in components/tab-bar.tsx), so the page has to recognise them.
-  // Every sign-in CTA below becomes a link into the app instead. Reading the
-  // session cookie makes the route dynamic; the proxy already made it so, and
-  // the cached feed/stats above are untouched.
+  // v9: /welcome?view=landing lets a signed-in visitor back onto the landing, so
+  // the page has to recognise them and every sign-in CTA becomes a link into the
+  // app instead.
   const {
     data: { user },
   } = await supabase.auth.getUser();
   const signedIn = !!user;
 
-  // D20 item 9. Development only: forces every reveal to its settled state so
-  // a screenshot is deterministic. Guarded by NODE_ENV, so a production build
-  // ignores the parameter entirely.
+  // Development only: forces every reveal to its settled state so a screenshot
+  // is deterministic. Guarded by NODE_ENV.
   const settled = process.env.NODE_ENV !== "production" && params.motion === "final";
 
-  // No em dash in a rendered string, so the null path is its own sentence
-  // rather than formatStat's "—".
   const newest = feed[0]?.added ?? null;
   const liveLine =
     stats.openRoles === null
@@ -153,272 +118,155 @@ export default async function WelcomePage({
         Skip to content
       </a>
 
-      {/* v9: opens the landing on the hero when it was entered without a
-          fragment (sign-out, an expired session, the signed-out gate). */}
+      {/* Opens the landing on the hero when it was entered without a fragment. */}
       <OpenOnHero />
       <LandingNav signedIn={signedIn} />
-      {/* v8 onboarding: the one sign-in dialog every SignInCta opens. */}
       <SignInDialog />
-      {/* D26: the 2px accent read-progress hairline; null when settled. */}
       <ScrollProgress />
 
       <main id="main" className="overflow-x-clip">
-        {/* ---------------- 1. Hero, pinned over the whirlpool ---------------- */}
+        {/* 1 ------------------------------------------------------------- */}
         <Hero liveLine={liveLine} signedIn={signedIn} />
 
-        {/* ---------------- 2. The sheet rises over the art ----------------
-            --bg surface, 28px top radius, hairline top edge, paper grain.
-            -24vh pulls its top edge up into the last stretch of the hero pin,
-            which is the whole "sheet over art" move. */}
-        <div className="scout-sheet relative z-10 -mt-[24vh] bg-bg">
-          {/* The sheet's own top edge, over the art it is rising past: a
-              stacked backdrop-blur ramp so the art dissolves into the sheet
-              instead of meeting it on a hard line. Sits ABOVE the sheet
-              (-top-16), because inside it there is nothing to blur. */}
-          <ProgressiveBlur
-            direction="bottom"
-            blurLayers={6}
-            blurIntensity={0.6}
-            className="pointer-events-none absolute inset-x-0 -top-16 h-16"
-          />
-          <SheetTexture />
+        {/* 2 + 3 ---------------------------------------------------------- */}
+        <WordmarkBand />
+        <ScreenshotStrip />
 
-          <section id="feed" aria-labelledby="feed-heading" className={`relative ${BAND}`}>
-            <div className={INNER}>
-              <Rise>
-                <p className={EYEBROW}>Live feed</p>
-              </Rise>
-              <TextReveal
-                as="h2"
-                id="feed-heading"
-                text="What went live recently."
-                granularity="word"
-                className={H2}
-              />
-              <FeedPreview rows={feed} total={stats.openRoles} signedIn={signedIn} />
-            </div>
-          </section>
+        {/* 4 --------------------------------------------------------------- */}
+        <StatsRow stats={stats} />
 
-          {/* ---------------- 3. Three pinned statements, word by word ------- */}
-          {/* No top padding (fold 1 item 4): the feed band's own 128px bottom
-              padding is the whole gap, and the pin length lives in the
-              runway's height rather than in space above the statements. */}
-          <section id="story" aria-labelledby="story-heading" className="relative px-gutter pb-section">
-            <h2 id="story-heading" className="sr-only">
-              What Prospect changes
-            </h2>
-            <div className={INNER}>
-              <PinnedSteps />
-            </div>
-          </section>
-        </div>
+        {/* 5 --------------------------------------------------------------- */}
+        <Showcase
+          id="feed"
+          eyebrow="Ranked feed"
+          heading="Real postings, found early."
+          body="The live feed covers internships, co-ops, new-grad, full-time and research roles in every major, ranked best to least for your goal."
+          points={FEED_POINTS}
+          shot="feed"
+          shotCaption="The ranked feed"
+          signedIn={signedIn}
+          ctaLabel="See my ranked feed"
+        />
 
-        {/* ---------------- 4. Art band: the flock, sighted ---------------- */}
-        <ArtBand work={GEESE} labelledBy="sighted-heading">
-          <TextReveal
-            as="h2"
-            id="sighted-heading"
-            text="Sighted before the crowd."
-            granularity="word"
-            tone="ink-text"
-            className="font-display max-w-[12ch] text-balance text-step-5 leading-display tracking-display text-ink-text lg:text-step-6"
-          />
-        </ArtBand>
-
-        {/* ---------------- 5. How to use Prospect ---------------- */}
-        <section id="how-to" aria-labelledby="how-to-heading" className={`bg-bg ${BAND}`}>
-          <div className={INNER}>
-            <Rise>
-              <p className={EYEBROW}>Get started</p>
-            </Rise>
-            <TextReveal
-              as="h2"
-              id="how-to-heading"
-              text="How to use Prospect, in three steps."
-              granularity="word"
-              className={H2}
-            />
-            <ol className="mt-6 grid gap-6 lg:grid-cols-3">
-              {STEPS.map(({ n, Icon, title, body }, i) => (
-                <Rise as="li" key={n} delay={i * 0.06}>
-                  <span className="flex size-11 items-center justify-center rounded-pill bg-sage/10 text-sage">
-                    <Icon size={24} />
-                  </span>
-                  {/* The step number is sage, not the warm accent: #e69a6f is
-                      2.11:1 on --bg and cannot carry text there at any size.
-                      Sage is 7.4:1 on --bg and 5.9:1 on the night --raised. */}
-                  <p className="font-sans mt-5 text-step-2xs tabular-nums tracking-label text-sage">
-                    {n}
-                  </p>
-                  <h3 className="font-display mt-2 text-step-3 leading-title text-text">{title}</h3>
-                  <p className="mt-3 max-w-[38ch] text-pretty text-step-0 leading-body text-text-dim">
-                    {body}
-                  </p>
-                </Rise>
-              ))}
-            </ol>
-          </div>
-        </section>
-
-        {/* ---------------- 6. Coverage, on the star chart ---------------- */}
-        <ArtBand work={CELESTIAL} labelledBy="coverage-heading" id="coverage" align="center">
-          <Rise>
-            <p className="font-label text-step-2xs uppercase tracking-label text-ink-text/75">
-              Coverage
+        {/* 6 --------------------------------------------------------------- */}
+        <Showcase
+          id="roadmap"
+          eyebrow="Semester roadmap"
+          heading="Know which of your skills hold their value."
+          body="Every role breaks down into tasks, and every task carries a label with its meaning. The plan that follows is built from real Virginia Tech courses, clubs and certifications."
+          points={ROADMAP_POINTS}
+          shot="roadmap"
+          shotCaption="The semester roadmap"
+          media="left"
+          ground="raised"
+          signedIn={signedIn}
+          ctaLabel="Build my roadmap"
+        >
+          <div className="mt-6">
+            <LabelLegend />
+            <p className="mt-3 max-w-[54ch] text-pretty text-step-xs leading-body text-text-dim">
+              {LABEL_SOURCE}
             </p>
-          </Rise>
-          <TextReveal
-            as="h2"
-            id="coverage-heading"
-            text="What Prospect is watching right now."
-            granularity="word"
-            tone="ink-text"
-            className="font-display mt-4 max-w-[18ch] text-balance text-step-3 leading-display tracking-display text-ink-text lg:text-step-4"
-          />
-          <Rise className="mt-6">
-            <CoverageOdometer
-              items={[
-                { label: "Boards watched", value: stats.boardsWatched, approx: true },
-                { label: "Companies", value: stats.companies },
-                { label: "Postings open now", value: stats.openRoles },
-                { label: "Added in the last day", value: stats.addedLast24h },
-              ]}
-            />
-          </Rise>
-        </ArtBand>
+          </div>
+        </Showcase>
 
-        {/* ---------------- 7. What you get ---------------- */}
-        <section id="features" aria-labelledby="features-heading" className={`bg-bg ${BAND}`}>
+        {/* 7 --------------------------------------------------------------- */}
+        <section id="labels" aria-labelledby="labels-heading" className="bg-bg px-gutter py-section">
           <div className={INNER}>
             <Rise>
-              <p className={EYEBROW}>What you get</p>
+              <p className="font-label text-step-2xs uppercase tracking-label text-text-dim">
+                Before and after
+              </p>
             </Rise>
             <TextReveal
               as="h2"
-              id="features-heading"
-              text="Fewer tabs. Earlier applications."
+              id="labels-heading"
+              text="The same posting, read twice."
               granularity="word"
-              className={H2}
+              className="font-display mt-4 max-w-[16ch] text-balance text-step-4 leading-display text-text lg:text-step-5"
             />
-            <ul className="mt-6 grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
-              {FEATURES.map(({ Icon, title, body }, i) => (
-                <Rise
-                  as="li"
-                  key={title}
-                  delay={i * 0.06}
-                  className="scout-card rounded-card border border-hairline bg-raised p-6"
-                >
-                  <span className="flex size-11 items-center justify-center rounded-pill bg-sage/10 text-sage">
-                    <Icon size={24} />
-                  </span>
-                  <h3 className="mt-5 text-balance text-step-1 font-medium leading-title text-text">{title}</h3>
-                  <p className="mt-3 text-pretty text-step-0 leading-body text-text-dim">{body}</p>
-                </Rise>
-              ))}
-            </ul>
+            <Rise delay={0.06}>
+              <p className="mt-6 max-w-[54ch] text-pretty text-step-1 leading-body text-text-dim">
+                On the left, a posting that is open right now, exactly as its board publishes it. On
+                the right, the record Prospect reads out of it.
+              </p>
+            </Rise>
+          </div>
+          <div className="mt-12">
+            <BeforeAfter row={feed[0] ?? null} />
           </div>
         </section>
 
-        {/* ---------------- 8. Boards we watch ---------------- */}
-        <section aria-labelledby="boards-heading" className="bg-bg py-section">
-          <div className="px-gutter">
-            <div className={INNER}>
-              <Rise>
-                <p className={EYEBROW}>Boards we watch</p>
-              </Rise>
-              <h2 id="boards-heading" className="sr-only">
-                Boards Prospect watches
-              </h2>
-              <Rise delay={0.06}>
-                <BoardsList />
-              </Rise>
-            </div>
-          </div>
-          <BoardsStrip />
-        </section>
+        {/* 8 --------------------------------------------------------------- */}
+        <FeatureCards openRoles={stats.openRoles} signedIn={signedIn} />
 
-        {/* ---------------- 9. Why Prospect ---------------- */}
-        <section id="why" aria-labelledby="why-heading" className={`bg-raised ${BAND}`}>
-          <div className={INNER}>
-            {/* v7 S4 UI-EYES: the 68ch measure used to sit on the same element as
-                max-w-page and lost the cascade to it, so these two paragraphs ran
-                104ch and 93ch per line at >=1440. The cap belongs on an inner box,
-                which also keeps the block flush with every other section's gutter
-                instead of centring it. */}
-            <div className="max-w-[68ch]">
-              <Rise>
-                <p className={EYEBROW}>Why this exists</p>
-              </Rise>
-              <h2 id="why-heading" className="sr-only">
-                Why Prospect exists
-              </h2>
-              {/* D14: the same word-by-word reveal every other section opens
-                  with, so #why is no longer the one band that just fades. */}
-              <div className="mt-6 space-y-4">
-                <TextReveal
-                  as="p"
-                  text="Career guidance at a large university is scattered across separate postings, course catalogs and club pages, with no single view of how they connect to one goal. A ranked feed with no plan behind it, or a plan built without knowing what is actually open right now, both fall short on their own."
-                  granularity="word"
-                  className="text-pretty text-step-1 leading-body"
-                />
-                <Rise delay={0.06}>
-                  <p className="text-pretty text-step-1 leading-body text-text-dim">
-                    Prospect puts the ranked feed and the roadmap that closes the gaps on one
-                    screen, so the plan always matches what is live.
-                  </p>
-                </Rise>
-              </div>
-            </div>
-          </div>
-        </section>
+        {/* 9 --------------------------------------------------------------- */}
+        <UnderTheHood />
 
-        {/* ---------------- The one handwritten line, on the wave ---------- */}
-        <ArtBand work={RISING_WAVES} labelledBy="sign-off-heading">
-          <h2 id="sign-off-heading" className="sr-only">
-            Sign off
-          </h2>
-          <Rise>
-            {/* PERF: HandLine is this same <p>; it only defers WHEN the
-                150 KB Playwrite face is requested. See hand-line.tsx. */}
-            <HandLine className="max-w-[14ch] text-balance text-step-5 leading-display tracking-display text-ink-text lg:text-step-6">
-              Strike gold, then build the plan to get there.
-            </HandLine>
+        {/* 10 -------------------------------------------------------------- */}
+        <ArtBand work={RISING_WAVES} labelledBy="privacy-heading" id="privacy">
+          <TextReveal
+            as="h2"
+            id="privacy-heading"
+            text="Privacy by design."
+            granularity="word"
+            tone="ink-text"
+            className="font-display max-w-[14ch] text-balance text-step-5 leading-display text-ink-text lg:text-step-6"
+          />
+          <ul className="mt-6 flex max-w-[54ch] flex-col gap-3">
+            {PRIVACY_POINTS.map((point, index) => (
+              <Rise as="li" key={point} delay={index * 0.05}>
+                <span className="text-pretty text-step-0 leading-body text-ink-text/90">
+                  {point}
+                </span>
+              </Rise>
+            ))}
+          </ul>
+          <Rise delay={0.2}>
+            <Link
+              href="/privacy"
+              className="mt-6 inline-flex min-h-11 items-center text-step-0 text-ink-text underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-text"
+            >
+              Read the privacy page
+            </Link>
           </Rise>
         </ArtBand>
 
-        {/* ---------------- 10. Close ---------------- */}
-        <section id="feedback" aria-labelledby="close-heading" className={`bg-bg ${BAND}`}>
-          <div className={INNER}>
+        {/* 11 -------------------------------------------------------------- */}
+        <ArtBand work={CELESTIAL} labelledBy="get-started-heading" id="get-started" align="center">
+          <div className="text-center">
             <TextReveal
               as="h2"
-              id="close-heading"
+              id="get-started-heading"
               text="Find your fit. Build your plan."
               granularity="word"
-              className={`${H2} !mt-0`}
+              tone="ink-text"
+              className="font-display mx-auto max-w-[16ch] text-balance text-step-5 leading-display text-ink-text lg:text-step-6"
             />
-            <Rise>
-              <div className="mt-6 flex flex-wrap items-center gap-x-6 gap-y-4">
-                <SignInCta signedIn={signedIn} />
-                <FeedbackButton />
-                <Link
+            <Rise delay={0.06}>
+              <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+                <SignInCta tone="ink" label="Get started" signedIn={signedIn} />
+                <a
                   href="#feed"
-                  className="inline-flex min-h-11 items-center text-step-0 text-text-dim underline underline-offset-4 hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage"
+                  className="inline-flex h-12 items-center rounded-pill border border-ink-text/40 px-5 text-step-0 font-medium text-ink-text hover:border-ink-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-text focus-visible:ring-offset-2 focus-visible:ring-offset-ink"
                 >
-                  Or just look at the feed
-                </Link>
+                  See the live feed
+                </a>
               </div>
-              {signedIn ? null : (
-                <p className="mt-4 max-w-[46ch] text-pretty text-step-xs text-text-dim">
+            </Rise>
+            {signedIn ? null : (
+              <Rise delay={0.12}>
+                <p className="mx-auto mt-6 max-w-[46ch] text-pretty text-step-xs text-ink-text/75">
                   {SIGN_IN_REASON}
                 </p>
-              )}
-            </Rise>
+              </Rise>
+            )}
           </div>
-        </section>
+        </ArtBand>
       </main>
 
-      {/* ---------------- Footer ---------------- */}
-      <footer className={`bg-raised px-gutter pb-10 pt-section`}>
+      {/* Footer ----------------------------------------------------------- */}
+      <footer className="bg-raised px-gutter pb-10 pt-section">
         <div className={INNER}>
           <div className="flex flex-col gap-12 border-t border-hairline pt-12 lg:flex-row lg:justify-between">
             <Rise className="flex items-center gap-3">
@@ -428,13 +276,15 @@ export default async function WelcomePage({
 
             <nav aria-label="Footer" className="flex gap-16">
               <Rise>
-                <h3 className={EYEBROW}>Product</h3>
+                <h3 className="font-label text-step-2xs uppercase tracking-label text-text-dim">
+                  Product
+                </h3>
                 <ul className="mt-4 flex flex-col text-step-xs">
                   {[
                     { label: "Live feed", href: "#feed" },
-                    { label: "How to use", href: "#how-to" },
-                    { label: "Coverage", href: "#coverage" },
+                    { label: "Roadmap", href: "#roadmap" },
                     { label: "Features", href: "#features" },
+                    { label: "Under the hood", href: "#under-the-hood" },
                   ].map((item) => (
                     <li key={item.href}>
                       <a
@@ -448,11 +298,14 @@ export default async function WelcomePage({
                 </ul>
               </Rise>
               <Rise delay={0.06}>
-                <h3 className={EYEBROW}>Legal</h3>
+                <h3 className="font-label text-step-2xs uppercase tracking-label text-text-dim">
+                  Legal
+                </h3>
                 <ul className="mt-4 flex flex-col text-step-xs">
                   {[
                     { label: "Privacy", href: "/privacy" },
                     { label: "Terms", href: "/terms" },
+                    { label: "Help and FAQ", href: "/faq" },
                   ].map((item) => (
                     <li key={item.href}>
                       <Link
@@ -471,18 +324,18 @@ export default async function WelcomePage({
             </nav>
           </div>
 
-          <Rise className="mt-14">
-            {/* Decorative outro wordmark. --text-unrevealed is 1.53:1 on --bg
-                in light, which is why this is aria-hidden and duplicated by
-                the real wordmark in the nav. */}
+          <Rise className="mt-12">
+            {/* Decorative outro wordmark. --text-unrevealed is 1.53:1 on --bg,
+                which is why this is aria-hidden and duplicated by the nav logo. */}
             <p
               aria-hidden="true"
-              className="font-display select-none text-step-hero leading-hero tracking-display text-text-unrevealed"
+              className="font-display select-none text-step-hero leading-hero text-text-unrevealed"
             >
               Prospect
             </p>
             <p className="mt-6 font-sans text-step-2xs tabular-nums text-text-dim">
-              © 2026 Prospect. Built at VTHacks 14. Verify every posting on the employer&rsquo;s site.
+              © 2026 Prospect. Built at VTHacks 14. Verify every posting on the employer&rsquo;s
+              site.
             </p>
           </Rise>
         </div>
