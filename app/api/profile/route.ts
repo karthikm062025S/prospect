@@ -2,13 +2,23 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { resolveUid } from "@/lib/require-user";
 import { runProfileAgent, ProfileFormSchema, encodeStepLine, type ProfileForm } from "@/lib/agents/profile";
+import { runMatchAgent } from "@/lib/agents/match";
+import { runRoadmapAgent } from "@/lib/agents/roadmap";
+import { runProfilePipeline } from "@/lib/agents/harness";
+import { query } from "@/lib/db";
 
-// Streams NDJSON: one line per agent step, then {"done":true} or {"error":"<named message>"}.
+// Streams NDJSON (MISSION D-UI3): one line per step in the fixed order transcript, resume,
+// profile, match, roadmap -- each {step, label, count} with a real count -- then {"done":true},
+// or one named {"error":"..."} line after the steps already emitted and nothing more.
 // 401 (no session) and 400 (bad form, field named) return before any stream starts; anything
 // else that goes wrong DURING the agent run (missing GEMINI_API_KEY/LAKEBASE_URL, a failed
 // Gemini call, a rejected profile) becomes a named {"error":...} line -- the client is already
 // mid-stream at that point, so it can never become an HTTP status.
 export const dynamic = "force-dynamic";
+// Honest ceiling: every model call inside the three agents has its own 20 s named timeout
+// (lib/agents/harness.ts); the worst serial path is profile (2 parallel parses, 20 s) +
+// max(match: target 20 s + requirements 20 s, roadmap: certifications 20 s + plan 20 s) plus
+// the DB/vector work around them, so 120 s holds without hiding a slow model.
 export const maxDuration = 120;
 
 // Named refusal before buffering: Vercel's own body limit (~4.5 MB) would
@@ -64,13 +74,15 @@ export async function POST(request: Request) {
     const stream = new ReadableStream<Uint8Array>({
       async start(controller) {
         try {
-          await runProfileAgent(
-            { userId, resumePdf, transcriptPdf, typedCourses, form: parsedForm },
-            (step) => controller.enqueue(encoder.encode(encodeStepLine(step))),
+          await runProfilePipeline(
+            {
+              profile: (onStep) => runProfileAgent({ userId, resumePdf, transcriptPdf, typedCourses, form: parsedForm }, onStep),
+              // Interactive mode: the feed-wide cache warming belongs to the hourly Orchestrator, not this stream.
+              match: () => runMatchAgent({ userId, mode: "interactive" }, query, () => {}),
+              roadmap: () => runRoadmapAgent({ userId }, () => {}),
+            },
+            (line) => controller.enqueue(encoder.encode("step" in line ? encodeStepLine(line) : `${JSON.stringify(line)}\n`)),
           );
-          controller.enqueue(encoder.encode(`${JSON.stringify({ done: true })}\n`));
-        } catch (error) {
-          controller.enqueue(encoder.encode(`${JSON.stringify({ error: (error as Error).message })}\n`));
         } finally {
           controller.close();
         }
