@@ -1,40 +1,50 @@
 "use client";
 
-export type StepKey = "transcript" | "resume" | "profile";
+import { STEP_KEYS, type StepKey, type StepState, type StepStates } from "@/components/setup/profile-stream";
 
-export type StepState =
-  | { status: "pending" }
-  | { status: "running" }
-  | { status: "done"; label: string; count: number }
-  | { status: "error"; message: string };
+export type { StepKey, StepState };
 
-const STEP_ORDER: Array<{ key: StepKey; pendingLabel: string }> = [
-  { key: "transcript", pendingLabel: "Reading your transcript" },
-  { key: "resume", pendingLabel: "Reading your resume" },
-  { key: "profile", pendingLabel: "Saving your profile" },
-];
+const PENDING_LABEL: Record<StepKey, string> = {
+  transcript: "Reading your transcript",
+  resume: "Reading your resume",
+  profile: "Building your profile",
+  match: "Ranking the live feed for you",
+  roadmap: "Planning your roadmap",
+};
 
 // Pending / running / done-with-count / error, per the agent's real NDJSON
-// steps -- a step with no number is a bug, so "done" always renders a count.
-export function LoadingSteps({ states }: { states: Record<StepKey, StepState> }) {
+// steps (MISSION D-UI3: exactly these five, in this order). A step with no
+// number is a bug, so "done" always renders its count; progress is visible
+// throughout (Law 11, 20) and an error names the step it landed on (Law 15).
+export function LoadingSteps({ states }: { states: StepStates }) {
+  const doneCount = STEP_KEYS.filter((key) => states[key].status === "done").length;
+  const current = Math.min(doneCount + 1, STEP_KEYS.length);
   return (
-    <ol className="flex flex-col gap-3" aria-label="Building your profile">
-      {STEP_ORDER.map(({ key, pendingLabel }) => {
-        const state = states[key];
-        return (
-          <li key={key} className="flex items-center gap-3 text-sm" aria-live="polite">
-            <StepIcon state={state} />
-            <span className={state.status === "error" ? "text-danger" : "text-text"}>
-              {state.status === "done"
-                ? state.label
-                : state.status === "error"
-                  ? state.message
-                  : `${pendingLabel}…`}
-            </span>
-          </li>
-        );
-      })}
-    </ol>
+    <div className="flex flex-col gap-3">
+      <p className="font-label text-[11px] uppercase tracking-label text-text-dim" aria-live="polite">
+        Step {current} of {STEP_KEYS.length}
+      </p>
+      <ol className="flex flex-col gap-3" aria-label="Building your profile">
+        {STEP_KEYS.map((key) => {
+          const state = states[key];
+          return (
+            <li key={key} className="flex items-center gap-3 font-sans text-sm" aria-live="polite">
+              <StepIcon state={state} />
+              <span className={`flex-1 ${state.status === "error" ? "text-danger" : state.status === "pending" ? "text-text-dim" : "text-text"}`}>
+                {state.status === "done"
+                  ? state.label
+                  : state.status === "error"
+                    ? `${PENDING_LABEL[key]}: ${state.message}`
+                    : `${PENDING_LABEL[key]}…`}
+              </span>
+              {state.status === "done" && !/\d/.test(state.label) && (
+                <span className="font-sans text-sm tabular-nums text-text-dim">{state.count}</span>
+              )}
+            </li>
+          );
+        })}
+      </ol>
+    </div>
   );
 }
 

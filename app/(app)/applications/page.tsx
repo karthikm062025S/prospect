@@ -1,5 +1,5 @@
 import { query } from "@/lib/db";
-import { requireUser } from "@/lib/require-user";
+import { requireProfile, requireUser } from "@/lib/require-user";
 import { nowMs } from "@/lib/dashboard";
 import type { Application, ApplicationEvent, Company, EventRow } from "@/lib/types";
 import { linkedRoleIds, type ApplicationsRow } from "@/lib/applications-list";
@@ -18,6 +18,7 @@ type LinkedRoleRow = { id: string; posted_at: string | null; deadline: string | 
 
 export default async function ApplicationsPage() {
   const uid = await requireUser();
+  await requireProfile(uid);
   // Every read throws (named) into the route's error boundary on failure.
   const [appRows, eventRows, companyRows] = await Promise.all([
     query<ApplicationRow>(

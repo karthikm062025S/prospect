@@ -1,3 +1,6 @@
+// Type-only: erased at runtime, so the strip-types test runner never follows it.
+import type { StoredProfile } from "./student-profile";
+
 export function resolveUid(user: { id: string } | null | undefined): string | null {
   return user?.id ?? null;
 }
@@ -40,4 +43,26 @@ export async function requireUser(): Promise<string> {
     throw new Error("unreachable: redirect() never returns");
   }
   return uid;
+}
+
+// UI/UX D-UI4 (CONTEXT 20:30 "Flow"): /setup is mandatory until a profile row
+// exists. One call at the top of every app page; /setup and /settings never
+// call it. A Lakebase failure is NOT "no profile": it stays loud (locked rule
+// 13:25), so only a real null row redirects. Deps are injectable so
+// tests/require-profile.test.ts proves the gate without Next or a database.
+export async function requireProfile(
+  userId: string,
+  deps: {
+    getProfile?: (uid: string) => Promise<StoredProfile | null>;
+    redirect?: (url: string) => never;
+  } = {},
+): Promise<StoredProfile> {
+  const getProfile = deps.getProfile ?? (await import("@/lib/student-profile")).getProfile;
+  const redirect = deps.redirect ?? (await import("next/navigation")).redirect;
+  const row = await getProfile(userId);
+  if (!row) {
+    redirect("/setup");
+    throw new Error("unreachable: redirect() never returns");
+  }
+  return row;
 }
