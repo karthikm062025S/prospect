@@ -47,7 +47,7 @@ export interface RoadmapNodePlan {
  * "a node id not in the courses/clubs/certs tables is rejected"). Never
  * silently drops an unfindable node -- throws, naming the code/name, so a
  * bad proposal fails the whole run instead of shipping a partial plan.
- * `courseCodes` / `clubNames` are real Delta rows (lib/catalog.ts); certs
+ * `courseCodes` / `clubNames` are real Lakebase catalog rows (lib/catalog.ts); certs
  * only ever come from THIS run's own grounded search (`certsByName`), since
  * there is no certifications table (CONTEXT 13:35: "no dataset, live web
  * search").
@@ -111,10 +111,11 @@ export interface RoadmapAgentResult {
 type GeminiClient = ReturnType<typeof import("../gemini").gemini>;
 
 /**
- * profile -> candidate courses/clubs (Delta) -> grounded certifications
- * (Gemini + Google Search) -> a structured semester plan (Gemini, JSON
- * schema) -> validated against the real catalog -> written to Lakebase in
- * one roadmap row + N node rows, all scoped to `userId`.
+ * profile -> candidate courses/clubs (Vector Search, Lakebase trigram
+ * fallback) in parallel with grounded certifications (Gemini + Google Search)
+ * -> a structured semester plan (Gemini, JSON schema) -> validated against
+ * the real catalog (Lakebase) -> written to Lakebase in one roadmap row + N
+ * node rows, all scoped to `userId`.
  *
  * Not covered by the unit suite past validatePlanNode/parseCertLines/
  * parsePlanResponse (it calls the real Gemini API, the real Databricks
@@ -126,6 +127,7 @@ export async function runRoadmapAgent(
 ): Promise<RoadmapAgentResult> {
   const { startAgentRun, finishAgentRun, getProfile } = await import("../student-profile");
   const { loadCourseCandidates, loadClubCandidates, courseCodesExist, clubNamesExist } = await import("../catalog");
+  const { queryIndex } = await import("../vector-search");
   const { gemini, MODEL_AGENT, FAST_CONFIG } = await import("../gemini");
   const { semestersFromTerm, seasonFromDate, parseSemesterLabel } = await import("../semesters");
   const { upsertRoadmap, deleteFutureNodes, addNode } = await import("../roadmaps");
@@ -147,37 +149,64 @@ export async function runRoadmapAgent(
       : { season: seasonFromDate(new Date()), year: new Date().getFullYear() };
     const targetSemesters = semestersFromTerm(from, profile.targetTerm);
 
-    const keywords = Array.from(
-      new Set(
-        [profile.major, ...profile.skills, ...profile.goal.split(/\s+/)]
-          .map((k) => k.trim())
-          .filter((k) => k.length > 2),
-      ),
-    );
-    // Courses are required (the roadmap plans from them). Clubs are one node
-    // kind and datasets/vt_clubs.csv is still Karthik's to deliver: a missing
-    // club catalog is NAMED in the step label and the plan runs without club
-    // nodes, instead of the whole roadmap throwing for every student
-    // (validation 2026-09-19: scout.core.vt_clubs absent → Promise.all rejected).
-    // Any other club error (env, warehouse) still throws verbatim.
-    const courses = await loadCourseCandidates({ keywords, limit: 200 });
-    let clubs: Awaited<ReturnType<typeof loadClubCandidates>> = [];
-    let clubsNotice: string | null = null;
-    try {
-      clubs = await loadClubCandidates({ keywords, limit: 100 });
-    } catch (error) {
-      if (!(error instanceof Error) || !error.message.startsWith("Club catalog not loaded")) throw error;
-      clubsNotice = error.message;
+    // Candidates (D-S5): ONE Vector Search query per index with the goal +
+    // major + skills text (vt_courses_index top 60, vt_clubs_index top 30).
+    // If the endpoint 429s past lib/vector-search.ts's retries (or any other
+    // VECTOR_SEARCH_API_ERROR), fall back to the Lakebase trigram catalog by
+    // keywords and NAME the fallback in the step label. Courses are required
+    // (the roadmap plans from them). Clubs are one node kind: on the fallback
+    // path a missing club catalog is NAMED in the step label and the plan runs
+    // without club nodes (validation 2026-09-19). Any other error throws verbatim.
+    const goalText = `Goal: ${profile.goal}
+Major: ${profile.major}
+Skills: ${profile.skills.join(", ")}`;
+    const isString = (v: unknown): v is string => typeof v === "string";
+    async function loadCandidates(): Promise<{
+      courses: Array<{ code: string; title: string }>;
+      clubs: Array<{ name: string; description: string }>;
+      clubsNotice: string | null;
+      source: string;
+    }> {
+      try {
+        const [courseRows, clubRows] = await Promise.all([
+          queryIndex({ name: "scout.core.vt_courses_index", text: goalText, columns: ["code", "title"], numResults: 60 }),
+          queryIndex({ name: "scout.core.vt_clubs_index", text: goalText, columns: ["name", "description"], numResults: 30 }),
+        ]);
+        return {
+          courses: courseRows.filter((r) => isString(r.code)).map((r) => ({ code: r.code as string, title: String(r.title ?? "") })),
+          clubs: clubRows.filter((r) => isString(r.name)).map((r) => ({ name: r.name as string, description: String(r.description ?? "") })),
+          clubsNotice: null,
+          source: "vector search",
+        };
+      } catch (error) {
+        if (!(error instanceof Error) || !error.message.startsWith("VECTOR_SEARCH_API_ERROR")) throw error;
+        const keywords = Array.from(
+          new Set([profile.major, ...profile.skills, ...profile.goal.split(/\s+/)].map((k) => k.trim()).filter((k) => k.length > 2)),
+        );
+        const courses = await loadCourseCandidates({ keywords, limit: 200 });
+        let clubs: Awaited<ReturnType<typeof loadClubCandidates>> = [];
+        let clubsNotice: string | null = null;
+        try {
+          clubs = await loadClubCandidates({ keywords, limit: 100 });
+        } catch (clubError) {
+          if (!(clubError instanceof Error) || !clubError.message.startsWith("Club catalog not loaded")) throw clubError;
+          clubsNotice = clubError.message;
+        }
+        return { courses, clubs, clubsNotice, source: `catalog keyword fallback, ${error.message.slice(0, 60)}` };
+      }
     }
+
+    const [{ courses, clubs, clubsNotice, source }, certs] = await Promise.all([
+      loadCandidates(),
+      findCertifications(gemini, MODEL_AGENT, profile.goal, profile.major),
+    ]);
     onStep({
       step: "catalog",
       label: clubsNotice
-        ? `${courses.length} candidate courses; ${clubsNotice}`
-        : `${courses.length} candidate courses, ${clubs.length} candidate clubs`,
+        ? `${courses.length} candidate courses (${source}); ${clubsNotice}`
+        : `${courses.length} candidate courses, ${clubs.length} candidate clubs (${source})`,
       count: courses.length + clubs.length,
     });
-
-    const certs = await findCertifications(gemini, MODEL_AGENT, profile.goal, profile.major);
     onStep({ step: "certifications", label: `${certs.length} certifications found`, count: certs.length });
 
     const plan = await planSemesters(gemini, MODEL_AGENT, { profile, targetSemesters, courses, clubs, certs, fast: FAST_CONFIG });
