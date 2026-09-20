@@ -32,12 +32,29 @@ export type SetupDefaults = {
   year: number | null;
 };
 
-const label = "font-label text-[11px] uppercase tracking-label text-text-dim";
+// D9: field labels are sentence-case, medium-weight body text in the mock
+// (`.field label{font-weight:500}`), not the uppercase mono micro-label the
+// rest of the app uses for eyebrows/nav -- that face stays reserved for the
+// progress card's "running" line below.
+const label = "font-sans text-sm font-medium text-text";
 const help = "font-sans text-xs text-text-dim";
 const inputClass =
   "min-h-11 w-full rounded-lg border border-hairline bg-bg px-3 font-sans text-sm text-text placeholder:text-text-dim focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage";
+const selectInputClass = `${inputClass} appearance-none pr-9`;
 const card = "flex flex-col gap-6 rounded-card bg-raised p-6 shadow-sm ring-1 ring-hairline";
-const heading = "font-display text-step-2 text-text";
+const heading = "font-label text-[11px] uppercase tracking-label text-text-dim";
+
+// The decorative "▾" the mock paints on every select-like field (D9). Purely
+// visual -- aria-hidden, positioned over a native input/select that already
+// carries its own accessible affordance -- so it never competes with the
+// real control's semantics.
+function SelectChevron() {
+  return (
+    <span aria-hidden className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-text-dim">
+      ▾
+    </span>
+  );
+}
 
 // Graduation terms a current student can plausibly name: this year through
 // six years out, derived from the clock, never a fixed chip list.
@@ -60,7 +77,7 @@ function Field({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-1.5">
       <label htmlFor={id} className={label}>
         {text}
       </label>
@@ -191,7 +208,7 @@ export function SetupForm({ defaults }: { defaults?: SetupDefaults }) {
       {phase !== "idle" && (
         <section className={card} aria-labelledby="progress-heading">
           <h2 id="progress-heading" className={heading}>
-            {phase === "failed" ? "Something stopped" : "Building your profile"}
+            {phase === "failed" ? "Something stopped" : "Running · every step shows a real count"}
           </h2>
           <LoadingSteps states={stepStates} />
           {phase === "failed" && (
@@ -200,75 +217,73 @@ export function SetupForm({ defaults }: { defaults?: SetupDefaults }) {
         </section>
       )}
 
-      {/* `hidden` (not unmount) so every value, including the chosen PDFs, survives an error (Law 15). */}
+      {/* `hidden` (not unmount) so every value, including the chosen PDFs, survives an error (Law 15).
+          D9/D10: one flat column (no per-section cards) matching the mock -- the progress card above
+          is the only card surface on this page, sharing its radius/padding with every other card in
+          the app. */}
       <form onSubmit={onSubmit} hidden={running} aria-busy={running} className="flex flex-col gap-6">
-        <section className={card} aria-labelledby="documents-heading">
-          <h2 id="documents-heading" className={heading}>
-            Your documents
-          </h2>
+        <div className="grid grid-cols-1 items-stretch gap-4 sm:grid-cols-2">
           <PdfDropZone id="resume" name="resume" label="Resume" what="resume PDF" help={HELP.resume} required error={fieldErrors.resume} />
-
-          <div className="flex flex-col gap-3">
-            {!typeCoursesInstead && (
-              <PdfDropZone
-                id="transcript"
-                name="transcript"
-                label="Unofficial transcript"
-                what="transcript PDF"
-                help={HELP.transcript}
-                required
-                error={fieldErrors.transcript}
-              />
-            )}
-            <label className="inline-flex min-h-11 items-center gap-3 font-sans text-sm text-text">
-              <input
-                type="checkbox"
-                checked={typeCoursesInstead}
-                onChange={(e) => setTypeCoursesInstead(e.target.checked)}
-                className="h-5 w-5 accent-sage"
-              />
-              Type my courses instead
-            </label>
-            {typeCoursesInstead && (
-              <Field id="typedCourses" label="Courses" help={HELP.typedCourses}>
-                <AutoTextarea
-                  id="typedCourses"
-                  name="typedCourses"
-                  rows={3}
-                  spellCheck
-                  placeholder="CS 3114 Data Structures and Algorithms, MATH 2114 Introduction to Linear Algebra"
-                  aria-describedby="typedCourses-help"
-                  aria-invalid={Boolean(fieldErrors.typedCourses)}
-                  className={`${inputClass} py-2`}
-                />
-                {fieldErrors.typedCourses && (
-                  <p role="alert" className="font-sans text-sm text-danger">
-                    {fieldErrors.typedCourses}
-                  </p>
-                )}
-              </Field>
-            )}
-          </div>
-        </section>
-
-        <section className={card} aria-labelledby="about-heading">
-          <h2 id="about-heading" className={heading}>
-            About you
-          </h2>
-
-          <Field id="major" label="Major" help={HELP.major}>
-            <input
-              id="major"
-              name="major"
-              list="major-options"
+          {!typeCoursesInstead ? (
+            <PdfDropZone
+              id="transcript"
+              name="transcript"
+              label="Unofficial transcript"
+              what="transcript PDF"
+              help={HELP.transcript}
               required
-              spellCheck
-              autoComplete="off"
-              defaultValue={defaults?.major}
-              placeholder="Computer Science Major"
-              aria-describedby="major-help"
-              className={inputClass}
+              error={fieldErrors.transcript}
             />
+          ) : (
+            <Field id="typedCourses" label="Courses" help={HELP.typedCourses}>
+              <AutoTextarea
+                id="typedCourses"
+                name="typedCourses"
+                rows={3}
+                spellCheck
+                placeholder="CS 3114 Data Structures and Algorithms, MATH 2114 Introduction to Linear Algebra"
+                aria-describedby="typedCourses-help"
+                aria-invalid={Boolean(fieldErrors.typedCourses)}
+                className={`${inputClass} flex-1 py-2`}
+              />
+              {fieldErrors.typedCourses && (
+                <p role="alert" className="font-sans text-sm text-danger">
+                  {fieldErrors.typedCourses}
+                </p>
+              )}
+            </Field>
+          )}
+        </div>
+        {/* D9: the mock folds this into the transcript help line as an inline link;
+            kept as its own accessible toggle (a real checkbox, sr-only) so the state
+            is announced, styled to read the same as that inline link. */}
+        <label className="inline-flex min-h-11 w-fit items-center gap-2 font-sans text-xs text-sage underline underline-offset-2 hover:no-underline has-[:focus-visible]:outline-none has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-sage has-[:focus-visible]:ring-offset-2 has-[:focus-visible]:ring-offset-bg">
+          <input
+            type="checkbox"
+            checked={typeCoursesInstead}
+            onChange={(e) => setTypeCoursesInstead(e.target.checked)}
+            className="sr-only"
+          />
+          {typeCoursesInstead ? "Upload a transcript instead" : "Or type your courses instead"}
+        </label>
+
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <Field id="major" label="Major" help={HELP.major}>
+            <div className="relative">
+              <input
+                id="major"
+                name="major"
+                list="major-options"
+                required
+                spellCheck
+                autoComplete="off"
+                defaultValue={defaults?.major}
+                placeholder="Computer Science Major"
+                aria-describedby="major-help"
+                className={selectInputClass}
+              />
+              <SelectChevron />
+            </div>
             <datalist id="major-options">
               {MAJORS.map((major) => (
                 <option key={major} value={major} />
@@ -277,64 +292,78 @@ export function SetupForm({ defaults }: { defaults?: SetupDefaults }) {
           </Field>
 
           <Field id="gradTerm" label="Graduation term" help={HELP.gradTerm}>
-            <input
-              id="gradTerm"
-              name="gradTerm"
-              list="grad-term-options"
-              required
-              spellCheck
-              autoComplete="off"
-              pattern="(Spring|Summer|Fall|Winter) \d{4}"
-              title="A season and a year, like Spring 2028"
-              defaultValue={defaults?.gradTerm}
-              placeholder="Spring 2028"
-              aria-describedby="gradTerm-help"
-              className={inputClass}
-            />
+            <div className="relative">
+              <input
+                id="gradTerm"
+                name="gradTerm"
+                list="grad-term-options"
+                required
+                spellCheck
+                autoComplete="off"
+                pattern="(Spring|Summer|Fall|Winter) \d{4}"
+                title="A season and a year, like Spring 2028"
+                defaultValue={defaults?.gradTerm}
+                placeholder="Spring 2028"
+                aria-describedby="gradTerm-help"
+                className={selectInputClass}
+              />
+              <SelectChevron />
+            </div>
             <datalist id="grad-term-options">
               {GRAD_TERMS.map((term) => (
                 <option key={term} value={term} />
               ))}
             </datalist>
           </Field>
+        </div>
 
-          <Field id="workAuthorization" label="Work authorization" help={workAuthOption?.help ?? HELP.workAuthorization}>
-            <select
-              id="workAuthorization"
-              name="workAuthorization"
-              required
-              value={workAuth}
-              onChange={(e) => setWorkAuth(e.target.value)}
-              aria-describedby="workAuthorization-help"
-              className={inputClass}
-            >
-              <option value="" disabled>
-                Choose your status
+        <Field id="workAuthorization" label="Work authorization" help={workAuthOption?.help ?? HELP.workAuthorization}>
+          <select
+            id="workAuthorization"
+            name="workAuthorization"
+            required
+            value={workAuth}
+            onChange={(e) => setWorkAuth(e.target.value)}
+            aria-describedby="workAuthorization-help"
+            className={inputClass}
+          >
+            <option value="" disabled>
+              Choose your status
+            </option>
+            {WORK_AUTH.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
               </option>
-              {WORK_AUTH.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </Field>
+            ))}
+          </select>
+        </Field>
 
-          <div className="flex flex-col gap-2">
-            <span id="skills-label" className={label}>
-              Skills
-            </span>
-            <SkillsTypeahead name="skills" describedBy="skills-help" />
-            <p id="skills-help" className={help}>
-              {HELP.skills}
-            </p>
-          </div>
-        </section>
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="goal" className={label}>
+            Your goal, in a sentence or a paragraph
+          </label>
+          <AutoTextarea
+            id="goal"
+            name="goal"
+            rows={3}
+            required
+            spellCheck
+            maxLength={GOAL_MAX}
+            value={goal}
+            onChange={(e) => setGoal(e.target.value)}
+            placeholder="A backend software engineering internship at a company that ships to millions, where I can learn distributed systems."
+            aria-describedby="goal-help goal-count"
+            className={`${inputClass} py-2`}
+          />
+          <span id="goal-count" className={`self-end font-sans text-xs tabular-nums ${goal.length >= GOAL_MAX ? "text-danger" : "text-text-dim"}`}>
+            {goal.length} / {GOAL_MAX}
+          </span>
+          <p id="goal-help" className={help}>
+            {HELP.goal}
+          </p>
+        </div>
 
-        <section className={card} aria-labelledby="search-heading">
-          <h2 id="search-heading" className={heading}>
-            Your search
-          </h2>
-
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <ChipToggleGroup
             legend="Role types"
             help={HELP.roleTypes}
@@ -344,81 +373,6 @@ export function SetupForm({ defaults }: { defaults?: SetupDefaults }) {
             error={fieldErrors.roleTypes}
           />
 
-          <fieldset className="flex flex-col gap-2">
-            <legend className={label}>Target term</legend>
-            <div className="flex gap-3">
-              <div className="flex flex-1 flex-col gap-2">
-                <label htmlFor="season" className="font-sans text-xs text-text-dim">
-                  Season
-                </label>
-                <select
-                  id="season"
-                  name="season"
-                  required
-                  defaultValue={defaults?.season ?? ""}
-                  aria-describedby="targetTerm-help"
-                  className={inputClass}
-                >
-                  <option value="" disabled>
-                    Choose a season
-                  </option>
-                  {SEASONS.map((season) => (
-                    <option key={season} value={season}>
-                      {season}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="flex flex-1 flex-col gap-2">
-                <label htmlFor="year" className="font-sans text-xs text-text-dim">
-                  Year
-                </label>
-                <input
-                  id="year"
-                  name="year"
-                  type="number"
-                  required
-                  min={THIS_YEAR}
-                  max={THIS_YEAR + 9}
-                  defaultValue={defaults?.year ?? undefined}
-                  placeholder={String(THIS_YEAR + 1)}
-                  aria-describedby="targetTerm-help"
-                  className={inputClass}
-                />
-              </div>
-            </div>
-            <p id="targetTerm-help" className={help}>
-              {HELP.targetTerm}
-            </p>
-          </fieldset>
-
-          <div className="flex flex-col gap-2">
-            <label htmlFor="goal" className={label}>
-              Your goal
-            </label>
-            <AutoTextarea
-              id="goal"
-              name="goal"
-              rows={3}
-              required
-              spellCheck
-              maxLength={GOAL_MAX}
-              value={goal}
-              onChange={(e) => setGoal(e.target.value)}
-              placeholder="A backend software engineering internship at a company that ships to millions, where I can learn distributed systems."
-              aria-describedby="goal-help goal-count"
-              className={`${inputClass} py-2`}
-            />
-            <div className="flex items-start justify-between gap-3">
-              <p id="goal-help" className={help}>
-                {HELP.goal}
-              </p>
-              <span id="goal-count" className={`shrink-0 font-sans text-xs tabular-nums ${goal.length >= GOAL_MAX ? "text-danger" : "text-text-dim"}`}>
-                {goal.length} / {GOAL_MAX}
-              </span>
-            </div>
-          </div>
-
           <ChipToggleGroup
             legend="Dream tier"
             help={HELP.dreamTier}
@@ -427,7 +381,65 @@ export function SetupForm({ defaults }: { defaults?: SetupDefaults }) {
             onToggle={(v) => toggle(dreamTier, setDreamTier, v)}
             error={fieldErrors.dreamTier}
           />
-        </section>
+        </div>
+
+        <fieldset className="flex flex-col gap-2">
+          <legend className={label}>Target term</legend>
+          <div className="flex gap-3">
+            <div className="flex flex-1 flex-col gap-1.5">
+              <label htmlFor="season" className="font-sans text-xs text-text-dim">
+                Season
+              </label>
+              <select
+                id="season"
+                name="season"
+                required
+                defaultValue={defaults?.season ?? ""}
+                aria-describedby="targetTerm-help"
+                className={inputClass}
+              >
+                <option value="" disabled>
+                  Choose a season
+                </option>
+                {SEASONS.map((season) => (
+                  <option key={season} value={season}>
+                    {season}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="flex flex-1 flex-col gap-1.5">
+              <label htmlFor="year" className="font-sans text-xs text-text-dim">
+                Year
+              </label>
+              <input
+                id="year"
+                name="year"
+                type="number"
+                required
+                min={THIS_YEAR}
+                max={THIS_YEAR + 9}
+                defaultValue={defaults?.year ?? undefined}
+                placeholder={String(THIS_YEAR + 1)}
+                aria-describedby="targetTerm-help"
+                className={inputClass}
+              />
+            </div>
+          </div>
+          <p id="targetTerm-help" className={help}>
+            {HELP.targetTerm}
+          </p>
+        </fieldset>
+
+        <div className="flex flex-col gap-1.5">
+          <span id="skills-label" className={label}>
+            Skills
+          </span>
+          <SkillsTypeahead name="skills" describedBy="skills-help" />
+          <p id="skills-help" className={help}>
+            {HELP.skills}
+          </p>
+        </div>
 
         {error && (
           <p role="alert" className="font-sans text-sm text-danger">
@@ -436,13 +448,16 @@ export function SetupForm({ defaults }: { defaults?: SetupDefaults }) {
         )}
 
         {/* The only primary action on the page (Law 7), right after the last input (Law 8). */}
-        <button
-          type="submit"
-          disabled={running}
-          className="inline-flex min-h-12 items-center justify-center self-start rounded-pill bg-sage px-6 font-sans text-sm font-medium text-bg hover:opacity-90 disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
-        >
-          {defaults ? "Rebuild my profile" : "Build my profile"}
-        </button>
+        <div className="flex flex-wrap items-center justify-between gap-4 border-t border-hairline pt-6">
+          <p className={help}>Re-running replaces your profile, re-ranks your feed and rebuilds your roadmap.</p>
+          <button
+            type="submit"
+            disabled={running}
+            className="inline-flex min-h-12 items-center justify-center rounded-pill bg-sage px-6 font-sans text-sm font-medium text-bg hover:opacity-90 disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
+          >
+            {defaults ? "Rebuild my profile" : "Build my profile"}
+          </button>
+        </div>
       </form>
     </div>
   );

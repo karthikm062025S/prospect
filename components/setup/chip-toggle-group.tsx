@@ -23,8 +23,8 @@ export function ChipToggleGroup({
 }) {
   const id = legend.toLowerCase().replace(/[^a-z0-9]+/g, "-");
   return (
-    <fieldset className="flex flex-col gap-2" aria-describedby={error ? `${id}-help ${id}-error` : `${id}-help`}>
-      <legend className="font-label text-[11px] uppercase tracking-label text-text-dim">{legend}</legend>
+    <fieldset className="flex flex-col gap-1.5" aria-describedby={error ? `${id}-help ${id}-error` : `${id}-help`}>
+      <legend className="font-sans text-sm font-medium text-text">{legend}</legend>
       <div className="flex flex-wrap gap-2" role="group" aria-label={legend}>
         {options.map((option) => {
           const isSelected = selected.includes(option);
@@ -34,10 +34,10 @@ export function ChipToggleGroup({
               type="button"
               aria-pressed={isSelected}
               onClick={() => onToggle(option)}
-              className={`inline-flex min-h-11 items-center rounded-pill border px-4 font-sans text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage focus-visible:ring-offset-2 focus-visible:ring-offset-raised ${
+              className={`inline-flex min-h-11 items-center rounded-pill border px-4 font-sans text-sm font-medium capitalize focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage focus-visible:ring-offset-2 focus-visible:ring-offset-raised ${
                 isSelected
-                  ? "border-transparent bg-sage text-bg"
-                  : "border-text-dim bg-bg text-text hover:border-sage"
+                  ? "border-transparent bg-sage/10 text-sage"
+                  : "border-hairline bg-bg text-text hover:border-sage"
               }`}
             >
               {option}

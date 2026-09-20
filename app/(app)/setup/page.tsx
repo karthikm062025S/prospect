@@ -26,12 +26,16 @@ export default async function SetupPage() {
     : undefined;
 
   return (
-    <div className="mx-auto flex w-full max-w-2xl flex-col gap-6 py-4">
-      <header className="flex flex-col gap-3 border-b border-hairline pb-3">
-        <h1 className="font-display text-step-3 text-text">{existing ? "Edit your profile" : "Build your profile"}</h1>
-        <p className="font-sans text-sm text-text-dim">
+    <div className="mx-auto flex w-full max-w-[760px] flex-col gap-6 py-6">
+      <header className="flex flex-col gap-3">
+        <div className="flex items-center gap-2 font-label text-[11px] uppercase tracking-label text-text-dim">
+          <span aria-hidden className="h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />
+          Step 1 of 1 · about 20 seconds
+        </div>
+        <h1 className="font-display text-step-5 text-text">{existing ? "Edit your profile." : "Build your profile."}</h1>
+        <p className="max-w-[60ch] font-sans text-sm text-text-dim">
           Upload your resume and unofficial transcript, or type your courses instead. Four agents then read them,
-          rank the live feed for you and plan your roadmap. Usually under a minute.
+          rank the live feed for you and plan your roadmap.
         </p>
         {existing && (
           <p className="font-sans text-sm text-text">
