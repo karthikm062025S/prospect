@@ -1,6 +1,8 @@
 // Server-rendered: page.tsx already resolved the nudges read (one direct
 // query() select scoped by user_id -- L4 owns lib/nudges.ts and the table
 // itself, this component only displays what page.tsx handed it).
+import { Rise } from "@/components/motion/rise";
+
 export interface NudgeRow {
   id: string;
   kind: string;
@@ -18,16 +20,22 @@ export function NudgesStrip({ nudges }: { nudges: NudgeRow[] | null }) {
     return <p className="text-[13px] text-text-dim">No nudges yet.</p>;
   }
   return (
-    <ul className="flex flex-col gap-3" aria-label="Nudges">
-      {nudges.map((nudge) => (
-        <li
+    // mock journey.html .nudges: a horizontal strip (its OWN scroller, never
+    // the page's -- D10 no horizontal scroll at 390) of fixed-width cards.
+    <ul className="-mx-1 flex gap-3 overflow-x-auto px-1 pb-1" aria-label="Nudges">
+      {nudges.map((nudge, index) => (
+        <Rise
+          as="li"
           key={nudge.id}
-          className="flex flex-col gap-1 rounded-card border border-hairline bg-raised p-4"
+          index={index}
+          className="flex w-[320px] shrink-0 items-center gap-3 rounded-card border border-hairline bg-raised p-4"
         >
-          <span className="font-label text-[11px] uppercase tracking-label text-text-dim">{nudge.kind}</span>
-          <span className="text-[15px] font-medium text-text">{nudge.title}</span>
-          <span className="text-[13px] text-text-dim">{nudge.body}</span>
-        </li>
+          <span className="h-2 w-2 shrink-0 rounded-full bg-accent" aria-hidden />
+          <span className="flex min-w-0 flex-col gap-0.5">
+            <span className="text-[15px] font-medium leading-snug text-text">{nudge.title}</span>
+            <span className="text-[13px] leading-snug text-text-dim">{nudge.body}</span>
+          </span>
+        </Rise>
       ))}
     </ul>
   );

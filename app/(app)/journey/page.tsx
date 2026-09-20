@@ -192,10 +192,42 @@ export default async function JourneyPage() {
   const nowMs = getNowMs(); // Date.now() kept out of the component body (react-hooks/purity)
   const [nudges, feedRows] = await Promise.all([loadNudges(userId), loadCompactFeed(nowMs, userId)]);
   const targetTerm = `${profile.profile.targetTerm.season} ${profile.profile.targetTerm.year}`;
+  // Real progress, not a mock number: counted from the nodes this caller's
+  // roadmap already has.
+  const doneCount = nodes.filter((node) => node.status === "done").length;
+  const totalCount = nodes.length;
 
   return (
-    <div className="flex flex-col gap-6 py-4">
-      <h1 className="sr-only">Journey</h1>
+    // D10 (build/MISSION.md): the board fills the 1280 container the rest of
+    // the app uses (max-w-page, same token as the landing sections).
+    <div className="mx-auto flex w-full max-w-page flex-col gap-6 py-4">
+      {roadmap ? (
+        <div className="flex flex-col gap-2">
+          <p className="flex items-center gap-2 font-label text-[11px] uppercase tracking-label text-text-dim">
+            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-accent" aria-hidden />
+            Goal &middot; {roadmap.goal ? `${roadmap.goal}, ` : ""}
+            {targetTerm}
+          </p>
+          <div className="flex flex-wrap items-end justify-between gap-4">
+            <h1 className="font-display text-step-5 text-text">Build your journey.</h1>
+            {totalCount > 0 ? (
+              <div className="flex min-w-[220px] items-center gap-3 pb-1">
+                <span className="shrink-0 font-label text-[11px] uppercase tracking-label text-text-dim">
+                  {doneCount} of {totalCount} done
+                </span>
+                <span className="h-1.5 flex-1 overflow-hidden rounded-pill bg-hairline">
+                  <span
+                    className="block h-full rounded-pill bg-accent"
+                    style={{ width: `${totalCount ? Math.round((doneCount / totalCount) * 100) : 0}%` }}
+                  />
+                </span>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      ) : (
+        <h1 className="sr-only">Journey</h1>
+      )}
       <NudgesStrip nudges={nudges} />
       {/* Baseline defect 2: every column here is `min-w-0`. A grid item
           defaults to min-width:auto, so the roadmap's own horizontal scroller
@@ -206,10 +238,7 @@ export default async function JourneyPage() {
         <RoadmapBoard roadmap={roadmap} nodes={nodes} targetTerm={targetTerm} />
         {/* Sticky on desktop with its own scroll, so the feed stays beside the
             roadmap however long the timeline gets (Karthik, judge test 18:20). */}
-        <div className="flex min-w-0 flex-col gap-3 lg:sticky lg:top-20 lg:max-h-[calc(100dvh-6rem)] lg:overflow-y-auto">
-          <h2 className="font-label text-[11px] uppercase tracking-label text-text-dim">
-            {feedRows?.some((r) => r.matchScore != null) ? "Ranked for you" : "Live feed"}
-          </h2>
+        <div className="min-w-0 lg:sticky lg:top-20 lg:max-h-[calc(100dvh-6rem)] lg:overflow-y-auto">
           <CompactFeed rows={feedRows} nowMs={nowMs} />
         </div>
       </div>
