@@ -97,7 +97,11 @@ export function LandingNav({ signedIn = false }: { signedIn?: boolean }) {
             scrolled ? "bg-raised" : "bg-raised/80 backdrop-blur"
           }`}
         >
-          <Logo href="#hero" className="px-2 text-step-0" size={28} />
+          {/* D10 (Karthik): same rendered height as the app tab bar's Logo,
+              so the wordmark reads consistently across both navs -- Logo's
+              own Wordmark wrapper (components/logo.tsx) now fixes that
+              height, so no size prop is needed here. */}
+          <Logo href="#hero" className="px-2" />
 
           <div className="ml-2 hidden items-center gap-0.5 lg:flex">
             {LINKS.map((link) => (
@@ -215,7 +219,7 @@ export function LandingNav({ signedIn = false }: { signedIn?: boolean }) {
           className="m-0 w-full max-w-none rounded-none border-b border-hairline bg-raised p-4 text-text backdrop:bg-black/55"
         >
           <div className="flex items-center justify-between">
-            <Logo href="#hero" size={20} />
+            <Logo href="#hero" />
             <button
               type="button"
               onClick={closeSheet}
