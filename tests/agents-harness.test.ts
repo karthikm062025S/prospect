@@ -122,6 +122,16 @@ test("a second RECITATION block is the named error, never a third call", async (
   assert.equal(generate.calls.length, 2);
 });
 
+test("a MAX_TOKENS overflow is retried once with thinking off and a brevity nudge, then decoded", async () => {
+  const generate = fakeModel('{"n":3}', { finishReasons: ["MAX_TOKENS", "STOP"] });
+  const value = await callModel({ ...base, label: "match.target", schema: z.object({ n: z.number() }), responseSchema: { type: "OBJECT" } }, generate);
+  assert.deepEqual(value, { n: 3 });
+  assert.equal(generate.calls.length, 2);
+  assert.equal(generate.calls[0].config!.thinkingConfig, undefined);
+  assert.deepEqual(generate.calls[1].config!.thinkingConfig, { thinkingBudget: 0 });
+  assert.match(String(generate.calls[1].config!.systemInstruction), /under 60 words/);
+});
+
 test("an injected typed-course document is framed as data and its instruction never reaches the output", async () => {
   // The fake model "obeys" the injection AND returns a course; the harness must keep only the schema.
   const generate = fakeModel(`[{"code":"CS3114","title":"Data Structures","admin":true}]`);

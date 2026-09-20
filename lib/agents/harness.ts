@@ -51,12 +51,29 @@ export function modelCaller(generate: GenerateFn): ModelCaller {
   return (input) => callModel(input, generate);
 }
 
+// Measured on the deployed build 2026-09-20: match.target with automatic thinking ran into
+// finishReason=MAX_TOKENS at 24,778 chars, the model looping inside a provisional archetype's
+// "definition". Thoughts count against maxOutputTokens, so the ONE retry turns thinking off
+// and asks for brevity; a second overflow is the named AGENT_OUTPUT_INVALID error.
+export const BREVITY_NUDGE =
+  "Keep every string field under 60 words. Never repeat a sentence. Return the JSON object and stop.";
+
 export async function callModel<T>(input: CallModelInput<T>, generate: GenerateFn): Promise<T> {
   const first = await generateOnce(input, generate);
-  if (first.finishReason !== "RECITATION") return decode(input, first);
-  console.log(`[agent] ${input.label} finishReason=RECITATION, retrying once with a paraphrase nudge`);
-  const second = await generateOnce({ ...input, systemInstruction: `${input.systemInstruction}\n\n${PARAPHRASE_NUDGE}` }, generate);
-  return decode(input, second);
+  if (first.finishReason === "RECITATION") {
+    console.log(`[agent] ${input.label} finishReason=RECITATION, retrying once with a paraphrase nudge`);
+    const second = await generateOnce({ ...input, systemInstruction: `${input.systemInstruction}\n\n${PARAPHRASE_NUDGE}` }, generate);
+    return decode(input, second);
+  }
+  if (first.finishReason === "MAX_TOKENS") {
+    console.log(`[agent] ${input.label} finishReason=MAX_TOKENS (${first.text.length} chars), retrying once with thinking off`);
+    const second = await generateOnce(
+      { ...input, thinking: { thinkingBudget: 0 }, systemInstruction: `${input.systemInstruction}\n\n${BREVITY_NUDGE}` },
+      generate,
+    );
+    return decode(input, second);
+  }
+  return decode(input, first);
 }
 
 type ModelText = { text: string; finishReason: string };
