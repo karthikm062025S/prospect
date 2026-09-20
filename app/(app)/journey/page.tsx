@@ -119,8 +119,10 @@ async function loadCompactFeed(nowMs: number, userId: string): Promise<HomeRow[]
     href: safeHttpUrl(role.link) ?? null,
     source: role.source,
     season: role.season && role.season !== "unspecified" ? role.season : deriveSeason(role.title),
-    families: role.families ?? familySignals(role.title),
-    family: role.families?.[0] ?? deriveFamily(role.title),
+    // VTHacks speed pass D7: ALWAYS derive from the title (never trust the
+    // old tech-only taxonomy's stored family/families columns).
+    families: familySignals(role.title),
+    family: deriveFamily(role.title),
     apply_clicked_at: null,
     company_tier: role.company_tier,
     company_url: role.company_url,

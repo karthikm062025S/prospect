@@ -72,7 +72,20 @@ const LLM_TIMEOUT_MS = 10_000;
 
 // Exhaustive by construction: tsc rejects a missing or extra key, so these
 // stay in step with the Family/Season unions without a runtime import.
-const FAMILY_KEYS: Record<Family, true> = { swe: true, ai_ml: true, data: true, quant: true, product: true, security: true, hardware: true, design: true, other: true };
+const FAMILY_KEYS: Record<Family, true> = {
+  engineering: true,
+  software: true,
+  data_ai: true,
+  business_finance: true,
+  consulting: true,
+  sales_marketing: true,
+  product_design: true,
+  health_science: true,
+  operations_supply: true,
+  people_legal: true,
+  education_research: true,
+  other: true,
+};
 const SEASON_KEYS: Record<Season, true> = { summer_2027: true, fall_2027: true, spring_2028: true, summer_2028: true, coop: true, unspecified: true };
 const FAMILIES = Object.keys(FAMILY_KEYS) as [Family, ...Family[]];
 const SEASONS = Object.keys(SEASON_KEYS) as [Season, ...Season[]];
@@ -87,18 +100,21 @@ const ModelOutput = z.object({
 // DeepSeek json mode (docs, verified 2026-09-15): the word "json" must appear
 // in the prompt together with an example of the shape.
 export const SYSTEM_PROMPT = [
-  "You classify US internship postings for a student tracker. Return only a json object with exactly this shape:",
-  '{"is_internship": true, "families": ["swe"], "season": "summer_2027", "confidence": 0.9}',
+  "You classify US job/internship postings for a student tracker covering every major, not just tech. Return only a json object with exactly this shape:",
+  '{"is_internship": true, "families": ["software"], "season": "summer_2027", "confidence": 0.9}',
   "",
   "families: every family that fits, most specific first. Allowed values:",
-  "swe = software, backend, frontend, platform, devops, QA",
-  "ai_ml = machine learning, AI, applied science, research science",
-  "data = data science, analytics, BI, analyst",
-  "quant = quantitative research or trading",
-  "product = product management, TPM, program management",
-  "security = security, cyber, appsec",
-  "hardware = firmware, embedded, robotics, FPGA",
-  "design = UX, UI",
+  "engineering = mechanical, electrical, civil, chemical, aerospace, industrial, materials, biomedical, manufacturing",
+  "software = software, SWE/SDE, developer, devops, SRE, IT support, systems admin, cloud, network, QA, security/cyber",
+  "data_ai = data science/engineering/analytics, BI, machine learning, AI, research science, quant",
+  "business_finance = finance, accounting, audit, tax, banking, investment, treasury, actuarial, economist",
+  "consulting = consultant, consulting, advisory, strategy, transformation, management analyst",
+  "sales_marketing = sales, account executive/manager, business development, marketing, brand, growth, customer success",
+  "product_design = product/program/project manager, UX/UI, designer, graphic, industrial design, architect",
+  "health_science = nurse, clinical, pharmacy, biology, chemistry, lab, research associate, physician, therapist, veterinary",
+  "operations_supply = operations, supply chain, logistics, procurement, sourcing, planner, warehouse, manufacturing associate, quality",
+  "people_legal = HR, recruiting, talent, legal, compliance, paralegal, policy, government affairs",
+  "education_research = teacher, instructor, tutor, education, researcher, postdoc, fellowship",
   "other = none of these",
   "",
   "season: the term the posting states. Allowed values:",

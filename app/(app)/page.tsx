@@ -149,10 +149,11 @@ export default async function HomePage() {
     // when it is MORE specific than the title (it can come from posting text,
     // which the title-only call cannot see).
     season: role.season && role.season !== "unspecified" ? role.season : deriveSeason(role.title),
-    // Task 2 / D4: trust a stored multi-family classification when the
-    // scanner wrote one, else derive from the title exactly like season does.
-    families: role.families ?? familySignals(role.title),
-    family: role.families?.[0] ?? deriveFamily(role.title),
+    // VTHacks speed pass D7: ALWAYS derive from the title — roles.families/
+    // roles.family were written by the OLD tech-only taxonomy scanner and are
+    // never trusted here any more.
+    families: familySignals(role.title),
+    family: deriveFamily(role.title),
     apply_clicked_at: role.apply_clicked_at,
     // Task 3 T2/T3 (lane L2): derived at read time, never stored.
     liveness: liveness(role, now).label,

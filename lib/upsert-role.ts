@@ -1,6 +1,5 @@
 import type { QueryFn } from "./db";
 import type { Season } from "./season";
-import type { Family } from "./family";
 
 // Ingest-time title gate. Until 2026-09-19 this was the CS-intern-only rule
 // (INTERN + INCLUDE/EXCLUDE/STRONG_TECH, a copy of scripts/scan.mjs); addendum 2
@@ -75,7 +74,14 @@ export function ingestSeason(title: string, text?: string | null): Season {
   return classifySeason(text ?? "");
 }
 
-export function ingestFamily(title: string): Family {
+// VTHacks speed pass (2026-09-20): lib/family.ts's Family union moved to the
+// all-majors taxonomy; this ingest-time duplicate still writes the OLD
+// 9-bucket taxonomy strings (untouched below) because the read side
+// (app/(app)/page.tsx, app/(app)/journey/page.tsx) now ALWAYS derives family
+// from the title and never trusts this stored column (MISSION D7) — so the
+// return type is a plain string, not the app's Family union, rather than
+// rewriting the scanner's classifier in this same lane.
+export function ingestFamily(title: string): string {
   if (!title) return "other";
   if (/\bquant/i.test(title)) return "quant";
   if (
