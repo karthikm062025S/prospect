@@ -8,21 +8,22 @@ export default function TermsPage() {
     <main className="mx-auto flex min-h-screen max-w-[68ch] flex-col gap-10 px-6 py-16">
       <div className="flex flex-col gap-2">
         <p className="font-label text-[11px] uppercase tracking-label text-text-dim">
-          Effective 2026-09-02
+          Effective 2026-09-19
         </p>
         <h1 className="font-display text-step-4 leading-display tracking-display text-text">Terms</h1>
         <p className="text-text-dim">
-          Prospect is operated by its maker, working solo. This page explains, in plain language,
-          the terms of using it. It isn&apos;t legal advice.
+          Prospect is a student project, not an official Virginia Tech service. This page explains,
+          in plain language, the terms of using it. It isn&apos;t legal advice.
         </p>
       </div>
 
       <section className="flex flex-col gap-3">
-        <h2 className="font-label text-[11px] uppercase tracking-label text-text">This is an MVP</h2>
+        <h2 className="font-label text-[11px] uppercase tracking-label text-text">This is a student project</h2>
         <p className="text-text-dim">
-          Prospect is provided as-is, still early, and can change or break. There&apos;s no guarantee
-          that every posting in the feed is current or accurate. Always verify a listing on the
-          employer&apos;s own site before relying on it.
+          Prospect was built by students at VTHacks 14. It&apos;s provided as-is, with no warranty,
+          and can change or break. There&apos;s no guarantee that every posting in the feed is
+          current or accurate. Always verify a listing on the employer&apos;s own site before
+          relying on it.
         </p>
       </section>
 
