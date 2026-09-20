@@ -65,7 +65,7 @@ export function CorrectionControl({
           if (next === SHARED_OPTION) onUncorrect(field);
           else onCorrect(field, next);
         }}
-        className="min-h-11 border border-hairline bg-raised px-2 font-sans text-sm text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage disabled:cursor-not-allowed disabled:opacity-60"
+        className="min-h-11 rounded-pill border border-hairline bg-raised px-3 font-sans text-sm text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage disabled:cursor-not-allowed disabled:opacity-60"
       >
         <option value={SHARED_OPTION}>Shared label</option>
         {options.map((opt) => (

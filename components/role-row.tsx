@@ -12,7 +12,7 @@ import { armApplyIntentAction, applyNotYetAction } from "@/app/actions";
 import { applyControlState, type ApplyControl } from "@/lib/apply-intent";
 import { relativeDay } from "@/lib/sort";
 import type { RoleLifecycle } from "@/lib/types";
-import type { Season } from "@/lib/season";
+import { SEASON_LABEL, type Season } from "@/lib/season";
 import type { Family } from "@/lib/family";
 import type { CorrectionField, SharedLabels } from "@/lib/corrections";
 import { VISA_LABELS } from "@/components/correction-control";
@@ -178,10 +178,18 @@ export function absoluteDateTime(iso: string | null): string {
 export const actionButton =
   "inline-flex min-h-11 items-center gap-1 px-2 font-label text-[11px] tracking-label uppercase text-sage hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage focus-visible:ring-offset-2 focus-visible:ring-offset-bg";
 
+// D10 (Lane handoffs 2026-09-20): the "lg pill h48" token -- the ONE filled
+// Apply pill, maroon fill, same shape/height as role-detail-pane.tsx's Apply
+// (both restyled together so the same control is never two sizes/colors in
+// two places).
+export const applyPillCls =
+  "inline-flex h-12 items-center gap-1.5 rounded-pill bg-sage px-5 font-sans text-sm font-medium text-bg hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage focus-visible:ring-offset-2 focus-visible:ring-offset-bg";
+
 // L8 audit item 2: background tint (not just opacity/color) on hover, plus a
 // visible focus-visible ring — matches the row's own hover:bg-raised below.
+// D10: circular (rounded-pill) to match the mock's round icon buttons.
 const iconButtonBase =
-  "min-h-11 min-w-11 items-center justify-center rounded-sm text-text-dim hover:bg-raised focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage";
+  "min-h-11 min-w-11 items-center justify-center rounded-pill text-text-dim hover:bg-bg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage";
 
 export type ApplyMode = "armed" | "already";
 
@@ -359,8 +367,11 @@ function RoleRowBase({
           stacking an entrance transform on the same element fought both. */}
       <Rise as="div" index={riseIndex ?? 0} className="overflow-hidden">
         <div
+          // D10 (Lane handoffs 2026-09-20): rows now sit inside a bg-raised
+          // list card (home-list.tsx), so active/hover use bg-bg for contrast
+          // instead of the (now identical) bg-raised.
           className={`flex flex-wrap items-center gap-x-2 border-l-2 pr-2 ${
-            active ? "border-sage bg-raised" : "border-transparent hover:bg-raised"
+            active ? "border-sage bg-bg" : "border-transparent hover:bg-bg"
           }`}
           style={morphing ? { viewTransitionName: "role-card" } : undefined}
         >
@@ -389,6 +400,21 @@ function RoleRowBase({
             <span title={decodeEntities(row.title)} className="min-w-0 line-clamp-2 text-[15px] font-medium text-text">
               {decodeEntities(row.title)}
             </span>
+            {/* D10/mock: a status chip beside the title -- the row's real
+                liveness label (information, not alarm: text-dim, never red,
+                D28: posted/added/liveness are never conflated), never a
+                fabricated Live/Stale binary this data doesn't support. */}
+            <span className="inline-flex h-[26px] shrink-0 items-center rounded-pill border border-hairline px-2.5 font-label text-[11px] tracking-label uppercase text-text-dim">
+              {row.liveness}
+            </span>
+            {row.repost_count > 0 ? (
+              // House chip precedent (components/stale-badge.tsx): hairline
+              // border, font-label, text-dim, digits split into a
+              // font-sans tabular-nums span (Departure Mono digits misread).
+              <span className="inline-flex h-[26px] shrink-0 items-center gap-1 rounded-pill border border-hairline px-2.5 font-label text-[11px] tracking-label uppercase text-text-dim">
+                reposted <span className="font-sans tabular-nums">{row.repost_count}</span>x
+              </span>
+            ) : null}
           </button>
 
           <span
@@ -400,34 +426,14 @@ function RoleRowBase({
           >
             {flow.state === "idle" ? (
               <>
-                {/* Task 3 T2/FR-003 (lane L5): liveness, information not alarm
-                    (text-dim, never red). Sits beside "Added" — a distinct
-                    signal (D28: posted/added/liveness are never conflated). */}
-                <span className="font-label text-[11px] tracking-label uppercase text-text-dim">
-                  {row.liveness}
-                </span>
-                {row.repost_count > 0 ? (
-                  // House chip precedent (components/stale-badge.tsx): hairline
-                  // border, font-label, text-dim, digits split into a
-                  // font-sans tabular-nums span (Departure Mono digits misread).
-                  <span className="inline-flex items-center gap-1 border border-hairline px-1.5 py-0.5 font-label text-[11px] tracking-label uppercase text-text-dim">
-                    reposted <span className="font-sans tabular-nums">{row.repost_count}</span>x
-                  </span>
-                ) : null}
-                <span
-                  title={`Added ${absoluteDateTime(row.created_at)}`}
-                  className="font-label text-[11px] tracking-label uppercase text-text-dim"
-                >
-                  {relativeDayLabel(addedLabel(relativeDay(row.created_at, nowMs)))}
-                </span>
                 {row.href ? (
-                  <a href={row.href} target="_blank" rel="noreferrer" onClick={flow.arm} className={actionButton}>
+                  <a href={row.href} target="_blank" rel="noreferrer" onClick={flow.arm} className={applyPillCls}>
                     Apply <ArrowSquareOutIcon />
                   </a>
                 ) : (
                   // No safe posting link — arm the confirmation anyway; he
                   // finds the posting himself but the record still happens.
-                  <button type="button" onClick={flow.arm} className={actionButton}>
+                  <button type="button" onClick={flow.arm} className={applyPillCls}>
                     Apply
                   </button>
                 )}
@@ -480,6 +486,23 @@ function RoleRowBase({
           </span>
         </div>
 
+        {/* D10/mock: the meta line -- season, location, when it was added.
+            Company name is not repeated here: showCompany already put it in
+            the row above, and CompanyGroup's own header names it otherwise. */}
+        <p className="flex flex-wrap items-center gap-x-1.5 pb-3 pl-4 text-[13px] text-text-dim">
+          <span>{SEASON_LABEL[row.season]}</span>
+          {row.location ? (
+            <>
+              <span aria-hidden="true">&middot;</span>
+              <span>{row.location}</span>
+            </>
+          ) : null}
+          <span aria-hidden="true">&middot;</span>
+          <span title={`Added ${absoluteDateTime(row.created_at)}`}>
+            {relativeDayLabel(addedLabel(relativeDay(row.created_at, nowMs)))}
+          </span>
+        </p>
+
         {row.visa_class ? (
           // FR-007 (lane L5): the plain-words flag, never hiding the row or
           // disabling Apply (K2) — this paragraph is purely informational,
@@ -495,7 +518,8 @@ function RoleRowBase({
         {row.matchScore != null ? (
           <div className="flex flex-wrap items-center gap-2 pb-3 pl-4">
             {row.archetypeName ? (
-              <span className="border border-hairline px-1.5 py-0.5 font-label text-[10px] uppercase tracking-label text-text-dim">
+              // D10: the same chip h26 recipe as the title's status chips.
+              <span className="inline-flex h-[26px] items-center rounded-pill border border-hairline px-2.5 font-label text-[10px] uppercase tracking-label text-text-dim">
                 {row.archetypeName}
               </span>
             ) : null}

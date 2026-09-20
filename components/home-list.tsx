@@ -47,8 +47,11 @@ import { ALL_HOME_FILTER, applyFilters, filterCounts } from "@/lib/home-filters"
 import { SEASON_LABEL, SEASON_ORDER, type Season } from "@/lib/season";
 import styles from "./applications-split.module.css";
 
+// Lane handoffs 2026-09-20 (L9 logged first; adopted here): min-h-11 (44px)
+// -- the toolbar/list-footer button shape, same height as
+// SortControl/FilterChips/paneButton.
 const barButton =
-  "inline-flex min-h-11 items-center border border-hairline px-3 font-sans text-sm font-medium hover:bg-raised focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage focus-visible:ring-offset-2 focus-visible:ring-offset-bg disabled:cursor-not-allowed disabled:text-text-dim disabled:hover:bg-transparent";
+  "inline-flex min-h-11 items-center rounded-pill border border-hairline px-3 font-sans text-sm font-medium hover:bg-raised focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage focus-visible:ring-offset-2 focus-visible:ring-offset-bg disabled:cursor-not-allowed disabled:text-text-dim disabled:hover:bg-transparent";
 // L8 audit item 1: see components/detail-pane.tsx's dialogMotion for the
 // full recipe (opacity + 4px rise, @starting-style + allow-discrete, native,
 // no library) — the same string, one const per file (this codebase's
@@ -764,19 +767,29 @@ export function HomeList({
           lives INSIDE the list column so the posting gets the full height.
           Below md nothing here applies: <main> scrolls the page and the pane
           is the fixed slide-over (DX4). */}
-      <div className={`grid gap-6 md:-mx-1 md:h-full md:min-h-0 md:grid-rows-[minmax(0,1fr)] md:overflow-hidden md:px-1 ${selected ? "md:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]" : "md:grid-cols-1"}`}>
+      {/* D10 (Lane handoffs 2026-09-20): the list/pane split is ALWAYS two
+          columns on md+ -- no collapse to full-width list when nothing is
+          selected, so the right side never reads as an orphan empty column
+          (the empty state below fills it instead). List:pane is 6fr:5fr,
+          the mock's list-favors-pane ratio. */}
+      <div className="grid gap-6 md:-mx-1 md:h-full md:min-h-0 md:grid-cols-[minmax(0,6fr)_minmax(0,5fr)] md:grid-rows-[minmax(0,1fr)] md:overflow-hidden md:px-1">
         <section aria-label="Roles" className="flex min-w-0 flex-col gap-6 pt-4 pb-6 md:-mx-1 md:min-h-0 md:overflow-y-auto md:px-1 md:pr-2">
           <h1 className="sr-only">Home</h1>
 
           <VelocityStrip added={added} today={pace.today} week={pace.week} month={pace.month} target={pace.target} />
 
           <div className="flex flex-wrap items-center gap-3">
-            <FilterChips
-              items={chipItems}
-              active={view}
-              onSelect={(key) => switchView(key as HomeView)}
-              ariaLabel="Filter roles"
-            />
+            {/* D10 (Lane handoffs 2026-09-20): the segmented-pill chrome
+                (mock's `.chips`) wraps FilterChips without touching its own
+                sliding-pill measurement, which stays scoped to its own ref. */}
+            <div className="inline-flex rounded-pill border border-hairline bg-raised p-1">
+              <FilterChips
+                items={chipItems}
+                active={view}
+                onSelect={(key) => switchView(key as HomeView)}
+                ariaLabel="Filter roles"
+              />
+            </div>
             <div ref={seasonPillRef} className="contents">
               <PillDropdown label="Season" value={season} options={seasonOptions} onSelect={switchSeason} />
             </div>
@@ -861,8 +874,13 @@ export function HomeList({
             </p>
           ) : null}
 
+          {/* D10 (Lane handoffs 2026-09-20): the mock's "raised list card" --
+              one rounded-card/border-hairline/bg-raised panel around the
+              whole list (or its empty state), matching the detail pane's
+              empty-state card below. */}
+          <div className="overflow-hidden rounded-card border border-hairline bg-raised">
           {empty ? (
-            <p className="py-6 text-[15px] text-text-dim">
+            <p className="px-4 py-6 text-[15px] text-text-dim">
               {view === "saved"
                 ? "Nothing saved yet. The bookmark on a row keeps it here for later."
                 : view === "hidden"
@@ -870,11 +888,11 @@ export function HomeList({
                   : "No open roles right now. The watchers check every few minutes."}
             </p>
           ) : noFilterMatches ? (
-            <p className="py-6 text-[15px] text-text-dim">
+            <p className="px-4 py-6 text-[15px] text-text-dim">
               No open postings for {seasonLabel} &middot; {familyLabel}. Widen a filter.
             </p>
           ) : nothingMatches ? (
-            <p className="py-6 text-[15px] text-text-dim">
+            <p className="px-4 py-6 text-[15px] text-text-dim">
               Nothing matches &ldquo;{query}&rdquo;.{" "}
               <span className="font-sans text-sm">Clear search</span>
             </p>
@@ -930,6 +948,7 @@ export function HomeList({
               })}
             </ul>
           )}
+          </div>
 
           {/* A15: the tail of the list, one click away. The rows behind it are
               already in memory — the chips above, the search and the sort all
@@ -985,7 +1004,11 @@ export function HomeList({
             />
           ) : (
             // RB-024: designed empty state, thin icon + one line (doc 4 §6).
-            <div className="hidden min-h-64 flex-col items-center justify-center gap-3 text-text-dim md:h-full md:min-h-0">
+            // D10 (Lane handoffs 2026-09-20): a real card, sized to fill the
+            // pane column like the list card beside it -- not an orphan blank
+            // column. (Bug fix: this div was `hidden` with no `md:flex`
+            // override, so it silently never painted at any width.)
+            <div className="hidden h-full min-h-64 flex-col items-center justify-center gap-3 rounded-card border border-hairline bg-raised p-6 text-text-dim md:flex md:min-h-0">
               <FileTextIcon thin />
               <p className="text-[15px]">
                 {selectedId ? "That role is gone." : "Select a role to read the posting."}

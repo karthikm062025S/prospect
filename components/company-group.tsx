@@ -28,10 +28,11 @@ export function CompanyGroup({
 }) {
   return (
     <li className="border-b border-hairline">
-      <div className="flex items-center gap-2 pt-3 pb-1 text-text">
+      {/* D10: the same 12x16 row rhythm as every RoleRow beneath it. */}
+      <div className="flex items-center gap-2 bg-raised px-4 py-3 text-text">
         <CompanyAvatar name={name} url={url} size={28} />
         <span className="font-sans text-sm font-medium">{name}</span>
-        <span className="font-sans text-[11px] tabular-nums text-text-dim">{count}</span>
+        <span className="ml-auto font-sans text-[11px] tabular-nums text-text-dim">{count}</span>
       </div>
       <ul className="pl-2">
         {first}
@@ -41,7 +42,7 @@ export function CompanyGroup({
         type="button"
         onClick={onToggle}
         aria-expanded={expanded}
-        className="inline-flex min-h-11 items-center gap-1 rounded-sm px-2 font-label text-[11px] tracking-label uppercase text-text-dim hover:bg-raised hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage"
+        className="inline-flex min-h-11 items-center gap-1 rounded-pill px-2 font-label text-[11px] tracking-label uppercase text-text-dim hover:bg-bg hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage"
       >
         <span className={expanded ? "rotate-180" : undefined}>
           <CaretDownIcon />

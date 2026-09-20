@@ -26,11 +26,33 @@ function barText(counts: LabelCounts): { text: string; unscoredText: string | nu
   };
 }
 
+// The visual weight bar (mock's `.bar`): three proportional segments,
+// human-led / AI-assisted / automatable, decorative only -- the text next to
+// it (barText above) already carries the real numbers for anyone not reading
+// color. Renders nothing when there is nothing measured yet.
+function WeightBar({ counts }: { counts: LabelCounts }) {
+  if (counts === null) return null;
+  const { human_led, ai_assisted, automatable } = counts;
+  const measured = human_led + ai_assisted + automatable;
+  if (measured === 0) return null;
+  return (
+    <span
+      aria-hidden="true"
+      className="inline-flex h-1.5 w-24 shrink-0 overflow-hidden rounded-pill bg-hairline"
+    >
+      <i className="block h-full bg-sage" style={{ width: `${(human_led / measured) * 100}%` }} />
+      <i className="block h-full bg-accent" style={{ width: `${(ai_assisted / measured) * 100}%` }} />
+      <i className="block h-full bg-text-dim" style={{ width: `${(automatable / measured) * 100}%` }} />
+    </span>
+  );
+}
+
 export function LabelsBar({ counts }: { counts: LabelCounts }) {
   const bar = barText(counts);
 
   return (
     <div className="flex flex-wrap items-center gap-1.5 font-label text-[11px] tracking-label text-text-dim">
+      <WeightBar counts={counts} />
       {counts === null ? (
         <span>Duties not mapped to O*NET tasks yet.</span>
       ) : bar === null ? (

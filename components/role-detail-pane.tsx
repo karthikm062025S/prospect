@@ -22,6 +22,7 @@ import { LabelsBar } from "@/components/labels-bar";
 import {
   ApplyConfirm,
   absoluteDateTime,
+  applyPillCls,
   useApplyFlow,
   type ApplyMode,
   type HomeRow,
@@ -40,8 +41,11 @@ const VISA_OPTIONS = Object.entries(VISA_LABELS).map(([value, label]) => ({ valu
 const SEASON_OPTIONS = SEASON_ORDER.map((value) => ({ value, label: SEASON_LABEL[value] }));
 const FAMILY_OPTIONS = FAMILY_ORDER.map((value) => ({ value, label: FAMILY_LABEL[value] }));
 
+// Lane handoffs 2026-09-20 (L9 logged first; adopted here): min-h-11 (44px)
+// -- secondary pane actions match the toolbar's pill height (only Apply, the
+// lg pill, is taller).
 const paneButton =
-  "inline-flex min-h-11 items-center gap-1.5 border border-hairline px-3 font-sans text-sm font-medium text-text-dim hover:bg-raised hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage focus-visible:ring-offset-2 focus-visible:ring-offset-bg";
+  "inline-flex min-h-11 items-center gap-1.5 rounded-pill border border-hairline px-3 font-sans text-sm font-medium text-text-dim hover:bg-raised hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage focus-visible:ring-offset-2 focus-visible:ring-offset-bg";
 
 function Meta({ label, value, hint }: { label: string; value: string; hint?: string | null }) {
   return (
@@ -174,7 +178,8 @@ export function RoleDetailPane({
 
           <div className="flex flex-wrap items-center gap-2">
             {row.archetypeName ? (
-              <span className="border border-hairline px-1.5 py-0.5 font-label text-[11px] uppercase tracking-label text-text-dim">
+              // D10: the same chip h26 recipe as role-row.tsx's status chips.
+              <span className="inline-flex h-[26px] items-center rounded-pill border border-hairline px-2.5 font-label text-[11px] uppercase tracking-label text-text-dim">
                 {row.archetypeName}
               </span>
             ) : null}
@@ -275,21 +280,11 @@ export function RoleDetailPane({
         ) : (
           <>
             {row.href ? (
-              <a
-                href={row.href}
-                target="_blank"
-                rel="noreferrer"
-                onClick={flow.arm}
-                className="inline-flex min-h-11 items-center gap-1.5 bg-text px-4 font-sans text-sm font-medium text-bg hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
-              >
+              <a href={row.href} target="_blank" rel="noreferrer" onClick={flow.arm} className={applyPillCls}>
                 Apply <ArrowSquareOutIcon />
               </a>
             ) : (
-              <button
-                type="button"
-                onClick={flow.arm}
-                className="inline-flex min-h-11 items-center gap-1.5 bg-text px-4 font-sans text-sm font-medium text-bg hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
-              >
+              <button type="button" onClick={flow.arm} className={applyPillCls}>
                 Apply
               </button>
             )}
