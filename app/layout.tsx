@@ -3,17 +3,12 @@ import localFont from "next/font/local";
 import { FeedbackDialog, FeedbackFab } from "@/components/feedback-box";
 import "./globals.css";
 
-// Body and controls (including stat numbers, tabular-nums). Weights match the
-// copied files (Light/Regular/Medium); no bold cut needed anywhere in this UI.
-const satoshi = localFont({
-  src: [
-    { path: "../public/fonts/Satoshi-Light.woff2", weight: "300", style: "normal" },
-    { path: "../public/fonts/Satoshi-Regular.woff2", weight: "400", style: "normal" },
-    { path: "../public/fonts/Satoshi-Medium.woff2", weight: "500", style: "normal" },
-  ],
-  variable: "--font-satoshi",
-  display: "swap",
-});
+// Body and controls (including stat numbers, tabular-nums). Weights match
+// what the app uses (Light/Regular/Medium). Loaded from Fontshare's CDN
+// (see the <link> in <head> below) instead of self-hosting the .woff2 files:
+// the Fontshare Free Font EULA does not permit redistributing the font files
+// themselves from a public repo/host (design/FONTS.md). --font-satoshi is
+// defined in app/globals.css so every existing className is unchanged.
 
 // Mono for all data values: counts, dates, statuses, tickers, caps labels.
 // v7 D12 asked whether Departure Mono should take this role. It does NOT —
@@ -91,10 +86,15 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html
       lang="en"
-      className={`${satoshi.variable} ${plexMono.variable} ${instrumentSerif.variable} ${departure.variable}`}
+      className={`${plexMono.variable} ${instrumentSerif.variable} ${departure.variable}`}
       suppressHydrationWarning
     >
       <head>
+        <link rel="preconnect" href="https://cdn.fontshare.com" crossOrigin="" />
+        <link
+          rel="stylesheet"
+          href="https://api.fontshare.com/v2/css?f[]=satoshi@300,400,500&display=swap"
+        />
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
       <body className="bg-bg font-sans text-sm text-text antialiased">

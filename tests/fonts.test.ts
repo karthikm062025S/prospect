@@ -11,27 +11,33 @@ import test from "node:test";
 // component.
 
 const LAYOUT = "app/layout.tsx";
+const GLOBALS = "app/globals.css";
 const RETIRED_DISPLAY_FACE = ["d", "m", "s", "a", "n", "s"].join(""); // avoid the literal in this file's own source
 
-test("app/layout.tsx loads exactly 4 faces and no retired one", () => {
+test("app/layout.tsx loads exactly 3 local faces plus Fontshare Satoshi, and no retired one", () => {
   const source = fs.readFileSync(LAYOUT, "utf8");
   for (const retired of [/zilla/i, /playwrite/i, new RegExp(RETIRED_DISPLAY_FACE, "i")]) {
     assert.doesNotMatch(source, retired, `${retired} must be fully removed from app/layout.tsx`);
   }
+  // Satoshi is loaded from Fontshare's CDN (Fontshare Free Font EULA forbids
+  // redistributing the .woff2 files from a public repo/host), not next/font/local.
   const calls = source.match(/localFont\(/g) ?? [];
-  assert.strictEqual(calls.length, 4, `expected exactly 4 localFont( calls, found ${calls.length}`);
-  for (const variable of ["--font-instrument-serif", "--font-departure", "--font-satoshi", "--font-plex-mono"]) {
+  assert.strictEqual(calls.length, 3, `expected exactly 3 localFont( calls, found ${calls.length}`);
+  assert.match(source, /api\.fontshare\.com\/v2\/css\?f\[\]=satoshi@/, "Satoshi must load from the Fontshare CSS API");
+  for (const variable of ["--font-instrument-serif", "--font-departure", "--font-plex-mono"]) {
     assert.match(source, new RegExp(variable), `${variable} must be declared`);
   }
+  assert.match(fs.readFileSync(GLOBALS, "utf8"), /--font-satoshi:\s*"Satoshi"/, "--font-satoshi must be declared in globals.css");
 });
 
-test("the retired display face's font files are gone from public/fonts", () => {
+test("the retired display face's font files and self-hosted Satoshi are gone from public/fonts", () => {
   for (const file of fs.readdirSync("public/fonts")) {
     assert.doesNotMatch(
       file.toLowerCase(),
       new RegExp(RETIRED_DISPLAY_FACE),
       `${file} is an orphan of the display-face revert and must be deleted`,
     );
+    assert.doesNotMatch(file.toLowerCase(), /^satoshi-.*\.woff2$/, `${file} must be loaded from Fontshare, not self-hosted`);
   }
   for (const file of ["public/fonts/InstrumentSerif-Regular.ttf", "public/fonts/DepartureMono-Regular.woff2"]) {
     assert.ok(fs.existsSync(file), `${file} is required by app/layout.tsx`);

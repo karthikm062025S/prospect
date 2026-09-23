@@ -33,13 +33,21 @@ function fontBlock(source: string, name: string): string {
 // remaining faces is asserted here.
 test("fonts that paint above the fold on /welcome stay preloaded", () => {
   const source = read(LAYOUT);
-  for (const name of ["satoshi", "instrumentSerif", "departure"]) {
+  for (const name of ["instrumentSerif", "departure"]) {
     assert.doesNotMatch(
       fontBlock(source, name),
       /preload:\s*false/,
       `${name} paints above the fold on /welcome and must stay preloaded`,
     );
   }
+  // Satoshi loads from Fontshare's CDN (not next/font/local; see tests/fonts.test.ts),
+  // so its eager-load equivalent is a blocking <link rel="stylesheet"> in <head>,
+  // never a deferred/lazy fetch.
+  assert.match(
+    source,
+    /<link\s+rel="stylesheet"\s+href="https:\/\/api\.fontshare\.com\/v2\/css\?f\[\]=satoshi@/,
+    "satoshi paints above the fold on /welcome and must load eagerly from Fontshare",
+  );
 });
 
 // SheetTexture renders null below 1024px, but a static import shipped the

@@ -81,6 +81,15 @@
   --container-page: 1280px;
 }
 
+:root {
+  /* Satoshi loaded via Fontshare CDN <link> in app/layout.tsx (no next/font
+     local files: the Fontshare Free Font EULA forbids redistributing the
+     .woff2 files from a public repo/host, design/FONTS.md). Font-family name
+     matches what Fontshare's stylesheet declares, so --font-sans below and
+     every existing className are unchanged. */
+  --font-satoshi: "Satoshi", ui-sans-serif, system-ui, -apple-system, sans-serif;
+}
+
 @theme inline {
   /* `inline` is load-bearing for every colour here, not a style choice: a
      plain @theme emits `--color-bg: var(--bg)` on :root, where the indirection

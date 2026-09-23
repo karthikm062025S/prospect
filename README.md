@@ -6,17 +6,7 @@
 
 ## Try it in three minutes
 
-1. Sign in at https://prospect.courses with a demo account. Each one is a blank student.
-
-   | Email | Password |
-   | --- | --- |
-   | `a21@p.test` | `pass1234` |
-   | `a22@p.test` | `pass1234` |
-   | `a23@p.test` | `pass1234` |
-   | `a24@p.test` | `pass1234` |
-   | `a25@p.test` | `pass1234` |
-
-   These accounts are shared by every visitor. Never upload a real resume or transcript to one.
+1. Go to https://prospect.courses and create your own account with an email and password. No confirmation email, you are in right away.
 
 2. Upload the mock student's [resume](datasets/mock-profile/mock-resume.pdf) and [transcript](datasets/mock-profile/mock-transcript.pdf), pick role types, a target term and your work authorization.
 3. Write the goal in one short sentence, under 80 characters. Examples that work well:
