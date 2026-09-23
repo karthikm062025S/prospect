@@ -16,6 +16,8 @@
    | `a24@p.test` | `pass1234` |
    | `a25@p.test` | `pass1234` |
 
+   These accounts are shared by every visitor. Never upload a real resume or transcript to one.
+
 2. Upload the mock student's [resume](datasets/mock-profile/mock-resume.pdf) and [transcript](datasets/mock-profile/mock-transcript.pdf), pick role types, a target term and your work authorization.
 3. Write the goal in one short sentence, under 80 characters. Examples that work well:
    - `Land a management consulting internship at a Big 4 firm, Summer 2027`
@@ -71,7 +73,7 @@ Server card: `https://prospect.courses/.well-known/mcp/server-card.json`. The be
 
 ```bash
 curl -s https://prospect.courses/api/mcp \
-  -H "Authorization: Bearer ebe35cf109705a1d2e45e5413851fa77" \
+  -H "Authorization: Bearer $MCP_JUDGE_SECRET" \
   -H "Content-Type: application/json" -H "Accept: application/json, text/event-stream" \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"plan_next_steps","arguments":{"goal":"management consulting internship","limit":5}}}'
 ```

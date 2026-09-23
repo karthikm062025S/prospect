@@ -73,16 +73,48 @@ export async function getProfile(userId: string, runQuery?: QueryFn): Promise<St
   return rows[0] ?? null;
 }
 
+// D10 (2026-09-22 security tightening): open signup + shared demo logins let a
+// stranger loop Gemini + Vector Search with no cap. RUN_CAP_PER_HOUR bounds one
+// user_id across every agent (not per-agent), since the abuse is total spend.
+const RUN_CAP_PER_HOUR = 5;
+
+/**
+ * Read-only precheck so a caller that cannot surface startAgentRun's error as
+ * a real HTTP status (an already-open NDJSON stream) can refuse BEFORE opening
+ * one. startAgentRun below is still the atomic, race-safe enforcement.
+ */
+export async function isRunCapped(userId: string, runQuery?: QueryFn): Promise<boolean> {
+  const q = runQuery ?? (await realQuery());
+  const rows = await q<{ capped: boolean }>(
+    `select exists (select 1 from agent_runs where user_id = $1 and status = 'running')
+       or (select count(*) from agent_runs where user_id = $1 and started_at > now() - interval '1 hour') >= ${RUN_CAP_PER_HOUR}
+       as capped`,
+    [userId],
+    "agent_runs",
+  );
+  return rows[0]?.capped ?? false;
+}
+
 export async function startAgentRun(agent: string, userId: string, runQuery?: QueryFn): Promise<string> {
   // L5 D21: the ANS gate runs before any write.
   await assertVerifiedAgent(agent);
 
   const q = runQuery ?? (await realQuery());
+  // One atomic insert: refuses (0 rows back) when the user already has a
+  // 'running' row or hit the hourly cap, instead of a separate check-then-insert
+  // that a concurrent request could race past.
   const rows = await q<{ id: string }>(
-    "insert into agent_runs (agent, user_id, status) values ($1, $2, 'running') returning id",
+    `insert into agent_runs (agent, user_id, status)
+     select $1, $2, 'running'
+     where not exists (select 1 from agent_runs where user_id = $2 and status = 'running')
+       and (select count(*) from agent_runs where user_id = $2 and started_at > now() - interval '1 hour') < ${RUN_CAP_PER_HOUR}
+     returning id`,
     [agent, userId],
     "agent_runs",
   );
+  if (rows.length === 0) {
+    throw new Error(`RUN_LIMIT (${agent}): too many runs for this user in the last hour; wait and try again`);
+  }
   return rows[0].id;
 }
 

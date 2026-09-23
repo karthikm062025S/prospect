@@ -7,6 +7,7 @@ import { resolveMatchAuth } from "@/lib/match-auth";
 import { runMatchAgent, encodeStepLine, assignArchetypesBatch, labelTopPostings } from "@/lib/agents/match";
 import { topScores } from "@/lib/match-scores";
 import { insertNudge } from "@/lib/nudges";
+import { isRunCapped } from "@/lib/student-profile";
 
 // Two branches (brief §5): (a) a signed-in user streams NDJSON steps for
 // their own re-rank; (b) the Databricks Orchestrator (X-Watcher-Secret,
@@ -57,6 +58,15 @@ export async function POST(request: Request) {
   }
 
   if (auth.kind === "user") {
+    // D10 (2026-09-22 security tightening): checked here, before the stream
+    // opens, so a capped caller gets a real 429 -- once runMatchAgent starts
+    // streaming, a thrown error can only become an NDJSON {error} line.
+    if (await isRunCapped(auth.userId, query)) {
+      return NextResponse.json(
+        { error: "Too many runs. Wait a bit before starting another match run." },
+        { status: 429 },
+      );
+    }
     const encoder = new TextEncoder();
     const stream = new ReadableStream<Uint8Array>({
       async start(controller) {
