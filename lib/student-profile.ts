@@ -76,17 +76,27 @@ export async function getProfile(userId: string, runQuery?: QueryFn): Promise<St
 // D10 (2026-09-22 security tightening): open signup + shared demo logins let a
 // stranger loop Gemini + Vector Search with no cap. RUN_CAP_PER_HOUR bounds one
 // user_id across every agent (not per-agent), since the abuse is total spend.
-const RUN_CAP_PER_HOUR = 5;
+// One /api/profile submission writes 3 rows (profile + match + roadmap), so 15
+// is about 5 full pipelines/hour, not 5 runs.
+const RUN_CAP_PER_HOUR = 15;
+// A run maxDuration'd out (match 300s, profile 120s) or errored on a path with
+// no finishAgentRun (lib/agents/roadmap.ts's error branch, out of this fence)
+// would otherwise leave a 'running' row forever and lock the user out for
+// good; only a row started in the last 10 minutes counts as still live.
+const RUNNING_STALE_AFTER = "10 minutes";
 
 /**
  * Read-only precheck so a caller that cannot surface startAgentRun's error as
  * a real HTTP status (an already-open NDJSON stream) can refuse BEFORE opening
- * one. startAgentRun below is still the atomic, race-safe enforcement.
+ * one. ponytail: best-effort, same as startAgentRun's own check below.
  */
 export async function isRunCapped(userId: string, runQuery?: QueryFn): Promise<boolean> {
   const q = runQuery ?? (await realQuery());
   const rows = await q<{ capped: boolean }>(
-    `select exists (select 1 from agent_runs where user_id = $1 and status = 'running')
+    `select exists (
+         select 1 from agent_runs
+         where user_id = $1 and status = 'running' and started_at > now() - interval '${RUNNING_STALE_AFTER}'
+       )
        or (select count(*) from agent_runs where user_id = $1 and started_at > now() - interval '1 hour') >= ${RUN_CAP_PER_HOUR}
        as capped`,
     [userId],
@@ -100,13 +110,17 @@ export async function startAgentRun(agent: string, userId: string, runQuery?: Qu
   await assertVerifiedAgent(agent);
 
   const q = runQuery ?? (await realQuery());
-  // One atomic insert: refuses (0 rows back) when the user already has a
-  // 'running' row or hit the hourly cap, instead of a separate check-then-insert
-  // that a concurrent request could race past.
+  // ponytail: best-effort cap; two truly concurrent requests can both pass
+  // this WHERE under READ COMMITTED (no lock between the check and the
+  // insert). A partial unique index on agent_runs(user_id) where
+  // status='running' would make it exact (schema change, Karthik's).
   const rows = await q<{ id: string }>(
     `insert into agent_runs (agent, user_id, status)
      select $1, $2, 'running'
-     where not exists (select 1 from agent_runs where user_id = $2 and status = 'running')
+     where not exists (
+         select 1 from agent_runs
+         where user_id = $2 and status = 'running' and started_at > now() - interval '${RUNNING_STALE_AFTER}'
+       )
        and (select count(*) from agent_runs where user_id = $2 and started_at > now() - interval '1 hour') < ${RUN_CAP_PER_HOUR}
      returning id`,
     [agent, userId],
