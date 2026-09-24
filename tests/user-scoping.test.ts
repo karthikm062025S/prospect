@@ -73,6 +73,12 @@ const ALLOWLIST: Array<{ file: string; table: string; match: RegExp; reason: str
     match: /select 1 from role_corrections rc where rc\.role_id = r\.id/,
     reason: "same as the user_roles entry above.",
   },
+  {
+    file: "lib/retention.ts",
+    table: "outreach",
+    match: /select 1 from outreach o where o\.role_id = r\.id/,
+    reason: "same as the user_roles entry above.",
+  },
 ];
 
 function sourceFiles(dir: string): string[] {

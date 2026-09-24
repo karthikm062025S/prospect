@@ -3,11 +3,12 @@ import type { QueryFn } from "./db"; // type-only: erased under --experimental-s
 // D11 (docs/plans/cron-mission-2026-09-24/MISSION.md, handoff-R4.md): the
 // free-tier retention prune. Deletes `roles` first seen (created_at) more
 // than `days` ago, EXCEPT any role a user acted on: a `user_roles` row, an
-// `applications` row, a `role_corrections` row, or a non-null legacy
-// single-owner column (application_id/saved_at/hidden_at/apply_clicked_at).
-// Shape mirrors lib/gate-sweep.ts: a pure Db interface here, the real SQL in
-// makeRetentionDb (shared by the route and by tests, which run it against
-// the real schema via tests/helpers/test-db.ts's pglite instance).
+// `applications` row, a `role_corrections` row, an `outreach` row, or a
+// non-null legacy single-owner column (application_id/saved_at/hidden_at/
+// apply_clicked_at). Shape mirrors lib/gate-sweep.ts: a pure Db interface
+// here, the real SQL in makeRetentionDb (shared by the route and by tests,
+// which run it against the real schema via tests/helpers/test-db.ts's
+// pglite instance).
 
 export type RetentionDb = {
   /** Age-filtered, NOT acted-on: the count that WOULD be deleted and the oldest created_at in that set (null if empty). */
@@ -31,8 +32,8 @@ export const MAX_BATCHES = 10;
 
 // Dry run is the DEFAULT for this destructive route (unlike gate-sweep's
 // dry_run=1-to-opt-in): only an explicit dry_run=0 asks for a real delete,
-// matching the sibling Scout lane's retention route (handoff-B2.md) so a
-// caller sees identical behavior on both repos for the same query string.
+// matching the sibling repo's retention route (handoff-B2.md) so a caller
+// sees identical behavior on both.
 export function parseParams(url: URL): { days: number; dryRun: boolean } {
   const dryRun = url.searchParams.get("dry_run") !== "0";
   const raw = Number.parseInt(url.searchParams.get("days") ?? "", 10);
@@ -41,10 +42,12 @@ export function parseParams(url: URL): { days: number; dryRun: boolean } {
 }
 
 // D3/D11 + handoff-R4.md's recommended mechanism: the kill switch
-// (RETENTION_PRUNE_ENABLED) is enforced HERE, server-side, not only by the
-// caller's dry_run param - a caller with the watcher secret but no kill
-// switch set can never trigger a real delete, matching "the route only
-// executes the DELETE when both dry_run is not set AND the kill switch is on".
+// (Vercel env RETENTION_PRUNE_ENABLED) is enforced HERE, server-side, not
+// only by the caller's dry_run param - a caller with the watcher secret but
+// no kill switch set can never trigger a real delete, matching "the route
+// only executes the DELETE when both dry_run is not set AND the kill switch
+// is on". The workflow no longer gates on this var at all (fix round 1):
+// the route is the one and only gate.
 export async function runRetentionSweep(opts: RetentionOpts, db: RetentionDb): Promise<RetentionResult> {
   const excluded = await db.excludedActedOn(opts.days);
   const dryRun = opts.dryRun || !opts.pruneEnabled;
@@ -63,13 +66,16 @@ export async function runRetentionSweep(opts: RetentionOpts, db: RetentionDb): P
 }
 
 // Acted-on = a user_roles row, an applications row, a role_corrections row,
-// or a non-null legacy single-owner column (db/lakebase/001-schema.sql).
-// Never deleted, per D3/D11 and the CASCADE on user_roles.role_id and
+// an outreach row (fix round 1, P1: db/lakebase/001-schema.sql:145 -
+// outreach.role_id is a user action, tracked outside user_roles), or a
+// non-null legacy single-owner column (db/lakebase/001-schema.sql). Never
+// deleted, per D3/D11 and the CASCADE on user_roles.role_id and
 // role_corrections.role_id (handoff-R4.md).
 const NOT_ACTED_ON = `
     not exists (select 1 from user_roles ur where ur.role_id = r.id)
     and not exists (select 1 from applications a where a.role_id = r.id)
     and not exists (select 1 from role_corrections rc where rc.role_id = r.id)
+    and not exists (select 1 from outreach o where o.role_id = r.id)
     and r.application_id is null
     and r.saved_at is null
     and r.hidden_at is null
@@ -124,7 +130,7 @@ export function makeRetentionDb(q: QueryFn): RetentionDb {
 export type RequestCtx = {
   expected: string | undefined; // process.env.WATCHER_SECRET
   isCorrectPassword: (candidate: string, expected: string) => boolean;
-  pruneEnabled: boolean; // process.env.RETENTION_PRUNE_ENABLED === "1"; the kill switch, checked server-side (see runRetentionSweep)
+  pruneEnabled: boolean; // process.env.RETENTION_PRUNE_ENABLED === "1" (Vercel env); the kill switch, checked server-side (see runRetentionSweep)
   db: () => RetentionDb; // built only after the secret passes
   log?: (entry: Record<string, unknown>) => void; // server-side only; the real failure message goes here, never to the caller
 };

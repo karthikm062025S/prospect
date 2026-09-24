@@ -2,20 +2,24 @@ name: retention
 
 # D3/D11 (docs/plans/cron-mission-2026-09-24/MISSION.md): the free-tier
 # retention prune. Once daily, POSTs /api/retention-sweep on the deployed
-# app; the route always computes would-delete + excluded-acted-on counts,
-# and only executes the DELETE when BOTH this run is not a dry run AND repo
-# variable RETENTION_PRUNE_ENABLED == '1' (Karthik flips it after reading a
-# dry-run count, per the prod-db-ops-are-karthiks house rule). Deleting a
-# role a user acted on is exactly what the route's NOT EXISTS guard forbids
-# (handoff-R4.md) - this workflow only decides dry-run vs real, never the
-# predicate.
+# app; the route always computes would-delete + excluded-acted-on counts.
+# Fix round 1: the Vercel env RETENTION_PRUNE_ENABLED is the ONLY gate for a
+# real delete, enforced server-side in lib/retention.ts's runRetentionSweep -
+# this workflow does not read that var at all and never decides dry vs real
+# on its own. Scheduled runs always ask for a real attempt (dry_run=0); the
+# route forces a dry run anyway while the env is unset or false, and the
+# response's own `dry_run` field always reflects what actually happened.
+# A manual dispatch defaults to dry_run=1 (an operator's click must never
+# delete by accident) and can be overridden to 0 to test the real path while
+# the kill switch is on.
 #
 # Requires repo secret WATCHER_SECRET and repo variable PROSPECT_RETENTION_URL
 # (no default prod URL - this repo's convention since 2026-09-19: fail loudly
 # if unset, never point at the wrong deployment).
 #
-# D10 outage alerts: a failed sweep opens "Prospect outage: retention" (once
-# per episode, silent while open); the next successful run closes it.
+# D10 outage alerts: a failed or cancelled run opens "Prospect outage:
+# retention" (once per episode, silent while open); a successful run closes
+# it with a recovery comment.
 
 on:
   schedule:
@@ -23,8 +27,8 @@ on:
   workflow_dispatch:
     inputs:
       dry_run:
-        description: "1 = propose only, write nothing (ignored when RETENTION_PRUNE_ENABLED is not '1': the kill switch always wins)"
-        default: "0"
+        description: "1 = propose only, write nothing (default). Set 0 to also exercise the real-delete path while RETENTION_PRUNE_ENABLED is on."
+        default: "1"
 
 permissions:
   contents: read
@@ -39,18 +43,10 @@ jobs:
         env:
           WATCHER_SECRET: ${{ secrets.WATCHER_SECRET }}
           URL: ${{ vars.PROSPECT_RETENTION_URL }}  # required repo variable, no default
-          KILL_SWITCH: ${{ vars.RETENTION_PRUNE_ENABLED }}
-          DISPATCH_DRY_RUN: ${{ github.event.inputs.dry_run }}
+          DRY_RUN: ${{ github.event.inputs.dry_run || '0' }}  # scheduled runs ask for real; the route decides
         run: |
           set -eu
           test -n "$URL" || { echo "PROSPECT_RETENTION_URL is not set"; exit 1; }
-          if [ "$KILL_SWITCH" != "1" ]; then
-            DRY_RUN=1
-          elif [ -n "$DISPATCH_DRY_RUN" ]; then
-            DRY_RUN="$DISPATCH_DRY_RUN"
-          else
-            DRY_RUN=0
-          fi
           body=$(mktemp)
           code=$(curl -sS -o "$body" -w '%{http_code}' -X POST \
             -H "X-Watcher-Secret: $WATCHER_SECRET" \
@@ -62,36 +58,31 @@ jobs:
           fi
           node -e "
             const r=JSON.parse(require('fs').readFileSync(process.argv[1],'utf8'));
-            if (r.dry_run) console.log('dry run: would_delete '+r.would_delete+', excluded_acted_on '+r.excluded_acted_on+', oldest_created_at '+r.oldest_created_at);
-            else console.log('deleted '+r.deleted+', excluded_acted_on '+r.excluded_acted_on+', remaining '+r.remaining);
+            if (r.dry_run) console.log('effective mode: dry run - would_delete '+r.would_delete+', excluded_acted_on '+r.excluded_acted_on+', oldest_created_at '+r.oldest_created_at);
+            else console.log('effective mode: real - deleted '+r.deleted+', excluded_acted_on '+r.excluded_acted_on+', remaining '+r.remaining);
           " "$body"
 
-      - name: open outage issue
-        if: failure()
+      - name: outage alert
+        if: always()
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           title="Prospect outage: retention"
           run_url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           num=$(gh issue list --repo "$GITHUB_REPOSITORY" --state open --json number,title --jq ".[] | select(.title==\"$title\") | .number" | head -1)
-          if [ -n "$num" ]; then
-            echo "outage issue #$num already open, staying quiet"
+          if [ "${{ job.status }}" = "success" ]; then
+            if [ -n "$num" ]; then
+              gh issue close "$num" --repo "$GITHUB_REPOSITORY" --comment "recovered: $run_url"
+              echo "closed outage issue #$num"
+            else
+              echo "no open outage issue"
+            fi
           else
-            gh issue create --repo "$GITHUB_REPOSITORY" --title "$title" \
-              --body "@karthikm062025S - the retention sweep (retention.yml) failed. Run: $run_url"
-            echo "opened outage issue"
-          fi
-
-      - name: close outage issue
-        if: success()
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          title="Prospect outage: retention"
-          num=$(gh issue list --repo "$GITHUB_REPOSITORY" --state open --json number,title --jq ".[] | select(.title==\"$title\") | .number" | head -1)
-          if [ -n "$num" ]; then
-            gh issue close "$num" --repo "$GITHUB_REPOSITORY" --comment "Recovered: the retention sweep ran clean."
-            echo "closed outage issue #$num"
-          else
-            echo "no open outage issue"
+            if [ -n "$num" ]; then
+              echo "outage issue #$num already open, staying quiet"
+            else
+              gh issue create --repo "$GITHUB_REPOSITORY" --title "$title" \
+                --body "@karthikm062025S - the retention sweep (retention.yml) failed or was cancelled. Run: $run_url"
+              echo "opened outage issue"
+            fi
           fi

@@ -6,12 +6,12 @@ import { retentionSweepRequest, makeRetentionDb } from "@/lib/retention";
 // D11 (MISSION.md, docs/plans/cron-mission-2026-09-24): the free-tier
 // retention prune. .github/workflows/retention.yml curls this daily with the
 // watcher secret. Dry run is the DEFAULT (any dry_run value other than an
-// explicit "0" writes nothing); a real delete ALSO requires the repo var
+// explicit "0" writes nothing); a real delete ALSO requires the Vercel env
 // RETENTION_PRUNE_ENABLED === "1" (the kill switch, enforced server-side in
 // lib/retention.ts's runRetentionSweep per handoff-R4.md's recommended
-// mechanism - the workflow's own gating is belt-and-suspenders, not the only
-// gate). All logic and SQL live in lib/retention.ts; this file only wires
-// Next, the Lakebase pool and the env.
+// mechanism). This route is the ONLY gate (fix round 1): the workflow does
+// not read this var at all. All logic and SQL live in lib/retention.ts;
+// this file only wires Next, the Lakebase pool and the env.
 export const maxDuration = 60;
 export const dynamic = "force-dynamic";
 

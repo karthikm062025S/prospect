@@ -43,7 +43,7 @@ const rolesCount = async () => {
 };
 
 // Seeds one old role with no acted-on signal, one old role for each of the
-// four acted-on kinds, and one recent (never-old) role. Only the plain old
+// five acted-on kinds, and one recent (never-old) role. Only the plain old
 // role is prune-eligible.
 async function seedOneOfEachKind() {
   const PLAIN = uuid(10);
@@ -52,19 +52,27 @@ async function seedOneOfEachKind() {
   const CORRECTION = uuid(13);
   const LEGACY = uuid(14);
   const RECENT_ROLE = uuid(15);
+  const OUTREACH = uuid(16);
   await role(PLAIN, OLD);
   await role(USER_ROLE, OLD);
   await role(APPLICATION, OLD);
   await role(CORRECTION, OLD);
   await role(LEGACY, OLD, { saved_at: OLD });
   await role(RECENT_ROLE, RECENT);
+  await role(OUTREACH, OLD);
   await insertRow(db.q, "user_roles", { user_id: uuid(90), role_id: USER_ROLE });
   await insertRow(db.q, "applications", { id: uuid(91), user_id: uuid(90), company_id: COMPANY, role: "SWE", role_id: APPLICATION });
   await insertRow(db.q, "role_corrections", { user_id: uuid(90), role_id: CORRECTION, field: "season", value: "coop" });
-  return { PLAIN, USER_ROLE, APPLICATION, CORRECTION, LEGACY, RECENT_ROLE };
+  await insertRow(db.q, "outreach", {
+    user_id: uuid(90),
+    role_id: OUTREACH,
+    company_name: "Acme",
+    contact_name: "Jane",
+  });
+  return { PLAIN, USER_ROLE, APPLICATION, CORRECTION, LEGACY, RECENT_ROLE, OUTREACH };
 }
 
-test("makeRetentionDb excludes every acted-on kind (user_roles, applications, role_corrections, legacy column) and the not-old-enough role", async () => {
+test("makeRetentionDb excludes every acted-on kind (user_roles, applications, role_corrections, outreach, legacy column) and the not-old-enough role", async () => {
   const { PLAIN } = await seedOneOfEachKind();
   const retentionDb = makeRetentionDb(db.q);
 
@@ -73,11 +81,26 @@ test("makeRetentionDb excludes every acted-on kind (user_roles, applications, ro
   assert.equal(would.oldest_created_at, new Date(OLD).toISOString());
 
   const excluded = await retentionDb.excludedActedOn(45);
-  assert.equal(excluded, 4); // user_roles, applications, role_corrections, legacy saved_at (the recent role is excluded by age, not counted here)
+  assert.equal(excluded, 5); // user_roles, applications, role_corrections, outreach, legacy saved_at (the recent role is excluded by age, not counted here)
 
   const deletedIds = await retentionDb.deleteBatch(45, BATCH_SIZE);
   assert.deepEqual(deletedIds, [PLAIN]);
-  assert.equal(await rolesCount(), 5); // the 4 acted-on + the recent role all survive
+  assert.equal(await rolesCount(), 6); // the 5 acted-on + the recent role all survive
+});
+
+// Fix round 1, P1: outreach.role_id (db/lakebase/001-schema.sql:145) is a
+// user action tracked outside user_roles - a role with only an outreach row
+// must never be pruned.
+test("a role with only an outreach row is never deleted", async () => {
+  const OUTREACH_ONLY = uuid(30);
+  await role(OUTREACH_ONLY, OLD);
+  await insertRow(db.q, "outreach", { user_id: uuid(90), role_id: OUTREACH_ONLY, company_name: "Acme", contact_name: "Jane" });
+  const retentionDb = makeRetentionDb(db.q);
+
+  assert.equal((await retentionDb.wouldDelete(45)).would_delete, 0);
+  assert.equal(await retentionDb.excludedActedOn(45), 1);
+  assert.deepEqual(await retentionDb.deleteBatch(45, BATCH_SIZE), []);
+  assert.equal(await rolesCount(), 1); // survives
 });
 
 test("makeRetentionDb wouldDelete reports no rows and a null oldest_created_at when nothing is prune-eligible", async () => {
@@ -94,18 +117,18 @@ test("runRetentionSweep dry run writes nothing", async () => {
   assert.deepEqual(out, {
     dry_run: true,
     would_delete: 1,
-    excluded_acted_on: 4,
+    excluded_acted_on: 5,
     oldest_created_at: new Date(OLD).toISOString(),
     days: 45,
   });
-  assert.equal(await rolesCount(), 6); // nothing deleted
+  assert.equal(await rolesCount(), 7); // nothing deleted
 });
 
 test("runRetentionSweep real run deletes the eligible role and reports remaining", async () => {
   await seedOneOfEachKind();
   const out = await runRetentionSweep({ days: 45, dryRun: false, pruneEnabled: true }, makeRetentionDb(db.q));
-  assert.deepEqual(out, { dry_run: false, deleted: 1, excluded_acted_on: 4, remaining: 0 });
-  assert.equal(await rolesCount(), 5);
+  assert.deepEqual(out, { dry_run: false, deleted: 1, excluded_acted_on: 5, remaining: 0 });
+  assert.equal(await rolesCount(), 6);
 });
 
 test("runRetentionSweep honours a wider days window (30-day floor) without touching the acted-on set", async () => {
@@ -114,7 +137,7 @@ test("runRetentionSweep honours a wider days window (30-day floor) without touch
   assert.equal(out.dry_run, true);
   if (out.dry_run) {
     assert.equal(out.would_delete, 1);
-    assert.equal(out.excluded_acted_on, 4);
+    assert.equal(out.excluded_acted_on, 5);
   }
 });
 
@@ -126,7 +149,7 @@ test("runRetentionSweep forces dry-run when the kill switch (pruneEnabled) is of
   const out = await runRetentionSweep({ days: 45, dryRun: false, pruneEnabled: false }, makeRetentionDb(db.q));
   assert.equal(out.dry_run, true);
   if (out.dry_run) assert.equal(out.would_delete, 1);
-  assert.equal(await rolesCount(), 6); // nothing deleted
+  assert.equal(await rolesCount(), 7); // nothing deleted
 });
 
 // Batching (500/batch, max 10 calls) is pure control flow, tested with an
