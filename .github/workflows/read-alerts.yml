@@ -25,7 +25,6 @@ on:
 
 permissions:
   contents: read
-  issues: write # outage issue (D10)
 
 jobs:
   read-alerts:
@@ -51,11 +50,3 @@ jobs:
           GMAIL_LABEL: ${{ vars.GMAIL_LABEL }}
           LIMIT: ${{ github.event.inputs.limit || '0' }}
         run: node scripts/read-alerts.mjs --limit "$LIMIT"
-
-      # MISSION D10: one issue per outage, closed by the next green run.
-      - name: outage alert
-        if: always()
-        uses: ./.github/actions/outage
-        with:
-          name: read-alerts
-          status: ${{ job.status }}

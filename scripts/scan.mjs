@@ -176,7 +176,6 @@ async function main() {
     baseline[k] = b;
   }
   await writeFile(join(__dirname, "endpoint-baseline.json"), JSON.stringify(baseline, null, 2));
-  await writeFile(join(__dirname, "canary.json"), JSON.stringify(regressions, null, 2));
   if (regressions.length) {
     console.log(`\n⚠ canary: ${regressions.length} endpoint(s) silently returning 0 for ≥${CANARY_MISS_STREAK} runs (baseline ≥${CANARY_MIN_BASELINE}):`);
     for (const r of regressions) console.log(`  · ${r.company} [${r.ats}] was ${r.baseline} → 0 (${r.misses} misses)`);

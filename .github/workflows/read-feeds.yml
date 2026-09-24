@@ -23,7 +23,6 @@ on:
 
 permissions:
   contents: read
-  issues: write # outage issue (D10)
 
 jobs:
   read-feeds:
@@ -56,11 +55,3 @@ jobs:
           SCOUT_WEBHOOK: ${{ vars.SCOUT_WEBHOOK }}
           SINCE_DAYS: ${{ github.event.inputs.since_days || '2' }}
         run: node scripts/read-feeds.mjs --since-days "$SINCE_DAYS"
-
-      # MISSION D10: one issue per outage, closed by the next green run.
-      - name: outage alert
-        if: always()
-        uses: ./.github/actions/outage
-        with:
-          name: read-feeds
-          status: ${{ job.status }}

@@ -24,7 +24,7 @@ on:
 permissions:
   contents: read  # checkout of the local outage action
   actions: read   # gh run list needs read access to workflow run history
-  issues: write   # outage issues (D10)
+  issues: write   # the one Prospect alert issue (MISSION D13)
 
 jobs:
   hot-scan:
@@ -46,16 +46,6 @@ jobs:
             "$URL?tier=hot")
           echo "hot scan: http $code"
           [ "$code" = "202" ]
-      - uses: actions/checkout@v4
-        if: always()
-        with:
-          sparse-checkout: .github/actions
-      - name: outage alert
-        if: always()
-        uses: ./.github/actions/outage
-        with:
-          name: heartbeat hot-scan
-          status: ${{ job.status }}
 
   heartbeat:
     if: ${{ github.event.schedule != '13 */3 * * *' }}
@@ -86,8 +76,9 @@ jobs:
             exit 1
           fi
           echo "scanner healthy"
-      # MISSION D10: stale opens "Prospect outage: heartbeat" once and stays
-      # quiet while it is open; the next healthy check closes it.
+      # MISSION D13: the ONLY Prospect alert. A dead feed (no green scan.yml in
+      # 26h) opens "Prospect outage: heartbeat" once and stays quiet while it is
+      # open; the next healthy check closes it. No other workflow opens issues.
       - uses: actions/checkout@v4
         if: always()
         with:

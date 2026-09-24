@@ -25,10 +25,9 @@ on:
 
 permissions:
   contents: read
-  issues: write   # canary issue + outage issue (D10)
 
 # Serialize runs so a manual dispatch overlapping the cron can't race the baseline
-# cache or double-open the canary issue.
+# cache.
 concurrency:
   group: scan
   cancel-in-progress: false
@@ -74,37 +73,3 @@ jobs:
           ADZUNA_APP_ID: ${{ secrets.ADZUNA_APP_ID }}
           ADZUNA_APP_KEY: ${{ secrets.ADZUNA_APP_KEY }}
         run: node scripts/scan-sources.mjs --limit 100
-
-      # Canary: the scanner wrote scripts/canary.json listing endpoints that
-      # reliably had postings but silently returned 0 this run (broken token /
-      # schema drift — a blind spot a 404-only check misses). Fire ONCE per
-      # episode: open a standing issue; stay quiet while it's still open so a
-      # persistent regression doesn't comment every 3h. Karthik closes it when fixed.
-      - name: notify on canary regressions
-        if: always()
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SCOUT_WEBHOOK: ${{ vars.SCOUT_WEBHOOK }}
-        run: |
-          file=scripts/canary.json
-          if [ ! -s "$file" ]; then echo "no canary file"; exit 0; fi
-          count=$(node -e "console.log(JSON.parse(require('fs').readFileSync('$file','utf8')).length)")
-          if [ "$count" -eq 0 ]; then echo "no regressions"; exit 0; fi
-          title="Prospect canary: endpoints silently returning 0"
-          num=$(gh issue list --repo "$GITHUB_REPOSITORY" --state open --limit 200 --json number,title --jq ".[] | select(.title==\"$title\") | .number" | head -1)
-          if [ -n "$num" ]; then echo "canary issue #$num already open — staying quiet"; exit 0; fi
-          body=$(node -e "
-            const d=JSON.parse(require('fs').readFileSync('scripts/canary.json','utf8'));
-            const lines=d.map(r=>'- \`'+r.company+'\` ['+r.ats+'] baseline '+r.baseline+' → 0').join('\n');
-            console.log('@karthikm062025S — '+d.length+' endpoint(s) that reliably had postings now return 0 (likely a broken token / schema drift — a silent blind spot):\n\n'+lines+'\n\nInvestigate + re-validate, then close this issue.');
-          ")
-          gh issue create --repo "$GITHUB_REPOSITORY" --title "$title" --body "$body"
-          echo "opened canary issue"
-
-      # MISSION D10: one issue per outage, closed by the next green run.
-      - name: outage alert
-        if: always()
-        uses: ./.github/actions/outage
-        with:
-          name: scan
-          status: ${{ job.status }}
