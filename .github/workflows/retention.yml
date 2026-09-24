@@ -1,0 +1,65 @@
+name: retention
+
+# D3/D11 (docs/plans/cron-mission-2026-09-24/MISSION.md): the free-tier
+# retention prune. Once daily, POSTs /api/retention-sweep on the deployed
+# app; the route always computes would-delete + excluded-acted-on counts.
+# Fix round 1: the Vercel env RETENTION_PRUNE_ENABLED is the ONLY gate for a
+# real delete, enforced server-side in lib/retention.ts's runRetentionSweep -
+# this workflow does not read that var at all and never decides dry vs real
+# on its own. Scheduled runs always ask for a real attempt (dry_run=0); the
+# route forces a dry run anyway while the env is unset or false, and the
+# response's own `dry_run` field always reflects what actually happened.
+# A manual dispatch defaults to dry_run=1 (an operator's click must never
+# delete by accident) and can be overridden to 0 to test the real path while
+# the kill switch is on.
+#
+# Requires repo secret WATCHER_SECRET and repo variable PROSPECT_RETENTION_URL
+# (no default prod URL - this repo's convention since 2026-09-19: fail loudly
+# if unset, never point at the wrong deployment).
+#
+# Fix round 2 (MISSION.md PHASE 2 D13): no outage alert here. Prospect may
+# alert Karthik only when something is very dangerous or he must act; the one
+# remaining Prospect alert is heartbeat's feed-dead-26h+ signal, owned by
+# another lane. A failed retention run is not dangerous - the route fails
+# closed (nothing gets deleted on an error), so a red run here just needs the
+# normal GitHub Actions run-failed surface, not a repo issue.
+
+on:
+  schedule:
+    - cron: "13 9 * * *"  # once daily, off-minute, distinct hour from the 3h crons
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "1 = propose only, write nothing (default). Set 0 to also exercise the real-delete path while RETENTION_PRUNE_ENABLED is on."
+        default: "1"
+
+permissions:
+  contents: read
+
+jobs:
+  retention:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: sweep
+        env:
+          WATCHER_SECRET: ${{ secrets.WATCHER_SECRET }}
+          URL: ${{ vars.PROSPECT_RETENTION_URL }}  # required repo variable, no default
+          DRY_RUN: ${{ github.event.inputs.dry_run || '0' }}  # scheduled runs ask for real; the route decides
+        run: |
+          set -eu
+          test -n "$URL" || { echo "PROSPECT_RETENTION_URL is not set"; exit 1; }
+          body=$(mktemp)
+          code=$(curl -sS -o "$body" -w '%{http_code}' -X POST \
+            -H "X-Watcher-Secret: $WATCHER_SECRET" \
+            "$URL?dry_run=$DRY_RUN&days=45")
+          cat "$body"
+          if [ "$code" != "200" ]; then
+            echo "retention sweep: http $code"
+            exit 1
+          fi
+          node -e "
+            const r=JSON.parse(require('fs').readFileSync(process.argv[1],'utf8'));
+            if (r.dry_run) console.log('effective mode: dry run - would_delete '+r.would_delete+', excluded_acted_on '+r.excluded_acted_on+', oldest_created_at '+r.oldest_created_at);
+            else console.log('effective mode: real - deleted '+r.deleted+', excluded_acted_on '+r.excluded_acted_on+', remaining '+r.remaining);
+          " "$body"
