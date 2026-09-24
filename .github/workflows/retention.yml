@@ -17,9 +17,12 @@ name: retention
 # (no default prod URL - this repo's convention since 2026-09-19: fail loudly
 # if unset, never point at the wrong deployment).
 #
-# D10 outage alerts: a failed or cancelled run opens "Prospect outage:
-# retention" (once per episode, silent while open); a successful run closes
-# it with a recovery comment.
+# Fix round 2 (MISSION.md PHASE 2 D13): no outage alert here. Prospect may
+# alert Karthik only when something is very dangerous or he must act; the one
+# remaining Prospect alert is heartbeat's feed-dead-26h+ signal, owned by
+# another lane. A failed retention run is not dangerous - the route fails
+# closed (nothing gets deleted on an error), so a red run here just needs the
+# normal GitHub Actions run-failed surface, not a repo issue.
 
 on:
   schedule:
@@ -32,7 +35,6 @@ on:
 
 permissions:
   contents: read
-  issues: write   # opens/closes the outage issue
 
 jobs:
   retention:
@@ -61,28 +63,3 @@ jobs:
             if (r.dry_run) console.log('effective mode: dry run - would_delete '+r.would_delete+', excluded_acted_on '+r.excluded_acted_on+', oldest_created_at '+r.oldest_created_at);
             else console.log('effective mode: real - deleted '+r.deleted+', excluded_acted_on '+r.excluded_acted_on+', remaining '+r.remaining);
           " "$body"
-
-      - name: outage alert
-        if: always()
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          title="Prospect outage: retention"
-          run_url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-          num=$(gh issue list --repo "$GITHUB_REPOSITORY" --state open --json number,title --jq ".[] | select(.title==\"$title\") | .number" | head -1)
-          if [ "${{ job.status }}" = "success" ]; then
-            if [ -n "$num" ]; then
-              gh issue close "$num" --repo "$GITHUB_REPOSITORY" --comment "recovered: $run_url"
-              echo "closed outage issue #$num"
-            else
-              echo "no open outage issue"
-            fi
-          else
-            if [ -n "$num" ]; then
-              echo "outage issue #$num already open, staying quiet"
-            else
-              gh issue create --repo "$GITHUB_REPOSITORY" --title "$title" \
-                --body "@karthikm062025S - the retention sweep (retention.yml) failed or was cancelled. Run: $run_url"
-              echo "opened outage issue"
-            fi
-          fi
