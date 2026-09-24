@@ -54,6 +54,25 @@ const ALLOWLIST: Array<{ file: string; table: string; match: RegExp; reason: str
     reason:
       "the X-Watcher-Secret + ?all=1 branch is the Databricks Orchestrator's hourly re-score job (build/MISSION.md D14/L2c brief), not a user request -- it has no single owner to scope to by design and must enumerate every profile exactly once per run, the same service-tier shape as the feedback-server.ts global-count entries above",
   },
+  {
+    file: "lib/retention.ts",
+    table: "user_roles",
+    match: /select 1 from user_roles ur where ur\.role_id = r\.id/,
+    reason:
+      "the free-tier retention prune (X-Watcher-Secret cron, not a user request): it must check whether ANY user acted on a role before pruning it, so it has no single user_id to scope to by design, the same service-tier shape as the app/api/match/route.ts profiles entry above.",
+  },
+  {
+    file: "lib/retention.ts",
+    table: "applications",
+    match: /select 1 from applications a where a\.role_id = r\.id/,
+    reason: "same as the user_roles entry above: one predicate, checked across every table it names.",
+  },
+  {
+    file: "lib/retention.ts",
+    table: "role_corrections",
+    match: /select 1 from role_corrections rc where rc\.role_id = r\.id/,
+    reason: "same as the user_roles entry above.",
+  },
 ];
 
 function sourceFiles(dir: string): string[] {
