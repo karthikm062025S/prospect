@@ -60,7 +60,7 @@ export function StatsRow({ stats }: { stats: PublicStats }) {
         <Rise delay={0.18}>
           <p className="mx-auto mt-12 max-w-[56ch] text-pretty text-step-0 text-text-dim">
             Counted in Prospect&rsquo;s own database. Every watched board is re-read every 3
-            hours, so these move while you read them.
+            hours, so these change through the day.
           </p>
         </Rise>
       </div>
