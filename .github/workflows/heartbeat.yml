@@ -10,24 +10,25 @@ name: heartbeat
 # No repo secrets required beyond the default GITHUB_TOKEN for the heartbeat.
 #
 # L0 (2026-09-19): the hot scan tier moved here from Supabase pg_cron (Lakebase
-# has no pg_cron). Every 30 minutes the `hot-scan` job POSTs /api/scan?tier=hot
+# has no pg_cron). Every 3 hours (MISSION D7, was 30 min) the `hot-scan` job POSTs /api/scan?tier=hot
 # with the watcher secret; the route answers 202 and scans in after(). Requires
 # repo secret WATCHER_SECRET; optional repo variable SCOUT_SCAN_URL overrides
 # the prod URL. The two schedules are told apart by github.event.schedule.
 
 on:
   schedule:
-    - cron: "7 */6 * * *"  # every 6h, off-minute to avoid the hot :00 slot
-    - cron: "13,43 * * * *"  # every 30 min (hot scan tier), off-minute
+    - cron: "47 */6 * * *"  # every 6h, off-minute :47 (clear of scan.yml's :07)
+    - cron: "13 */3 * * *"  # every 3h (hot scan tier, MISSION D7), off-minute
   workflow_dispatch:
 
 permissions:
+  contents: read  # checkout of the local outage action
   actions: read   # gh run list needs read access to workflow run history
-  issues: write   # opens/comments the silent-scanner alert issue
+  issues: write   # outage issues (D10)
 
 jobs:
   hot-scan:
-    if: ${{ github.event.schedule == '13,43 * * * *' }}
+    if: ${{ github.event.schedule == '13 */3 * * *' }}
     runs-on: ubuntu-latest
     timeout-minutes: 2
     steps:
@@ -45,9 +46,19 @@ jobs:
             "$URL?tier=hot")
           echo "hot scan: http $code"
           [ "$code" = "202" ]
+      - uses: actions/checkout@v4
+        if: always()
+        with:
+          sparse-checkout: .github/actions
+      - name: outage alert
+        if: always()
+        uses: ./.github/actions/outage
+        with:
+          name: heartbeat hot-scan
+          status: ${{ job.status }}
 
   heartbeat:
-    if: ${{ github.event.schedule != '13,43 * * * *' }}
+    if: ${{ github.event.schedule != '13 */3 * * *' }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -70,18 +81,20 @@ jobs:
             fi
           fi
 
-          if [ "$stale" != "true" ]; then
-            echo "scanner healthy"
-            exit 0
+          if [ "$stale" = "true" ]; then
+            echo "scan.yml has not succeeded in more than 26 hours (last success: ${last:-none found}); GitHub Actions cron drift/skips or a real outage"
+            exit 1
           fi
-
-          title="Scout heartbeat: scanner silent"
-          body="@karthikm062025S — the ATS scanner (scan.yml) has not succeeded in more than 26 hours (last success: ${last:-none found}). The crons need checking — this could be GitHub Actions cron drift/skips."
-          num=$(gh issue list --repo "$GITHUB_REPOSITORY" --state open --json number,title --jq ".[] | select(.title==\"$title\") | .number" | head -1)
-          if [ -n "$num" ]; then
-            gh issue comment "$num" --repo "$GITHUB_REPOSITORY" --body "$body"
-            echo "commented on #$num"
-          else
-            gh issue create --repo "$GITHUB_REPOSITORY" --title "$title" --body "$body"
-            echo "created issue"
-          fi
+          echo "scanner healthy"
+      # MISSION D10: stale opens "Prospect outage: heartbeat" once and stays
+      # quiet while it is open; the next healthy check closes it.
+      - uses: actions/checkout@v4
+        if: always()
+        with:
+          sparse-checkout: .github/actions
+      - name: outage alert
+        if: always()
+        uses: ./.github/actions/outage
+        with:
+          name: heartbeat
+          status: ${{ job.status }}

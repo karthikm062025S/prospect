@@ -13,7 +13,7 @@ name: gate-sweep
 
 on:
   schedule:
-    # every 3 h, off-minute :53 (offset from scan.yml's :17, read-feeds.yml's :23, classify.yml's :37, read-alerts.yml's :41)
+    # every 3 h, off-minute :53 (offset from scan.yml's :07, read-feeds.yml's :23, classify.yml's :37, read-alerts.yml's :41)
     - cron: "53 */3 * * *"
   workflow_dispatch:
     inputs:
@@ -23,6 +23,7 @@ on:
 
 permissions:
   contents: read
+  issues: write # outage issue (D10)
 
 jobs:
   gate-sweep:
@@ -58,3 +59,14 @@ jobs:
               break
             fi
           done
+      - uses: actions/checkout@v4
+        if: always()
+        with:
+          sparse-checkout: .github/actions
+      # MISSION D10: one issue per outage, closed by the next green run.
+      - name: outage alert
+        if: always()
+        uses: ./.github/actions/outage
+        with:
+          name: gate-sweep
+          status: ${{ job.status }}

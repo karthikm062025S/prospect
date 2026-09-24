@@ -232,6 +232,13 @@ async function main() {
   const out = { roles: r };
   console.log(`\nPOST ok: inserted ${r.inserted} · updated ${r.updated} · skipped_applied ${r.skipped_applied} · errors ${r.errors.length}`);
   if (r.errors.length) console.log(r.errors.join("\n"));
+  // MISSION D10: /api/watcher answers 200 even when every row fails (run
+  // 36020225011: inserted 0, updated 0, errors 450), so fail the run instead of
+  // reporting a false green. exitCode, not exit(), so the duration line prints.
+  if (r.errors.length > 0 && r.inserted + r.updated === 0) {
+    console.error("every posted row errored server-side: failing the run");
+    process.exitCode = 1;
+  }
 
   // Notify layer: source last-drops.json from the webhook's true "genuinely new"
   // set (inserted_roles) so an `updated` re-find never re-notifies and a

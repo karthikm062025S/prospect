@@ -1,0 +1,34 @@
+name: outage
+description: >
+  One issue per outage (MISSION D2/D10). Run last with `if: always()` and
+  `status: job.status`. failure opens "Prospect outage: <name>" (one email)
+  unless one is already open, then stays silent; success closes it with a
+  "recovered" comment. Needs `issues: write`.
+inputs:
+  name:
+    description: workflow (or job) name used in the issue title
+    required: true
+  status:
+    description: job.status of the calling job
+    required: true
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+        NAME: ${{ inputs.name }}
+        TITLE: "Prospect outage: ${{ inputs.name }}"
+        STATUS: ${{ inputs.status }}
+        RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      run: |
+        num=$(gh issue list --repo "$GITHUB_REPOSITORY" --state open --limit 200 --json number,title --jq ".[] | select(.title==\"$TITLE\") | .number" | head -1)
+        if [ "$STATUS" = "failure" ]; then
+          if [ -n "$num" ]; then echo "outage issue #$num already open, staying quiet"; exit 0; fi
+          gh issue create --repo "$GITHUB_REPOSITORY" --title "$TITLE" \
+            --body "@karthikm062025S Prospect $NAME failed: $RUN_URL . This issue stays quiet while open and closes itself on the next green run."
+        elif [ "$STATUS" = "success" ] && [ -n "$num" ]; then
+          gh issue close "$num" --repo "$GITHUB_REPOSITORY" --comment "recovered: $RUN_URL"
+        else
+          echo "status $STATUS, no outage change"
+        fi
