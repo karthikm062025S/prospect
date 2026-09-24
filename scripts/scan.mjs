@@ -234,8 +234,10 @@ async function main() {
   if (r.errors.length) console.log(r.errors.join("\n"));
   // MISSION D10: /api/watcher answers 200 even when every row fails (run
   // 36020225011: inserted 0, updated 0, errors 450), so fail the run instead of
-  // reporting a false green. exitCode, not exit(), so the duration line prints.
-  if (r.errors.length > 0 && r.inserted + r.updated === 0) {
+  // reporting a false green. Any insert/update/skip means the DB answered.
+  // exitCode, not exit(), so the duration line prints.
+  const handled = r.inserted + r.updated + r.skipped_applied + r.skipped_tombstoned + r.skipped_filtered;
+  if (r.errors.length > 0 && handled === 0) {
     console.error("every posted row errored server-side: failing the run");
     process.exitCode = 1;
   }
@@ -269,8 +271,8 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
       process.exitCode = 1;
     })
     .finally(() => {
-      // Karthik 15:05 addendum: how long one full run takes today, so the
-      // scan.yml cadence bump (every 3h -> every 30m) is a measured decision.
+      // How long one full run takes, so the scan.yml cadence (every 3 hours,
+      // MISSION D7) stays a measured decision.
       console.log(`\nrun duration: ${((Date.now() - runStarted) / 1000).toFixed(1)}s`);
     });
 }

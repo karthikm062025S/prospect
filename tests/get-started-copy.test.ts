@@ -12,7 +12,7 @@ const D27_STRINGS = [
   "See only your term and role",
   "Save a posting worth applying to",
   "Tell us one thing that is off",
-  "You&apos;re set. New postings land every 30 minutes; the saved ones are yours to track.",
+  "You&apos;re set. New postings land every 3 hours; the saved ones are yours to track.",
 ];
 
 test("components/get-started.tsx uses the D27 outcome copy", () => {

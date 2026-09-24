@@ -23,7 +23,8 @@ runs:
         RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
       run: |
         num=$(gh issue list --repo "$GITHUB_REPOSITORY" --state open --limit 200 --json number,title --jq ".[] | select(.title==\"$TITLE\") | .number" | head -1)
-        if [ "$STATUS" = "failure" ]; then
+        # cancelled counts as failure: a timeout-minutes kill reports cancelled.
+        if [ "$STATUS" = "failure" ] || [ "$STATUS" = "cancelled" ]; then
           if [ -n "$num" ]; then echo "outage issue #$num already open, staying quiet"; exit 0; fi
           gh issue create --repo "$GITHUB_REPOSITORY" --title "$TITLE" \
             --body "@karthikm062025S Prospect $NAME failed: $RUN_URL . This issue stays quiet while open and closes itself on the next green run."

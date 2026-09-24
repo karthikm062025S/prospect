@@ -40,7 +40,7 @@ const cachedPublicStats = unstable_cache(readPublicStats, ["public-stats"], {
 });
 
 /**
- * Cached for 30 minutes (the scanner's own hot-board cadence). Tag: public-stats.
+ * Cached for 30 minutes (shorter than the scanner's 3-hour cadence). Tag: public-stats.
  * The landing must never 500 (or serve a cached failure) because the DB
  * blinked — the tiles render "—", computed fresh on every failed call.
  */

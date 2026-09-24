@@ -76,7 +76,7 @@ export default function PrivacyPage() {
         <p className="text-text-dim">
           The internship, co-op, new-grad, full-time and research listings every signed-in user
           sees are public listing data from employers&apos; own applicant-tracking systems, not
-          personal data about you. New postings are scanned every 30 minutes.
+          personal data about you. New postings are scanned every 3 hours.
         </p>
       </section>
 

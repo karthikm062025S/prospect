@@ -32,7 +32,7 @@ const FAQ_GROUPS: FaqGroup[] = [
       },
       {
         q: "How fresh is the feed?",
-        a: "New postings are scanned every 30 minutes.",
+        a: "New postings are scanned every 3 hours.",
       },
       {
         q: "Is Prospect an official Virginia Tech service?",

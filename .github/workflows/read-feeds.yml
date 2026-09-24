@@ -38,7 +38,7 @@ jobs:
         run: npm ci
 
       # Cross-run idempotency: restore the seen-set of role keys already POSTed +
-      # notified, so an hourly re-find of the same role isn't re-emailed to Karthik.
+      # notified, so a next-run re-find of the same role isn't re-emailed to Karthik.
       # Rolling-cache pattern: the run-id key never hits (so this run always saves a
       # fresh cache in the post-step), and restore-keys pulls the most recent prior
       # seen-set. If the cache is evicted the set resets → each role re-notifies once
