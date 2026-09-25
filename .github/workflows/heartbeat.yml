@@ -9,46 +9,25 @@ name: heartbeat
 #
 # No repo secrets required beyond the default GITHUB_TOKEN for the heartbeat.
 #
-# L0 (2026-09-19): the hot scan tier moved here from Supabase pg_cron (Lakebase
-# has no pg_cron). Every 3 hours (MISSION D7, was 30 min) the `hot-scan` job POSTs /api/scan?tier=hot
-# with the watcher secret; the route answers 202 and scans in after(). Requires
-# repo secret WATCHER_SECRET; optional repo variable SCOUT_SCAN_URL overrides
-# the prod URL. The two schedules are told apart by github.event.schedule.
+# The hot-scan job that used to live here (triggering /api/scan?tier=hot on
+# its own 3h schedule) was removed: it duplicated scan.yml's own 3h cadence
+# against the same endpoints and burned the DB/Actions quota for no benefit.
+# app/api/scan/route.ts is unchanged and still reachable by hand
+# (workflow_dispatch or a direct call) if that lane gets a real reason to run
+# on its own schedule again.
 
 on:
   schedule:
     - cron: "47 */6 * * *"  # every 6h, off-minute :47 (clear of scan.yml's :07)
-    - cron: "13 */3 * * *"  # every 3h (hot scan tier, MISSION D7), off-minute
   workflow_dispatch:
 
 permissions:
   contents: read  # checkout of the local outage action
   actions: read   # gh run list needs read access to workflow run history
-  issues: write   # the one Prospect alert issue (MISSION D13)
+  issues: write   # the one Prospect alert issue (only alert this repo sends)
 
 jobs:
-  hot-scan:
-    if: ${{ github.event.schedule == '13 */3 * * *' }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 2
-    steps:
-      - name: trigger the hot scan tier
-        env:
-          WATCHER_SECRET: ${{ secrets.WATCHER_SECRET }}
-          URL: ${{ vars.SCOUT_SCAN_URL }}  # required repo variable, no default (never the old app)
-        run: |
-          set -eu
-          test -n "$URL" || { echo "SCOUT_SCAN_URL is not set"; exit 1; }
-          code=$(curl -sS -o /dev/null -w '%{http_code}' -X POST \
-            -H "X-Watcher-Secret: $WATCHER_SECRET" \
-            -H "content-type: application/json" \
-            -d '{}' \
-            "$URL?tier=hot")
-          echo "hot scan: http $code"
-          [ "$code" = "202" ]
-
   heartbeat:
-    if: ${{ github.event.schedule != '13 */3 * * *' }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -76,9 +55,9 @@ jobs:
             exit 1
           fi
           echo "scanner healthy"
-      # MISSION D13: the ONLY Prospect alert. A dead feed (no green scan.yml in
-      # 26h) opens "Prospect outage: heartbeat" once and stays quiet while it is
-      # open; the next healthy check closes it. No other workflow opens issues.
+      # The ONLY Prospect alert. A dead feed (no green scan.yml in 26h) opens
+      # "Prospect outage: heartbeat" once and stays quiet while it is open;
+      # the next healthy check closes it. No other workflow opens issues.
       - uses: actions/checkout@v4
         if: always()
         with:

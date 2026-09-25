@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { filterTier } from "../lib/scan-tier.ts";
 
-// /api/scan's pure half (MISSION A4): the tier split over the REAL data files.
+// /api/scan's pure half: the tier split over the REAL data files.
 
 const here = new URL(".", import.meta.url);
 const endpoints = JSON.parse(readFileSync(new URL("../scripts/endpoints.json", here), "utf8"));

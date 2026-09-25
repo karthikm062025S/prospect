@@ -4,8 +4,8 @@ name: gate-sweep
 # read-alerts.yml, read-feeds.yml, classify.yml, all untouched). Every 3 h,
 # curls POST /api/gate-sweep on the deployed app in a loop: each call runs the
 # rules in lib/gate-rules.ts over up to 50 stored job descriptions not yet
-# checked and stamps `gate_checked_at` on each (MISSION Task 3 T4). Stops when
-# the route reports `remaining` 0 or after 10 calls. Rules only, $0, so there is
+# checked and stamps `gate_checked_at` on each. Stops when the route reports
+# `remaining` 0 or after 10 calls. Rules only, $0, so there is
 # no kill switch: the first run over the backlog IS the backfill.
 #
 # Requires repo secret WATCHER_SECRET. Optional repo variable SCOUT_GATE_SWEEP_URL

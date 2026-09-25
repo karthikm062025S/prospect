@@ -19,7 +19,7 @@ import targets from "@/scripts/targets.json";
 // 6c-finish: the ETag branch (TRD §13 spike 5). `watch_state` rows feed
 // lib/etag-fetch.ts, which wraps `fetch` through the core's existing `fetchFn`
 // seam — a 304 skips the multi-MB download + parse that is the CPU. No drop
-// notification (MISSION D7/D12): Prospect only alerts on failure.
+// notification: Prospect only alerts on failure.
 //
 // Segment config, not vercel.json: maxDuration is the native Next way to set
 // the function timeout (Hobby cap 300 s); force-dynamic keeps the route off any
@@ -133,8 +133,8 @@ export async function POST(request: Request) {
         }
       }
 
-      // D24/item 2 (MISSION v5): JD capture for roles genuinely INSERTED this
-      // run, bounded + inside the already-non-blocking after() this route runs in.
+      // JD capture for roles genuinely INSERTED this run, bounded + inside the
+      // already-non-blocking after() this route runs in.
       if (insertedRoleIds.length > 0) {
         const { captured, failed } = await captureInsertedRoleJds(query, insertedRoleIds);
         console.log(JSON.stringify({ lane: "jd-ingest", inserted: insertedRoleIds.length, captured, failed }));

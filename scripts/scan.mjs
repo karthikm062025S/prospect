@@ -17,8 +17,8 @@
 // NO default; this is a hackathon repo and must never silently fall back to the
 // old Scout production URL, 2026-09-19 16:45 fix). Flags: --dry-run (no POST),
 // --since-days N (recency window, default 3),
-// --concurrency N (default 8), --strict (MISSION L2, 2026-09-19: opt back into
-// the old CS-intern-only filter; the coverage-widened filter — every function,
+// --concurrency N (default 8), --strict (opt back into the old CS-intern-only
+// filter; the coverage-widened filter — every function,
 // every level — is the DEFAULT now). --dry-run without --strict also prints a
 // before/after comparison against the old filter (Done Means D).
 //
@@ -227,11 +227,26 @@ async function main() {
     r.errors.push(...(part.errors || []));
     if (Array.isArray(part.inserted_roles)) r.inserted_roles.push(...part.inserted_roles);
     console.log(`POST batch ${i / BATCH + 1}/${Math.ceil(uniq.length / BATCH)} ok: +${part.inserted || 0} inserted`);
+
+    // The DB can be fully down while the webhook itself still answers 200 (every
+    // row errors server-side). Stop posting further batches once that happens,
+    // there is no point spending 40+ more batches and ~8 minutes of Actions time
+    // against a dead endpoint, and fail the run so the heartbeat is the alert.
+    const batchHandled =
+      (part.inserted || 0) + (part.updated || 0) + (part.skipped_applied || 0) + (part.skipped_tombstoned || 0) + (part.skipped_filtered || 0);
+    const batchErrors = (part.errors || []).length;
+    if (batchHandled === 0 && batchErrors > 0 && batchErrors === batch.length) {
+      console.error(
+        `\nbatch ${i / BATCH + 1} came back fully errored with no insert/update/skip (${batchErrors}/${batch.length}) - the DB looks down, stopping here instead of posting the remaining batches`,
+      );
+      process.exitCode = 1;
+      break;
+    }
   }
   const out = { roles: r };
   console.log(`\nPOST ok: inserted ${r.inserted} · updated ${r.updated} · skipped_applied ${r.skipped_applied} · errors ${r.errors.length}`);
   if (r.errors.length) console.log(r.errors.join("\n"));
-  // MISSION D10: /api/watcher answers 200 even when every row fails (run
+  // /api/watcher answers 200 even when every row fails (run
   // 36020225011: inserted 0, updated 0, errors 450), so fail the run instead of
   // reporting a false green. Any insert/update/skip means the DB answered.
   // exitCode, not exit(), so the duration line prints.
@@ -270,8 +285,8 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
       process.exitCode = 1;
     })
     .finally(() => {
-      // How long one full run takes, so the scan.yml cadence (every 3 hours,
-      // MISSION D7) stays a measured decision.
+      // How long one full run takes, so the scan.yml cadence (every 3 hours)
+      // stays a measured decision.
       console.log(`\nrun duration: ${((Date.now() - runStarted) / 1000).toFixed(1)}s`);
     });
 }

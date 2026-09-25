@@ -5,7 +5,7 @@ name: read-feeds
 # vanshb03, speedyapply), parses the role rows in code (zero LLM tokens), applies a
 # small recency window, and POSTs the fresh delta to the same /api/watcher webhook
 # (dedup + applied-lock server-side). Catches curated community-list drops that the
-# ATS scanner + alert-email ingest don't have yet. Runs every 3h (MISSION D7).
+# ATS scanner + alert-email ingest don't have yet. Runs every 3h.
 #
 # Requires repo secret WATCHER_SECRET. Required repo variable SCOUT_WEBHOOK
 # (no default — this is a hackathon repo and must never silently fall back to
@@ -13,7 +13,7 @@ name: read-feeds
 
 on:
   schedule:
-    # every 3h (MISSION D7, was hourly), off-minute :23 (offset from scan.yml's :07 and read-alerts.yml's :41)
+    # every 3h (was hourly), off-minute :23 (offset from scan.yml's :07 and read-alerts.yml's :41)
     - cron: "23 */3 * * *"
   workflow_dispatch:
     inputs:

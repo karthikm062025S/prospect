@@ -13,9 +13,9 @@ name: scan
 
 on:
   schedule:
-    # MISSION D7 (2026-09-24): every 3h (was every 30 min), off-minute :07.
+    # every 3h (was every 30 min), off-minute :07.
     # Staggered with read-feeds :23, classify :37, read-alerts :41,
-    # gate-sweep :53 and heartbeat's hot-scan :13 / freshness check :47.
+    # gate-sweep :53 and heartbeat's freshness check :47.
     - cron: "7 */3 * * *"
   workflow_dispatch:
     inputs:
@@ -59,8 +59,8 @@ jobs:
           SINCE_DAYS: ${{ github.event.inputs.since_days || '3' }}
         run: node scripts/scan.mjs --since-days "$SINCE_DAYS" --concurrency 16
 
-      # MISSION L2 (2026-09-19): the three new named sources (Workday tenants,
-      # USAJOBS, Adzuna), same webhook, own named ok/FAILED lines per rule 2 —
+      # The three new named sources (Workday tenants, USAJOBS, Adzuna), same
+      # webhook, own named ok/FAILED lines per rule 2 —
       # a missing key never fails the whole job silently, but the step itself
       # exits non-zero so it shows red in the Actions run until the key lands.
       - name: run new sources (workday / usajobs / adzuna)
