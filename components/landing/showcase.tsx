@@ -88,7 +88,7 @@ export function Showcase({
         </div>
 
         {/* Depth: the shot travels at ~0.86x the copy column beside it and
-            settles out of a small tilt as it enters (lane L3, item 3). The
+            settles out of a small tilt as it enters (item 3). The
             island is the wrapper only — the shot itself still renders on the
             server and is passed in as children. */}
         <ParallaxMedia className={media === "left" ? "lg:order-1" : undefined}>

@@ -6,7 +6,7 @@ import { makeTestDb, insertRow, truncateAll, uuid, type TestDb } from "./helpers
 
 // lib/role-jd.ts's ensureRoleJd is the ONE function both ingest lanes and the
 // Home detail pane's lazy-open action call. Every case here injects
-// `opts.capture` (a test-only DI hook — see the ponytail comment on
+// `opts.capture` (a test-only DI hook — see the note on
 // defaultCapture in lib/role-jd.ts) instead of exercising the real
 // captureJobDescription/captureJobPosting path: a STATIC lib-to-lib import of
 // lib/jd-snapshot.ts would throw ERR_MODULE_NOT_FOUND the moment this file is

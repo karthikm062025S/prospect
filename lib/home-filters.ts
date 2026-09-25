@@ -8,7 +8,7 @@ export type HomeFilters = {
   tier?: string;
 };
 
-// Task 2 / D3-D4 (lane L1, 2026-09-15): a row is one or more families at once
+// Task 2 / D3-D4 (2026-09-15): a row is one or more families at once
 // (e.g. ai_ml + swe), so the family filter is membership, not equality. Same
 // membership rule for tierTags (a company can carry several tags at once).
 type FilterableHomeRow = {

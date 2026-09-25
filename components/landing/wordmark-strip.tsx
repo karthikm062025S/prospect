@@ -14,7 +14,7 @@ import { listMockShots } from "@/components/landing/mocks";
 // Settled / prefers-reduced-motion. Nothing new was written for it.
 //
 // The strip reads public/mocks/*.png. Until real captures are dropped in,
-// drops real captures in, it renders a named empty state and no placeholder art.
+// it renders a named empty state and no placeholder art.
 
 // 320x176 per shot: the reference's image band reads as wide cards, and an app
 // screenshot is still legible at that size on a 390 phone.

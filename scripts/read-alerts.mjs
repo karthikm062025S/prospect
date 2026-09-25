@@ -1,7 +1,7 @@
 // Deterministic job-alert email ingestion (Scout — ADDITIVE to scan.mjs).
 //
 // Reads a dedicated Gmail label via IMAP + app-password, parses job-alert emails
-// IN CODE (zero LLM tokens, $0, no Claude-session burn — same discipline as
+// IN CODE (zero LLM tokens, $0, no per-run AI cost — same discipline as
 // scan.mjs), reuses scan.mjs's title/US/wrong-term filters, tags giants/unicorns
 // from targets.json so the mandatory-tailoring rule fires downstream, and POSTs
 // survivors to the existing /api/watcher webhook (server-side dedup + applied-lock

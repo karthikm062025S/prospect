@@ -11,7 +11,7 @@ import {
   riseDelay,
 } from "../components/motion/rise-math.ts";
 
-// the signed-in app has ONE
+// The signed-in app has ONE
 // vertical rhythm. design/SYSTEM.md "Spacing and rhythm": every vertical gap is
 // `--section-y`, the 24px block gap or the 12px stack gap, and rows use the
 // 12x16 row padding — "no ad hoc mt-8/mt-9/mt-14 or one-off pixel margins".
@@ -70,7 +70,7 @@ const FILES = [
 ];
 
 // Under app/(app) but NOT in the ui/d-fold fence, so this fold may not edit them.
-// Both still carry a hardcoded radius and are reported to the orchestrator:
+// Both still carry a hardcoded radius, tracked as a known gap:
 // - app/(app)/auth/update-password/page.tsx  rounded-2xl
 // - app/(app)/journey/loading.tsx            style={{ borderRadius: "var(--radius-card, 16px)" }}
 // Delete an entry here the moment its owner lands the token fix.

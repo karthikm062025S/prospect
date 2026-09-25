@@ -29,7 +29,7 @@ type RawRow = {
   link: string | null;
   season?: string | null;
   family?: string | null;
-  // Task 2 / D4 (lane L1, 2026-09-15): `families` (roles.families text[],
+  // Task 2 / D4 (2026-09-15): `families` (roles.families text[],
   // nullable) added alongside `family` so the read-time rule below can prefer a
   // stored multi-family classification over re-deriving from the title alone.
   families?: Family[] | null;

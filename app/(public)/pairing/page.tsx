@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
-// TEMPORARY gate artefact (mission UI/UX 2026-09-19, leaf T0). It renders every
-// token and face pairing at once so the orchestrator can screenshot light and
+// TEMPORARY gate artefact (2026-09-19). It renders every
+// token and face pairing at once so it is easy to screenshot light and
 // dark side by side and Karthik can react to real pixels rather than a table of
 // hex values. Delete this route once the palette is signed off.
 //

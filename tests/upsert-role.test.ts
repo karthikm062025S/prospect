@@ -197,7 +197,7 @@ for (const [title, expected] of FAMILY_PARITY) {
   });
 }
 
-// Task 3 T2/T3 (lane L1, 2026-09-16): liveness (last_seen_at, repost_count)
+// Task 3 T2/T3 (2026-09-16): liveness (last_seen_at, repost_count)
 // and identity (canonical_key) on the upsert write path.
 
 test("insert stamps last_seen_at and canonical_key, computed server-side", async () => {
@@ -411,7 +411,7 @@ test("a tombstone whose canonical_key matches (same Workday id, different title)
   assert.equal(await rolesCount(), 0, "a canonical-key-matched tombstone must never let the posting re-insert");
 });
 
-// Fold 2026-09-16 (orchestrator review, MAJOR): the ATS-id half of
+// Fold 2026-09-16 (code review, MAJOR): the ATS-id half of
 // canonical_key is TENANT-scoped for Workday/SuccessFactors — two different
 // companies can each legitimately carry "wd:R01171049" on their own Workday
 // tenant. The canonical_key lookup must be scoped by company_id or it would

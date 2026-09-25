@@ -1,6 +1,6 @@
 name: retention
 
-# the free-tier
+# The free-tier
 # retention prune. Once daily, POSTs /api/retention-sweep on the deployed
 # app; the route always computes would-delete + excluded-acted-on counts.
 # Fix round 1: the Vercel env RETENTION_PRUNE_ENABLED is the ONLY gate for a

@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { liveness } from "../lib/liveness.ts";
 
-// Task 3 V3 (lane L2): the DONE-MEANS table verbatim. NOW is a fixed instant
+// Task 3 V3: the DONE-MEANS table verbatim. NOW is a fixed instant
 // so "N days/hours ago" fixtures are deterministic; all reference instants
 // are given as ISO strings the same way the DB would store them.
 const NOW = new Date("2026-09-16T12:00:00Z").getTime(); // 08:00 ET

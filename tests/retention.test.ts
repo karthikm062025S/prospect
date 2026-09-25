@@ -12,7 +12,7 @@ import {
 } from "../lib/retention.ts";
 import { makeTestDb, insertRow, truncateAll, uuid, type TestDb } from "./helpers/test-db.ts";
 
-// the free-tier
+// The free-tier
 // retention prune behind POST /api/retention-sweep. makeRetentionDb's SQL
 // runs against the REAL schema (pglite, tests/helpers/test-db.ts) so the
 // NOT EXISTS / legacy-column predicate is proven against real Postgres
@@ -186,7 +186,7 @@ test("runRetentionSweep honours a wider days window (30-day floor) without touch
   }
 });
 
-// D3/D11 + handoff-R4.md: the kill switch is enforced server-side. A caller
+// D3/D11: the kill switch is enforced server-side. A caller
 // that has the watcher secret but no RETENTION_PRUNE_ENABLED='1' can request
 // dry_run=0 and still never get a real delete.
 test("runRetentionSweep forces dry-run when the kill switch (pruneEnabled) is off, even if dryRun=false was requested", async () => {

@@ -14,7 +14,7 @@ import { formatStat } from "@/lib/public-stats-format";
 // surfaces exist and a fourth would have to be invented.
 // Spec: build/research/wishlabs/components/07-features.md.
 //
-// Redesign 2026-09-20 (lane L3, item 2): a PINNED SCENE. The band holds the
+// Redesign 2026-09-20 (item 2): a PINNED SCENE. The band holds the
 // heading and the three cards in one viewport-tall frame, and scroll progress
 // walks the deck one card at a time — the active card lifts and takes the
 // accent edge, the other two settle a fraction behind it.

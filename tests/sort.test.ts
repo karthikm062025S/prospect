@@ -108,7 +108,7 @@ test("collapseDuplicates: empty input", () => {
   assert.deepEqual(collapseDuplicates([]), []);
 });
 
-// --- Task 3 T3/T3a: canonical_key-aware grouping (lane L2) ---
+// --- Task 3 T3/T3a: canonical_key-aware grouping ---
 test("collapseDuplicates: same company + same canonical_key, DIFFERENT titles, collapse into one", () => {
   const older = makeRole({ id: "a", company_id: "c1", title: "SWE Intern", canonical_key: "wd:R1", created_at: "2026-08-01T00:00:00Z" });
   const newer = makeRole({ id: "b", company_id: "c1", title: "Software Engineer Intern", canonical_key: "wd:R1", created_at: "2026-08-05T00:00:00Z" });

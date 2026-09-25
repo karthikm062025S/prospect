@@ -3,12 +3,12 @@ import path from "node:path";
 
 // Server-only. The landing's screenshot strip and the two product bands show
 // REAL captures of the running app, never placeholder art.
-// The orchestrator owns the captures (a worker cannot reach localhost), so
-// until it drops PNGs into public/mocks/ this returns an empty list and every
-// consumer renders its own NAMED empty state.
+// These captures are added by hand (an automated job cannot reach localhost),
+// so until someone drops PNGs into public/mocks/ this returns an empty list
+// and every consumer renders its own NAMED empty state.
 //
-// Read at render time on the server: the folder is filled by the orchestrator
-// after this lane is written, and the page is already dynamic (it reads the
+// Read at render time on the server: the folder is filled by hand after this
+// module is written, and the page is already dynamic (it reads the
 // session cookie), so there is no build-time snapshot to go stale.
 
 const DIR = path.join(process.cwd(), "public", "mocks");

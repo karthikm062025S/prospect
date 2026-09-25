@@ -162,7 +162,7 @@ export default async function HomePage() {
     // VTHacks speed pass: dream-tier tags for the TIER pill ("big 4" etc.).
     tierTags: deriveTierTags(companyById.get(role.company_id)?.name ?? "", companyById.get(role.company_id)?.tier ?? null),
     apply_clicked_at: role.apply_clicked_at,
-    // Task 3 T2/T3 (lane L2): derived at read time, never stored.
+    // Task 3 T2/T3: derived at read time, never stored.
     liveness: liveness(role, now).label,
     repost_count: role.repost_count ?? 0,
     canonical_key: role.canonical_key ?? null,

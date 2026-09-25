@@ -3,7 +3,7 @@
 import { useEffect, useState, type RefObject } from "react";
 import { useScroll, useTransform, type MotionValue } from "motion/react";
 
-// The ONE pinning primitive on the landing (redesign 2026-09-20, lane L3).
+// The ONE pinning primitive on the landing (redesign 2026-09-20).
 // Extracted verbatim from components/landing/pinned-steps.tsx, which proved
 // the mechanic: a tall wrapper owns the runway, a `sticky top-0 h-dvh` child
 // is the frame, and scroll position inside that runway is the only input the

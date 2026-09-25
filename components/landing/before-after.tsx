@@ -12,7 +12,7 @@ import { usePinProgress, useWideViewport } from "@/components/motion/pin-scene";
 // Section 7: the before / after band.
 // Spec: build/research/wishlabs/components/06-before-after.md.
 //
-// Redesign 2026-09-20 (lane L3, item 1): this band became a PINNED SCENE. The
+// Redesign 2026-09-20 (item 1): this band became a PINNED SCENE. The
 // section holds one viewport-tall frame for two viewports of scroll; the raw
 // posting on the left stays exactly where it is while the structured record on
 // the right assembles field by field, each field crossing its own threshold of

@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync, readdirSync } from "node:fs";
 import { join, relative, resolve, sep } from "node:path";
 
-// the one Lakebase pool (lib/db.ts) is server-only. It
+// The one Lakebase pool (lib/db.ts) is server-only. It
 // must never be imported from client code (any file carrying "use client"),
 // nor from the public landing (app/(public), app/welcome), which reads only the
 // cached public-feed / public-stats readers. Successor of the Supabase-era

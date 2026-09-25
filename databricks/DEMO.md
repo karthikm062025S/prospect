@@ -112,7 +112,7 @@ followed.
   run must land at :20, after the sync).
 - Honest gap: the kit's `environments[].spec.dependencies` block is the
   declarative way to ship `pg8000`; the notebook keeps the sync lane's proven
-  `%pip install` cell tonight (marked `note: ` in the source).
+  `%pip install` cell tonight (marked `note:` in the source).
 
 ## Screen 6: Genie space "Scout: why"
 

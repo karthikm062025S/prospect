@@ -1,4 +1,4 @@
-// Task 3 T2/V3 (lane L2): liveness label + repost text, derived at READ time
+// Task 3 T2/V3: liveness label + repost text, derived at READ time
 // from the row's last confirmation — never stored. Nothing here hides a row;
 // the caller decides what to do with the label.
 //

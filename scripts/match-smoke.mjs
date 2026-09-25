@@ -9,7 +9,7 @@
 //   node --env-file=.env.local scripts/match-smoke.mjs --user <profile user id> [--labels]
 //
 // Karthik runs the endpoint mode against the real deployment himself (never
-// Claude, per the brief) -- it re-scores EVERY profile in Lakebase, a real
+// automated) -- it re-scores EVERY profile in Lakebase, a real
 // write. The `--user` mode (speed pass, 2026-09-20) runs lib/agents/match.ts
 // runMatchAgent IN-PROCESS for ONE profile against the real Lakebase, Gemini
 // and Vector Search, printing each NDJSON step with its wall-clock time --

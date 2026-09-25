@@ -11,7 +11,7 @@ import test from "node:test";
 // A source-shape test, deliberately: `npm test` is node --experimental-strip-types
 // with no DOM and no renderer (next/cache alone cannot be imported here, see the
 // header of lib/public-stats-format.ts), so the alternative is no gate at all.
-// The rendered check is the orchestrator's screenshot pass.
+// The rendered check is a manual screenshot pass.
 
 const PAGE = "app/welcome/page.tsx";
 
@@ -115,7 +115,7 @@ test("the strip reads public/mocks and names its empty state", () => {
   assert.match(strip, /shots\.length === 0/);
   assert.match(strip, /App screenshots pending/);
   // The folder ships with its README and nothing else, so the empty state is
-  // the state that actually renders until the orchestrator drops captures in.
+  // the state that actually renders until real captures are dropped in.
   assert.ok(fs.existsSync("public/mocks/README.md"));
   const pngs = fs.readdirSync("public/mocks").filter((f) => f.endsWith(".png"));
   assert.ok(Array.isArray(pngs));

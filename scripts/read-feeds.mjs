@@ -308,7 +308,7 @@ export function buildFeedRole(cand, listName, ctx) {
     posted_at: null, // dedup on (company,title) across hourly runs / repeated lists
     link: cand.link || null,
     source: `${tag}:${listName}`,
- location: cand.location || null, // D34: the aggregator's parsed location text
+    location: cand.location || null, // the aggregator's parsed location text
   };
 }
 

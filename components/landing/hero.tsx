@@ -79,7 +79,7 @@ const MARKS = ROW_A.slice(0, 8);
 
 // Bottom-weighted, so the sky stays as bright as the painting for the maroon
 // letters and only the valley under the copy darkens.
-// note: inline; app/globals.css is orchestrator-only this mission.
+// note: inline, not in app/globals.css, to keep this component self-contained.
 // Upgrade path: a `.scout-hero-scrim` class next to `.scout-sky-scrim`.
 const SCRIM =
   "linear-gradient(to bottom, rgb(31 14 20 / 0) 0%, rgb(31 14 20 / 0) 40%, rgb(31 14 20 / 0.45) 58%, rgb(31 14 20 / 0.72) 100%)";

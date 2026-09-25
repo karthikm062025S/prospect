@@ -32,8 +32,7 @@ export type RoleLevel = (typeof ROLE_LEVELS)[number];
 // direct reuse by the Home filter UI and as SQL-backfill reference), but this
 // file is imported DIRECTLY by tests/upsert-role.test.ts under
 // `node --experimental-strip-types`, which cannot resolve an extensionless
-// runtime *value* import between two lib/*.ts files (see CLAUDE.md's
-// the module-resolution rule) — the same reason isTargetTitle
+// runtime *value* import between two lib/*.ts files -- the same reason isTargetTitle
 // above is a standalone copy rather than a cross-import of scan-core.mjs.
 // tests/season.test.ts and tests/family.test.ts lock the canonical
 // lib/season.ts + lib/family.ts behavior this copy must track — keep both in
@@ -116,7 +115,7 @@ export function ingestFamily(title: string): string {
   return "other";
 }
 
-// identity across a repost. The ATS job id parsed from
+// Identity across a repost. The ATS job id parsed from
 // the link is the strongest signal (same posting survives a title/location
 // drift); falls back to company + normalized title + normalized location.
 // Inlined here (not imported from a shared lib/*.ts module) for the same
@@ -425,7 +424,7 @@ export async function upsertRole(
   // T3: identity lookup order — canonical_key first (oldest row by created_at
   // wins when more than one shares a key), then the legacy exact triple
   // (company_id, title, posted_at) for a row that predates the key.
-  // Scoped by company_id (fold 2026-09-16, orchestrator review): the ATS-id
+  // Scoped by company_id (fold 2026-09-16, code review): the ATS-id
   // half of canonical_key is TENANT-scoped for Workday (wd:R.../wd:JR...) and
   // SuccessFactors (sf:...) — two different companies can both legitimately
   // carry "wd:R01171049" on their own Workday tenant, so an unscoped lookup

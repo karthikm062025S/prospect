@@ -78,7 +78,7 @@ function Statement({
 export function PinnedSteps() {
   const ref = useRef<HTMLDivElement>(null);
   const settled = useSettled();
-  // The shared pinning primitive, extracted from this component (lane L3):
+  // The shared pinning primitive, extracted from this component:
   // one tall runway, one sticky frame, progress as a function of scroll.
   const scrollYProgress = usePinProgress(ref, settled);
   const [step, setStep] = useState(0);
