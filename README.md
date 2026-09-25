@@ -55,7 +55,7 @@ Editable sources for each picture are in [`docs/diagrams/`](docs/diagrams/). Ope
 | App | Next.js 16, TypeScript, Vercel; email and password sign-in |
 | Ingestion | GitHub Actions crons (`.github/workflows/`) |
 
-Every merge was gated on `tsc`, `eslint`, 1,258 tests and a production build.
+Every merge was gated on `tsc`, `eslint`, 1,261 tests and a production build.
 
 ## For judges with their own agent
 
@@ -81,7 +81,7 @@ databricks/   sync job, orchestrator job, archetypes, genie
 ans/          agent registration, registry.json, dns-records.json
 datasets/     every dataset we load, the scripts that built them, the mock student's PDFs
 scripts/      scanners, loaders, smoke tests
-tests/        1,258 tests
+tests/        1,261 tests
 docs/         ARCHITECTURE.md, ANS-DEMO.md, diagrams/
 ```
 
