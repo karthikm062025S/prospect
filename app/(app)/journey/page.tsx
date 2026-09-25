@@ -198,7 +198,7 @@ export default async function JourneyPage() {
   const totalCount = nodes.length;
 
   return (
-    // D10 (build/MISSION.md): the board fills the 1280 container the rest of
+    // the board fills the 1280 container the rest of
     // the app uses (max-w-page, same token as the landing sections).
     <div className="mx-auto flex w-full max-w-page flex-col gap-6 py-4">
       {roadmap ? (

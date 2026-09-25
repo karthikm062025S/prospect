@@ -1,7 +1,7 @@
 import { z } from "zod";
 import type { QueryResultRow } from "pg";
 
-// ponytail: "./vector-search", "./gemini", "./databricks-sql" and
+// note: "./vector-search", "./gemini", "./databricks-sql" and
 // "./posting-tasks" are imported DYNAMICALLY inside assignArchetype, never as
 // a static top-level import -- the same cross-lib gotcha documented at the
 // top of lib/posting-tasks.ts and lib/role-jd.ts's defaultCapture.

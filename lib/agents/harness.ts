@@ -199,7 +199,7 @@ function tryDecode<T>(input: CallModelInput<T>, { text, finishReason }: ModelTex
   return { ok: true, value: parsed.data };
 }
 
-// --- The profile stream's step order (MISSION D-UI3) ------------------------
+// --- The profile stream's step order ------------------------
 
 export const PIPELINE_STEPS = ["transcript", "resume", "profile", "match", "roadmap"] as const;
 export type PipelineStepKey = (typeof PIPELINE_STEPS)[number];

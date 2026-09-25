@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // L5.1: register the 4 ANS identities (profile, match, roadmap, impostor)
-// against the LOCAL RA/TL (build/MISSION.md L5 D19-D24). Plain ESM, Node 22
+// against the LOCAL RA/TL. Plain ESM, Node 22
 // built-ins only (fetch, child_process, fs) -- no deps, no npm install.
 //
 // Usage: node ans/register.mjs [--reset]
@@ -20,7 +20,7 @@
 //   GET agent (capture registrationPending.dnsRecords[]) -> POST verify-dns
 //   (202) -> GET agent (confirm ACTIVE) -> GET {TL}/v1/agents/{id} (confirm
 //   ACTIVE). The impostor stops after verify-acme: it is deliberately never
-//   verify-dns'd, so it has no transparency-log record (build/MISSION.md L5,
+//   verify-dns'd, so it has no transparency-log record (see the
 //   ans-impostor.mjs demo).
 
 import { execFileSync } from "node:child_process";

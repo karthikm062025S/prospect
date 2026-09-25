@@ -1,6 +1,6 @@
 // Some ATS feeds ship titles with HTML entities ("Event Technology &amp; Digital
 // Platforms"). Decode the five named entities plus numeric ones at render and at
-// ingest. ponytail: no full entity table; add names here if a feed needs them.
+// ingest. note: no full entity table; add names here if a feed needs them.
 const NAMED: Record<string, string> = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " " };
 
 export function decodeEntities(text: string): string {

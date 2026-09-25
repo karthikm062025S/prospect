@@ -3,7 +3,7 @@ import type { Endpoint } from "./jd-snapshot";
 import type { GateResult } from "./gate-rules";
 import endpoints from "../scripts/endpoints.json" with { type: "json" };
 
-// ensureRoleJd (D24, MISSION v5): the ONE function both the ingest lanes
+// ensureRoleJd: the ONE function both the ingest lanes
 // (app/api/watcher, app/api/scan — insert-time capture) and the Home detail
 // pane's lazy-open action call to get a posting's sanitized HTML + location.
 // Returns the stored snapshot untouched when present (unless `force`);
@@ -12,7 +12,7 @@ import endpoints from "../scripts/endpoints.json" with { type: "json" };
 // backfills `location` ONLY when the role doesn't already have one (never
 // churns a value a prior capture/scan already set). Never throws.
 //
-// ponytail: a second concurrent call (e.g. two tabs opening the same
+// note: a second concurrent call (e.g. two tabs opening the same
 // never-captured role) just re-captures and re-writes — no lock. Acceptable:
 // low-frequency path, both writes derive from the SAME source posting, so the
 // last write is equivalent to the first.
@@ -22,7 +22,7 @@ type CaptureFn = (
   company: { ats: string | null; endpoint: string | null; name?: string | null },
 ) => Promise<{ html: string | null; location: string | null; error: string | null }>;
 
-// ponytail: DYNAMIC (not static) import of lib/jd-snapshot.ts — a static
+// note: DYNAMIC (not static) import of lib/jd-snapshot.ts — a static
 // extensionless value import between two lib/*.ts files throws
 // ERR_MODULE_NOT_FOUND the moment `node --experimental-strip-types --test`
 // loads a test that imports THIS file directly (proven; a `.ts`-extension
@@ -158,7 +158,7 @@ export async function ensureRoleJd(
     // successful capture and only when nobody has labelled the row yet (a
     // hand-set or earlier value wins). The stamp lands whether or not a flag
     // was written, so the sweep never re-reads this row.
-    // ponytail: a gate failure never loses the capture; the row stays in the
+    // note: a gate failure never loses the capture; the row stays in the
     // sweep residue and the wiring is proven by `next build`.
     if (result.html && role.visa_class == null) {
       try {
@@ -196,9 +196,9 @@ export async function ensureRoleJd(
   }
 }
 
-// Ingest-time fan-out (MISSION v5 item 2): both /api/watcher and /api/scan call
+// Ingest-time fan-out: both /api/watcher and /api/scan call
 // this from inside their after() for the roles they JUST inserted this
-// request. ponytail: bounded to MAX_CONCURRENT in flight and MAX_PER_REQUEST
+// request. note: bounded to MAX_CONCURRENT in flight and MAX_PER_REQUEST
 // total so a big ingest burst can't blow the after() function's time budget —
 // any insert beyond the cap just keeps jd_snapshot null until the lazy
 // on-first-open path (ensureRoleJd via the Home detail pane) fills it in.

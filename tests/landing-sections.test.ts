@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import test from "node:test";
 
-// Lane C / MISSION C6. The landing's contract with the reference: the sections
+// The landing's contract with the reference: the sections
 // exist, in the reference's order, the two motion pieces have a real
 // reduced-motion branch, the before/after band is a pinned scroll scene whose
 // settled state is the whole record, every number is fetched, and the

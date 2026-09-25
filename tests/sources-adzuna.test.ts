@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { fetchRows } from "../scripts/sources/adzuna.mjs";
 
-// MISSION L2 (VTHacks 14, 2026-09-19). ADZUNA_APP_ID/ADZUNA_APP_KEY are NOT
+// VTHacks 14, 2026-09-19. ADZUNA_APP_ID/ADZUNA_APP_KEY are NOT
 // provisioned in this environment (Done Means B) — proven live during this
 // build: a real request with no app_id/app_key returns a real HTTP 400 (see
 // tests/fixtures/sources/MANIFEST.md), confirming the host/path are correct

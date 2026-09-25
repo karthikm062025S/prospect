@@ -6,7 +6,7 @@ import test from "node:test";
 // v7 S4 (app-functional lane). The S4 persona click-through opened a modal
 // dialog and the feedback modal on the deployed build and found
 // `document.querySelectorAll('[aria-modal],[role=dialog]').length === 0` on
-// every page — the km-ui accessibility floor's modal contract, missing.
+// every page — the accessibility floor's modal contract, missing.
 //
 // Every modal in this app is a native <dialog> opened with showModal(), which
 // already gives Escape, the focus trap and an inert background. What was

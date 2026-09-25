@@ -14,7 +14,7 @@
 // bare text gets an implicit <p>, so a div-only posting comes out as paragraphs
 // instead of one run-on block. See BLOCK / ensureBlock / blockBreak below.
 //
-// ponytail: hand-written tokenizer, no HTML-parser dependency (MISSION D5).
+// note: hand-written tokenizer, no HTML-parser dependency.
 // Ceiling: no readability/main-content extraction — a page-fetch snapshot may
 // carry site chrome; the detail pane shows it in a scroll box (TRD §6 step 2).
 // Ceiling: JS-rendered boards (lifeattiktok, jobs.bytedance) and bot walls
@@ -742,7 +742,7 @@ export async function captureJobDescription(
 }
 
 // ------------------------------------------------------------ v5 ingest capture --
-// D34 (MISSION v5): ingest-time capture also needs the posting's LOCATION from
+// ingest-time capture also needs the posting's LOCATION from
 // the ATS JSON, which captureJobDescription's `pick` closures don't expose
 // (description-only). This sibling reuses atsDescriptionUrl's vendor routing +
 // this file's sanitizer/byte-cap, fetches the SAME url ONCE, and reads location
@@ -753,7 +753,7 @@ export async function captureJobDescription(
 // lever/ashby's matched posting id isn't exposed by atsDescriptionUrl's `pick`
 // closure, so it's re-derived here from the SAME link-path segment (segs[1])
 // atsDescriptionUrl itself reads for those two vendors.
-// ponytail: keep in sync if that routing ever changes (tests/jd-snapshot.test.ts
+// note: keep in sync if that routing ever changes (tests/jd-snapshot.test.ts
 // covers both). D-ldjson: a page-fetch (no ATS route) now CAN yield a location
 // too, via captureJobPosting's ld+json branch below; only a page with neither
 // a vendor API nor a JobPosting ld+json still forces the caller (lib/role-jd.ts)

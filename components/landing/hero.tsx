@@ -10,7 +10,7 @@ import { Rise } from "@/components/landing/rise";
 import { SignInCta, SIGN_IN_REASON } from "@/components/landing/sign-in-cta";
 import { useSettled } from "@/components/motion/settled";
 
-// Redesign 2026-09-20 (MISSION D1, D4, D6, D10). Karthik's painting, cut by
+// Redesign 2026-09-20. Karthik's painting, cut by
 // scripts/hero-layers.mjs into four depth planes (public/art/hero/*), each
 // scrolling at its own rate: sky slowest, near trees fastest. His wordmark
 // sits in the sky like a sun, BETWEEN the sky and the far ridges, so the
@@ -79,7 +79,7 @@ const MARKS = ROW_A.slice(0, 8);
 
 // Bottom-weighted, so the sky stays as bright as the painting for the maroon
 // letters and only the valley under the copy darkens.
-// ponytail: inline; app/globals.css is orchestrator-only this mission.
+// note: inline; app/globals.css is orchestrator-only this mission.
 // Upgrade path: a `.scout-hero-scrim` class next to `.scout-sky-scrim`.
 const SCRIM =
   "linear-gradient(to bottom, rgb(31 14 20 / 0) 0%, rgb(31 14 20 / 0) 40%, rgb(31 14 20 / 0.45) 58%, rgb(31 14 20 / 0.72) 100%)";

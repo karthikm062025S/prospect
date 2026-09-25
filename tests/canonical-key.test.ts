@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { deriveCanonicalKey } from "../lib/upsert-role.ts";
 
-// T3 (MISSION Task 3): the ATS job id parsed from the link is the identity;
+// the ATS job id parsed from the link is the identity;
 // falls back to company + normalized title + normalized location. Locks
 // deriveCanonicalKey the same way tests/upsert-role.test.ts locks
 // isTargetTitle/ingestSeason/ingestFamily.

@@ -12,7 +12,7 @@ import {
 } from "../lib/retention.ts";
 import { makeTestDb, insertRow, truncateAll, uuid, type TestDb } from "./helpers/test-db.ts";
 
-// D11 (docs/plans/cron-mission-2026-09-24/MISSION.md): the free-tier
+// the free-tier
 // retention prune behind POST /api/retention-sweep. makeRetentionDb's SQL
 // runs against the REAL schema (pglite, tests/helpers/test-db.ts) so the
 // NOT EXISTS / legacy-column predicate is proven against real Postgres
@@ -106,7 +106,7 @@ test("a role with only an outreach row is never deleted", async () => {
   assert.equal(await rolesCount(), 1); // survives
 });
 
-// D16 (MISSION.md PHASE 3): a role old enough by created_at but still being
+// a role old enough by created_at but still being
 // FOUND by a scanner (last_seen_at inside SEEN_DAYS) must never be pruned -
 // the old age-only predicate deleted it anyway, it re-inserted on the next
 // scan as a "new" drop, and Karthik got a repeat email.

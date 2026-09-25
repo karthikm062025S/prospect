@@ -11,7 +11,7 @@ import {
   riseDelay,
 } from "../components/motion/rise-math.ts";
 
-// C7 (build/MISSION.md, UI/UX polish 2026-09-19): the signed-in app has ONE
+// the signed-in app has ONE
 // vertical rhythm. design/SYSTEM.md "Spacing and rhythm": every vertical gap is
 // `--section-y`, the 24px block gap or the 12px stack gap, and rows use the
 // 12x16 row padding — "no ad hoc mt-8/mt-9/mt-14 or one-off pixel margins".
@@ -24,7 +24,7 @@ import {
 
 const ROOT = fileURLToPath(new URL("../", import.meta.url));
 
-// The ui/d-fold fence (build/MISSION.md leaf 6): exactly the files this fold
+// The ui/d-fold fence: exactly the files this fold
 // touches. Files outside it are another lane's to fix; widening this list is
 // how the gate grows once they land.
 const APP_DIR = path.join(ROOT, "app", "(app)");

@@ -231,8 +231,8 @@ export function RoleDetailPane({
       {/* Task 3 T5/K1 (lane L5, FR-008): a signed-in user corrects a wrong
           season/family/sponsorship label for their own view only — never a
           write to the shared roles row (K1/T5, app/role-actions.ts
-          correctRoleAction/uncorrectRoleAction). Native <select>s (km-ui
-          rung 1): keyboard focus and arrow-key selection for free. */}
+          correctRoleAction/uncorrectRoleAction). Native <select>s give
+          keyboard focus and arrow-key selection for free. */}
       <fieldset className="flex flex-col gap-3 border-t border-hairline pt-3 sm:flex-row sm:flex-wrap">
         <legend className="mb-1 w-full font-label text-[11px] uppercase tracking-label text-text-dim sm:mb-0">
           Not right?

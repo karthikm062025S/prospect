@@ -13,7 +13,7 @@ import { makeTestDb, insertRow, truncateAll, uuid, type TestDb } from "./helpers
 // loaded directly by `node --experimental-strip-types --test` (the D6 gotcha,
 // the module-resolution rule), so role-jd.ts resolves the real module lazily via a
 // dynamic import that these tests never reach. The real path is proven by the
-// live proof against the dev server (MISSION validation item 7) and by
+// live proof against the dev server and by
 // jd-snapshot's own certified test suite (tests/jd-snapshot.test.ts).
 // The rows live in the real schema (pglite), so column types are the real ones.
 

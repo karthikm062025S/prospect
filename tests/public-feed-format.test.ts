@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { capPerCompany, groupDrops, relativeAdded } from "../lib/public-feed-format.ts";
+import { capPerCompany, groupDrops, relativeAdded, withFreshAdded } from "../lib/public-feed-format.ts";
 
 const NOW = Date.parse("2026-09-02T18:00:00.000Z");
 const ago = (ms: number) => new Date(NOW - ms).toISOString();
@@ -32,13 +32,48 @@ test("a future timestamp or an unparseable one never renders a negative count", 
   assert.equal(relativeAdded("not a date", NOW), "just now");
 });
 
+// --- withFreshAdded: `added` must reflect the caller's clock, never the
+// moment a cached read happened to run (a stale cache must never read live).
+
+const feedRowRaw = (createdAt: string) => ({
+  id: "r1",
+  company: "Amazon",
+  title: "SWE Intern",
+  season: "summer27" as const,
+  family: "SWE" as const,
+  location: "Seattle, WA",
+  href: "https://example.com/r1",
+  createdAt,
+});
+
+test("withFreshAdded computes `added` from the caller's now, not a baked-in one", () => {
+  const cachedAtWriteTime = ago(30 * MIN); // as of a cache write 30 minutes ago
+  const rows = [feedRowRaw(cachedAtWriteTime)];
+  // Read "now" (the moment a request actually renders it), long after the
+  // cache write: the row is 6.5 hours old by the time anyone sees it.
+  const readNow = NOW + 6 * HOUR;
+  assert.equal(withFreshAdded(rows, readNow)[0].added, "6h ago");
+  // The same cached row read a moment after it was written still reads fresh.
+  assert.equal(withFreshAdded(rows, NOW)[0].added, "just now");
+});
+
+test("withFreshAdded strips createdAt and keeps every other field untouched", () => {
+  const row = feedRowRaw(ago(2 * HOUR));
+  const [out] = withFreshAdded([row], NOW);
+  assert.equal(out.id, row.id);
+  assert.equal(out.company, row.company);
+  assert.equal(out.href, row.href);
+  assert.equal("createdAt" in out, false);
+  assert.equal(out.added, "2h ago");
+});
+
 // --- v7/feed lane, 2026-09-03. Source-level lock (lib/public-feed.ts and
 // lib/public-stats.ts import next/cache, which `node --experimental-strip-types`
 // cannot resolve, so their queries can only be asserted as text — the same
 // technique tests/no-service-in-app.test.ts and tests/proxy-matcher.test.ts use).
 //
 // `roles.hidden_at` is the OWNER's legacy per-user hide, superseded by
-// `user_roles` (MISSION v7 D3/D4: "one user must not starve the shared feed").
+// `user_roles`.
 // Both public reads filtered on it, so every role Karthik had ever hidden was
 // invisible to every anonymous visitor and missing from the open-roles tile.
 import { readFileSync } from "node:fs";

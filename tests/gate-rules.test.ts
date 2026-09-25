@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { gateFromText, postingText } from "../lib/gate-rules.ts";
 
-// Task 3 L3 (MISSION T4, PRD FR-006): the abstaining sponsorship / citizenship /
+// Task 3 L3: the abstaining sponsorship / citizenship /
 // clearance rules. Every case is a posting snippet with the class the rules
 // must write; anything the tables do not name stays null (abstain).
 

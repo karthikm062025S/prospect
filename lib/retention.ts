@@ -1,10 +1,9 @@
 import type { QueryFn } from "./db"; // type-only: erased under --experimental-strip-types, same pattern as tests/helpers/test-db.ts
 
-// D11 (docs/plans/cron-mission-2026-09-24/MISSION.md, handoff-R4.md): the
-// free-tier retention prune. Deletes `roles` first seen (created_at) more
-// than `days` ago AND not seen by any scanner in SEEN_DAYS (D16, MISSION.md
-// PHASE 3: the old age-only predicate deleted still-live roles, which then
-// re-inserted on the next scan as a "new" drop and re-emailed), EXCEPT any
+// The free-tier retention prune. Deletes `roles` first seen (created_at) more
+// than `days` ago AND not seen by any scanner in SEEN_DAYS (the old age-only
+// predicate deleted still-live roles, which then re-inserted on the next
+// scan as a "new" drop and re-emailed), EXCEPT any
 // role a user acted on: a `user_roles` row, an `applications` row, a
 // `role_corrections` row, an `outreach` row, or a non-null legacy
 // single-owner column (application_id/saved_at/hidden_at/apply_clicked_at).

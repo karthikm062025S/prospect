@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { upsertRole } from "../lib/upsert-role.ts";
 import { makeTestDb, insertRow, truncateAll, uuid, type TestDb } from "./helpers/test-db.ts";
 
-// D34 (MISSION v5): location flows through the SAME entry point
+// location flows through the SAME entry point
 // app/api/watcher/route.ts calls per role, upsertRole, against the real schema
 // in pglite. Proves: accepted + stored on insert, backfilled on update only
 // when the stored value is null, and never churned once set.

@@ -80,7 +80,7 @@ export function SlidingNumber({ value, digits }: SlidingNumberProps) {
 
   // prefers-reduced-motion / the in-app Settled setting: the final value as
   // plain text, with no spring and no ten-digit column — an instant state, not
-  // a slowed-down odometer (km-ui accessibility floor).
+  // a slowed-down odometer (a11y floor).
   if (settled) return <span className="tabular-nums">{text}</span>;
 
   return (

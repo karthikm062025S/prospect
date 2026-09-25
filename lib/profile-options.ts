@@ -1,5 +1,5 @@
-// Every validation constant and help line for the /setup profile form
-// (MISSION D-UI5, CONTEXT 20:30 "Profile form"). Pure module, no imports: the
+// Every validation constant and help line for the /setup profile form.
+// Pure module, no imports: the
 // client form, ProfileFormSchema (lib/agents/profile.ts) and the Node tests all
 // read the SAME values, so the client check and the /api/profile 400 never drift.
 

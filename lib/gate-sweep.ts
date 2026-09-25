@@ -1,7 +1,7 @@
 import type { VisaClass } from "./types";
 import type { GateResult } from "./gate-rules";
 
-// Task 3 L3 (MISSION T4, PRD FR-006): the rules-only sweep behind POST
+// Task 3 L3: the rules-only sweep behind POST
 // /api/gate-sweep, the shape of lib/classify.ts's runSweep minus the model.
 // Residue = rows with a JD and no `gate_checked_at`, oldest first. Every
 // processed row gets the stamp whether or not a flag was written, so the sweep

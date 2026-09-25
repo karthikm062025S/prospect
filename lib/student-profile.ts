@@ -5,7 +5,7 @@ import type { ProfileOutput } from "./agents/profile";
 // allowImportingTsExtensions (tsconfig.json) makes tsc accept the suffix.
 import { assertVerifiedAgent } from "./ans-verify.ts";
 
-// ponytail: "./db" is imported as a TYPE only above (erased at runtime, so it
+// note: "./db" is imported as a TYPE only above (erased at runtime, so it
 // never trips the node --experimental-strip-types cross-lib import gotcha).
 // The real `query` is loaded with a dynamic import inside each function below,
 // only when the caller does not inject its own (tests always inject a fake).
@@ -88,7 +88,7 @@ const RUNNING_STALE_AFTER = "10 minutes";
 /**
  * Read-only precheck so a caller that cannot surface startAgentRun's error as
  * a real HTTP status (an already-open NDJSON stream) can refuse BEFORE opening
- * one. ponytail: best-effort, same as startAgentRun's own check below.
+ * one. note: best-effort, same as startAgentRun's own check below.
  */
 export async function isRunCapped(userId: string, runQuery?: QueryFn): Promise<boolean> {
   const q = runQuery ?? (await realQuery());
@@ -110,7 +110,7 @@ export async function startAgentRun(agent: string, userId: string, runQuery?: Qu
   await assertVerifiedAgent(agent);
 
   const q = runQuery ?? (await realQuery());
-  // ponytail: best-effort cap; two truly concurrent requests can both pass
+  // note: best-effort cap; two truly concurrent requests can both pass
   // this WHERE under READ COMMITTED (no lock between the check and the
   // insert). A partial unique index on agent_runs(user_id) where
   // status='running' would make it exact (schema change, Karthik's).

@@ -2,7 +2,7 @@ import { z } from "zod";
 import type { Family } from "./family";
 import type { Season } from "./season";
 
-// Task 2 (MISSION D5-D8, 2026-09-15): the residue sweep behind POST
+// Task 2: the residue sweep behind POST
 // /api/classify. Rules first (deriveSeason over the stored JD text,
 // familySignals over the title); a DeepSeek call only where the rules still
 // cannot decide; the model may fill gaps and add families, never override a
@@ -65,7 +65,7 @@ const DEFAULT_MODEL = "deepseek-flash";
 const LIMIT_DEFAULT = 20;
 const LIMIT_MAX = 50;
 const CONCURRENCY = 5; // model calls in flight; 20 rows sequentially could brush the 60 s route cap
-// ponytail: worst case (every row hangs twice) is limit/5 * 2 * 10 s, past the
+// note: worst case (every row hangs twice) is limit/5 * 2 * 10 s, past the
 // 60 s cap at limit 20. Each row is written on its own, so a killed sweep only
 // leaves the rest in the residue for the next call; lower `limit` if it recurs.
 const LLM_TIMEOUT_MS = 10_000;

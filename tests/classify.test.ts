@@ -17,7 +17,7 @@ import { deriveSeason } from "../lib/season.ts";
 import { familySignals } from "../lib/family.ts";
 import { decodeEntities } from "../lib/decode-entities.ts";
 
-// Task 2 L2 (MISSION D5-D8): the residue sweep behind POST /api/classify.
+// Task 2 L2: the residue sweep behind POST /api/classify.
 // lib/classify.ts holds no static lib-to-lib VALUE import (the strip-types
 // runner cannot follow one, the module-resolution rule), so every collaborator is
 // injected here: the real season/family/entity rules from their own modules,

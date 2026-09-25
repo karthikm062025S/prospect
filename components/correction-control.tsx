@@ -4,7 +4,7 @@
 // components/role-row.tsx and components/role-detail-pane.tsx (role-detail-pane
 // already imports FROM role-row, so a shared home for VISA_LABELS here — rather
 // than exporting it out of either of those two files — avoids a circular
-// import). Rung 1 of the km-ui ladder: a native <select> gives keyboard focus,
+// import). a native <select> gives keyboard focus,
 // arrow-key selection and a screen-reader-correct control for free; no
 // dropdown/listbox primitive is installed in this project to reach for at
 // rung 2.

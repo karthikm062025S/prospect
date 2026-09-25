@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import test from "node:test";
 
-// Redesign 2026-09-20 hero motion (MISSION D1, D4, D6). Three pieces, all on
+// Redesign 2026-09-20 hero motion. Three pieces, all on
 // motion/react primitives: a Rise entrance stagger over the five non-H1 copy
 // blocks (the H1 is the wordmark, with its own per-letter rise), scroll
 // parallax over four painted planes with the wordmark between sky and ridges,

@@ -22,11 +22,8 @@ scripts/.feed-seen.json
 PRD-*.md
 ALERT-SETUP-CHECKLIST.md
 
-# local dev-tool state, never tracked
+# local editor/tool config, never tracked
 .claude/
-# D17: public repo, no AI-dev-tool traces. Kept on disk (CLAUDE.md/AGENTS.md
-# hold the auto-generated Next.js agent block that `next dev` re-creates),
-# never tracked.
 CLAUDE.md
 AGENTS.md
 GEMINI.md

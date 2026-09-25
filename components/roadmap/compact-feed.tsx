@@ -17,7 +17,7 @@ const noop = () => {};
 // (mock journey.html .feed), matching the roadmap board's card language.
 export function CompactFeed({ rows, nowMs }: { rows: HomeRow[] | null; nowMs: number }) {
   const router = useRouter();
-  // ponytail: one text filter over title/company/family; Home's full filter
+  // note: one text filter over title/company/family; Home's full filter
   // bar is the upgrade path if the compact column ever needs facets.
   const [filter, setFilter] = useState("");
   const hasScores = rows?.some((row) => row.matchScore != null) ?? false;

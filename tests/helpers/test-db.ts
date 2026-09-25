@@ -3,7 +3,7 @@ import { join, resolve } from "node:path";
 import { PGlite, types } from "@electric-sql/pglite";
 import type { QueryFn } from "../../lib/db.ts";
 
-// D10 (build/MISSION.md): tests run the REAL Lakebase schema in an in-process
+// tests run the REAL Lakebase schema in an in-process
 // Postgres (pglite), never a fake client. `q` has the exact shape of lib/db.ts
 // `query`, including the same date/timestamp string parsers, so a lib function
 // sees identical rows in a test and in production.

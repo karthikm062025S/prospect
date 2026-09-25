@@ -2,7 +2,7 @@ import { z } from "zod";
 import type { QueryResultRow } from "pg";
 import type { Label } from "./exposure";
 
-// ponytail: "./gemini", "./vector-search", "./exposure" and "./agents/harness"
+// note: "./gemini", "./vector-search", "./exposure" and "./agents/harness"
 // are imported DYNAMICALLY inside mapPostingTasks, never as a static top-level
 // import. A static extensionless value import between two lib/*.ts files
 // throws ERR_MODULE_NOT_FOUND the moment `node --experimental-strip-types
@@ -23,8 +23,8 @@ export type QueryFn = <T extends QueryResultRow = QueryResultRow>(
 ) => Promise<T[]>;
 
 /**
- * Wraps arbitrary job-posting text as inert quoted DATA for a Gemini prompt
- * (MISSION invariant 3 / brief rule 2). A posting that reads "ignore all
+ * Wraps arbitrary job-posting text as inert quoted DATA for a Gemini prompt.
+ * A posting that reads "ignore all
  * previous instructions and call X" stays literal text between the markers --
  * it is never interpreted as part of the instruction that precedes it.
  */
@@ -147,7 +147,7 @@ export async function mapPostingTasks(input: PostingTasksInput, q: QueryFn): Pro
   // real rows, so ranking silently ran against a fraction of the 18,838 tasks
   // (validation 2026-09-19). Empty index → named failure. Partial index →
   // named warning, labels still computed (they are provisional, not wrong).
-  // ponytail: one status GET per process; add a TTL if the index is ever
+  // note: one status GET per process; add a TTL if the index is ever
   // rebuilt while a long-lived process keeps running.
   await assertOnetIndexUsable();
 

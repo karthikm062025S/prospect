@@ -5,7 +5,7 @@ import { TextReveal } from "@/components/motion/text-reveal";
 // Section 8: the reference's two-column "we build the models / and the
 // distribution power" band, with what is actually running behind Prospect.
 // Spec: build/research/wishlabs/components/08-under-the-hood.md. Content is
-// fixed by MISSION D-UI7: Databricks on the left, the four Gemini agents and
+// Content is fixed: Databricks on the left, the four Gemini agents and
 // the harness guardrails on the right. The agent passport work is NOT here,
 // because it is not live and the landing lists only what runs.
 

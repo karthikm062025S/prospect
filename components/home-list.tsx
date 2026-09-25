@@ -75,7 +75,7 @@ const VIEW_LABELS: Record<HomeView, string> = { all: "All", saved: "Saved", hidd
 // codebase's hydration-safe clock pattern (theme-toggle / sort-control): SSR
 // renders the server's timestamp, the client swaps in its own on hydration, so
 // a "today" computed in the reader's timezone never trips a mismatch.
-// ponytail: frozen at hydration — a tab left open across midnight relabels on
+// note: frozen at hydration — a tab left open across midnight relabels on
 // its next reload; upgrade to an interval store only if that ever bites.
 let cachedNow = 0;
 const noSubscribe = () => () => {};
@@ -1017,7 +1017,7 @@ export function HomeList({
         </section>
       </div>
 
-        {/* a11y (km-ui): native <dialog> + showModal() already gives Escape,
+        {/* Every modal is a native <dialog> + showModal(), which already gives Escape,
             the focus trap and an inert background, and maps to the dialog role
             in the a11y tree. role/aria-modal are stated EXPLICITLY anyway —
             the S4 persona audit found every modal on this app with

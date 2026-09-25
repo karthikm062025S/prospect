@@ -7,7 +7,7 @@ import { runRoadmapAgent } from "@/lib/agents/roadmap";
 import { runProfilePipeline } from "@/lib/agents/harness";
 import { query } from "@/lib/db";
 
-// Streams NDJSON (MISSION D-UI3): one line per step in the fixed order transcript, resume,
+// Streams NDJSON: one line per step in the fixed order transcript, resume,
 // profile, match, roadmap -- each {step, label, count} with a real count -- then {"done":true},
 // or one named {"error":"..."} line after the steps already emitted and nothing more.
 // 401 (no session) and 400 (bad form, field named) return before any stream starts; anything

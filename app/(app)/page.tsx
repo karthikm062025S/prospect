@@ -38,7 +38,7 @@ export default async function HomePage() {
   const now = nowMs();
   const recentSince = nyTodayStartIso(new Date(now));
 
-  // D9 (build/MISSION.md): fail-loud. Any failed read throws a named
+  // fail-loud. Any failed read throws a named
   // DB_QUERY_FAILED (<table>) into the route's error boundary; nothing here
   // catches and renders a partial feed. No paging: Postgres has no 1,000-row cap.
   const [roleRows, userRows, appRows, recentRows, companyRows, correctionRows, studentProfile, matchScores] =

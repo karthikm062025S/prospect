@@ -9,7 +9,7 @@
 // source_posted_at) in minutes, plus the share under 60 minutes.
 //
 // This number, measured on the deployed build, is the only latency figure
-// allowed on stage (MISSION).
+// allowed on stage.
 //
 // Standalone: `node scripts/drop-latency.mjs`. Uses `pg` directly (own
 // connection, not lib/db.ts — that module is another lane's fence right now,

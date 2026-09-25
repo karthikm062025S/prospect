@@ -6,7 +6,7 @@ import { familySignals } from "@/lib/family";
 import { decodeEntities } from "@/lib/decode-entities";
 import { classifyRequest, type Db, type ResidueRow } from "@/lib/classify";
 
-// Task 2 (MISSION D5, 2026-09-15): the residue sweep. .github/workflows/
+// Task 2: the residue sweep. .github/workflows/
 // classify.yml curls this every 3 h with the watcher secret until `remaining`
 // is 0; the first run over the backlog IS the backfill. All logic lives in
 // lib/classify.ts (rules from lib/season.ts + lib/family.ts, no fourth copy);

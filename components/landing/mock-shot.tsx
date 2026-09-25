@@ -3,7 +3,7 @@ import { findMockShot } from "@/components/landing/mocks";
 // The screenshot slot the two product bands carry.
 // Spec: build/research/wishlabs/components/04-feed.md.
 //
-// MISSION D-UI6: the capture is a REAL screenshot of the running app, dropped
+// The capture is a REAL screenshot of the running app, dropped
 // into public/mocks by the orchestrator (a worker cannot reach localhost).
 // Until then the slot renders a NAMED empty state that says which file it is
 // waiting for, in the same box, at the same aspect ratio, so nothing moves when

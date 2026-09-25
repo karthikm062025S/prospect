@@ -144,7 +144,7 @@ test("toInsertedRoleEcho passes through all six fields when provided", () => {
   });
 });
 
-// Parity lock (MISSION v7 D8): ingestSeason/ingestFamily are duplicated (not
+// Parity lock: ingestSeason/ingestFamily are duplicated (not
 // imported — see the module-resolution comment above their definitions) from
 // lib/season.ts/lib/family.ts. Rather than cross-import the canonical modules
 // here too (which would cost another tsc-baseline TS5097 line beyond the two
@@ -198,7 +198,7 @@ for (const [title, expected] of FAMILY_PARITY) {
 }
 
 // Task 3 T2/T3 (lane L1, 2026-09-16): liveness (last_seen_at, repost_count)
-// and identity (canonical_key) on the upsert write path. MISSION V2.
+// and identity (canonical_key) on the upsert write path.
 
 test("insert stamps last_seen_at and canonical_key, computed server-side", async () => {
   const nowIso = "2026-09-16T00:00:00.000Z";

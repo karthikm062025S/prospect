@@ -1,4 +1,4 @@
-// The /api/profile NDJSON contract on the client side (MISSION D-UI3): five
+// The /api/profile NDJSON contract on the client side: five
 // fixed steps in this order, each arriving as {step,label,count}, then
 // {done:true} or {error}. Pure module (no React) so tests/require-profile.test.ts
 // proves done -> /journey and error -> the running step by name.

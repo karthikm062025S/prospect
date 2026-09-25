@@ -2,7 +2,7 @@ import { z } from "zod";
 import type { ProfileOutput } from "./profile";
 import type { ModelCaller } from "./harness";
 
-// ponytail: every OTHER cross-lib value ("../student-profile", "../catalog",
+// note: every OTHER cross-lib value ("../student-profile", "../catalog",
 // "../gemini", "../semesters", "../roadmaps") is reached only through a
 // deferred `await import(...)` inside runRoadmapAgent, exactly like
 // lib/agents/profile.ts's header documents -- a static extensionless VALUE

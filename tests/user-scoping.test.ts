@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync, readdirSync } from "node:fs";
 import { join, relative, resolve, sep } from "node:path";
 
-// D4 (build/MISSION.md): Supabase RLS scoped every per-user table to
+// Supabase RLS scoped every per-user table to
 // auth.uid(); Lakebase has one role, so the scoping is EXPLICIT in every
 // statement. This static scan reads every SQL string literal under lib/, app/
 // and components/ (the dirs tests/db-boundary.test.ts allows to import
@@ -52,7 +52,7 @@ const ALLOWLIST: Array<{ file: string; table: string; match: RegExp; reason: str
     table: "profiles",
     match: /^"select user_id from profiles"$/,
     reason:
-      "the X-Watcher-Secret + ?all=1 branch is the Databricks Orchestrator's hourly re-score job (build/MISSION.md D14/L2c brief), not a user request -- it has no single owner to scope to by design and must enumerate every profile exactly once per run, the same service-tier shape as the feedback-server.ts global-count entries above",
+      "the X-Watcher-Secret + ?all=1 branch is the Databricks Orchestrator's hourly re-score job, not a user request -- it has no single owner to scope to by design and must enumerate every profile exactly once per run, the same service-tier shape as the feedback-server.ts global-count entries above",
   },
   {
     file: "lib/retention.ts",

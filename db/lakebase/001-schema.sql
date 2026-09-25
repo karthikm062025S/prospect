@@ -8,7 +8,7 @@
 -- not read from the old catalog. Every later column comes from the tracked db/*.sql files
 -- in date order (collapse -> rebuild -> fast-lane -> v5 -> v7 -> task2 -> task3).
 --
--- Deliberate differences from Supabase (build/MISSION.md D4, D11):
+-- Deliberate differences from Supabase:
 --   * no FKs to auth.users: user ids are Supabase Auth UUIDs validated by lib/require-user.ts;
 --   * no RLS: Lakebase has one role; every per-user query carries `user_id = $n` in code
 --     (tests/user-scoping.test.ts is the static guard);

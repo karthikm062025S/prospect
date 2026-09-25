@@ -15,7 +15,7 @@ import {
 } from "../lib/roadmaps.ts";
 
 // Runs the REAL migration against a real (in-memory WASM) Postgres, per the
-// km-db/km-test proof rule: RLS does not exist in Lakebase (one DB role), so
+// RLS does not exist in Lakebase (one DB role), so
 // "isolation" here means the app-layer `where user_id = $n` in lib/roadmaps.ts
 // actually holds against a real schema, not a mocked query function.
 async function freshDb() {

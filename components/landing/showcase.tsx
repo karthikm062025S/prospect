@@ -9,8 +9,8 @@ import { TextReveal } from "@/components/motion/text-reveal";
 // heading + copy + image pattern, mirrored on the second one.
 // Specs: build/research/wishlabs/components/04-feed.md and 05-roadmap.md.
 //
-// Extracted as ONE component because there are exactly two real uses (km-ui
-// ladder rung 4: a shared shape is earned by the second call site, not by the
+// Extracted as ONE component because there are exactly two real uses (the
+// component ladder's rung 4: a shared shape is earned by the second call site, not by the
 // first). It takes no variant it does not have a caller for.
 
 export type ShowcaseProps = {

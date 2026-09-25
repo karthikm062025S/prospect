@@ -16,6 +16,5 @@ mocked up: every file is a capture of the running Prospect app.
 
 ## Who fills it
 
-The orchestrator (MISSION D-UI6): a worker agent cannot reach localhost, so captures are taken with the
-one Playwright profile after the lane merges. Suggested set, light theme, 1440 wide:
+Captures are taken from the running app with Playwright, light theme, 1440 wide:
 `feed.png`, `roadmap.png`, `setup.png`, `journey.png`.

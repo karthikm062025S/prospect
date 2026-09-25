@@ -8,7 +8,7 @@
 
 -- One roadmap per student (unique user_id). Nodes come only from Delta rows
 -- (courses/clubs) or live-grounded certifications, or are labeled 'suggested'
--- projects -- never invented (CONTEXT 13:25, MISSION invariant 1).
+-- projects -- never invented.
 create table if not exists roadmaps (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null unique,

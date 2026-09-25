@@ -1,4 +1,4 @@
-// Adzuna source (MISSION L2, VTHacks 14, 2026-09-19) — aggregates postings
+// Adzuna source — aggregates postings
 // across many small/regional employers the 999 verified ATS boards miss.
 //
 // Docs (Context7 had no Adzuna entry; used the official docs per the build

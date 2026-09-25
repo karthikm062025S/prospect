@@ -3,7 +3,7 @@
 import { motion } from "motion/react";
 import { useSettled } from "@/components/motion/settled";
 
-// Redesign 2026-09-20 (MISSION D2, D5). Karthik's own Prospect wordmark,
+// Redesign 2026-09-20. Karthik's own Prospect wordmark,
 // traced from hackathon_vthacks/prospect-logo.svg into one inline component so
 // each letter can move on its own: the hero lifts them out from behind the far
 // ridges one by one on load (tests/landing-sections.test.ts).
@@ -19,7 +19,7 @@ import { useSettled } from "@/components/motion/settled";
 // same in both themes and must render identically on a painted ground.
 //
 // Reduced motion / ?motion=final: useSettled() renders the plain, fully
-// visible mark with no motion values (km-ui accessibility floor).
+// visible mark with no motion values (a11y floor).
 
 export const WORDMARK_VIEWBOX = "0 0 4096 2236";
 /** Height / width of the viewBox, for sizing a box off its width. */

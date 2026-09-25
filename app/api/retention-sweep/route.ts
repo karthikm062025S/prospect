@@ -3,7 +3,7 @@ import { query } from "@/lib/db";
 import { isCorrectPassword } from "@/lib/gate";
 import { retentionSweepRequest, makeRetentionDb } from "@/lib/retention";
 
-// D11 (MISSION.md, docs/plans/cron-mission-2026-09-24): the free-tier
+// the free-tier
 // retention prune. .github/workflows/retention.yml curls this daily with the
 // watcher secret. Dry run is the DEFAULT (any dry_run value other than an
 // explicit "0" writes nothing); a real delete ALSO requires the Vercel env

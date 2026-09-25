@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 // Server-only. The landing's screenshot strip and the two product bands show
-// REAL captures of the running app, never placeholder art (MISSION D-UI6).
+// REAL captures of the running app, never placeholder art.
 // The orchestrator owns the captures (a worker cannot reach localhost), so
 // until it drops PNGs into public/mocks/ this returns an empty list and every
 // consumer renders its own NAMED empty state.

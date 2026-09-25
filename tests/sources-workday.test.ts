@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { fetchRows } from "../scripts/sources/workday.mjs";
 
-// MISSION L2 (VTHacks 14, 2026-09-19). The fixture is an UNMODIFIED real
+// VTHacks 14, 2026-09-19. The fixture is an UNMODIFIED real
 // capture (see tests/fixtures/sources/MANIFEST.md for URL + capture time) of
 // PwC's public Workday CXS endpoint — one of the >=8 live-verified tenants in
 // scripts/sources/workday-tenants.json. The injected fetch answers ONLY the

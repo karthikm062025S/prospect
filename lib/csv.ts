@@ -1,5 +1,5 @@
 // Minimal RFC-4180 CSV parser: no dependency, small enough to own outright
-// (ponytail: stdlib beats a library for ~60 lines). Handles quoted fields that
+// (note: stdlib beats a library for ~60 lines). Handles quoted fields that
 // contain commas, newlines and escaped quotes ("" inside a quoted field means
 // one literal quote), and both \n and \r\n line endings.
 

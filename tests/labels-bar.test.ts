@@ -35,7 +35,7 @@ test("labels-bar.tsx: never invents a percentage -- the coverage text cites the 
   assert.match(source, /2,450 of 18,838 O\*NET tasks have exposure data \(13%\)/);
 });
 
-test("labels-bar.tsx: the coverage note is a native disclosure (km-ui rung 1, no custom popover library)", () => {
+test("labels-bar.tsx: the coverage note is a native disclosure (no custom popover library)", () => {
   assert.match(source, /<details/);
   assert.match(source, /<summary/);
 });

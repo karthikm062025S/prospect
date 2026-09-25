@@ -3,7 +3,7 @@ import type { QueryResultRow } from "pg";
 import type { ProfileOutput } from "./profile";
 import type { ModelCaller } from "./harness";
 
-// ponytail: every cross-lib value ("../student-profile", "../archetypes",
+// note: every cross-lib value ("../student-profile", "../archetypes",
 // "../vector-search", "../gemini", "../posting-tasks", "../family",
 // "../roadmaps", "../match-scores", "../db") is reached only through a
 // deferred `await import(...)` inside runMatchAgent, never a static top-level
@@ -87,7 +87,7 @@ export function resolveArchetypeSimilarity(
 
 // --- Dream-tier matching ------------------------------------------------------
 
-// ponytail: companies.tier is free text set at ingest, with no controlled
+// note: companies.tier is free text set at ingest, with no controlled
 // vocabulary in the live data -- this is a best-effort keyword match against
 // the student's own dreamTier picks (lib/agents/profile.ts DREAM_TIERS),
 // named here rather than silently assumed exact. Upgrade path: a controlled
@@ -221,7 +221,7 @@ export function evidenceTermsFromProfile(
  * Gemini only EXTRACTS what a posting states (buildRequirementsPrompt below);
  * this is the sole authority on met vs unknown, checked against the
  * profile's own evidence. A requirement string not found in the evidence
- * list lands in "unknown" -- never invented as "met" (brief rule 2 / MISSION
+ * list lands in "unknown" -- never invented as "met" (brief rule:
  * "no fit percentage without the reasons printed").
  */
 export function classifyRequirement(claim: string, evidenceTerms: readonly string[]): "met" | "unknown" {
@@ -319,7 +319,7 @@ function titleWords(title: string): string[] {
  * real vector/archetype match. "Backend Software Engineer" vs "Software
  * Engineering Intern" -> {software} of {backend, software} = 0.5 -> 0.3.
  */
-// ponytail: prefix stemming so "consulting"/"consultant" and "cyber"/"cybersecurity"
+// note: prefix stemming so "consulting"/"consultant" and "cyber"/"cybersecurity"
 // count as the same word; a real stemmer if this ever misranks.
 const stem = (word: string) => (word.length >= 6 ? word.slice(0, 5) : word);
 

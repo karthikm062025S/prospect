@@ -21,7 +21,7 @@ import { isRunCapped } from "@/lib/student-profile";
 // and keeps going to the next profile, exactly like app/api/watcher/route.ts
 // does per-row.
 //
-// Speed pass (build/MISSION-speed-2026-09-20.md): the user branch never
+// Speed pass: the user branch never
 // assigns archetypes in bulk (D-S1) and never labels tasks inline (D-S3) --
 // labels for the top 20 run in `after()` once the stream has finished. The
 // watcher branch tops up archetype assignment (<=200 postings, concurrency
