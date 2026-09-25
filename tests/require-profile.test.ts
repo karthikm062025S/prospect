@@ -4,7 +4,7 @@ import { requireProfile } from "../lib/require-user.ts";
 import type { StoredProfile } from "../lib/student-profile.ts";
 import { STEP_KEYS, applyStreamEvent, initialSteps } from "../components/setup/profile-stream.ts";
 
-// UI/UX mission C2 (MISSION D-UI4, CONTEXT 20:30 "Flow"): /setup is mandatory
+// UI/UX mission C2: /setup is mandatory
 // until a profile row exists. requireProfile takes an injected lookup + redirect
 // so the gate is proven without Next or Lakebase in the test process.
 

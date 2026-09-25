@@ -1,14 +1,15 @@
 import type { QueryFn } from "./db"; // type-only: erased under --experimental-strip-types, same pattern as tests/helpers/test-db.ts
 
-// D11 (docs/plans/cron-mission-2026-09-24/MISSION.md, handoff-R4.md): the
-// free-tier retention prune. Deletes `roles` first seen (created_at) more
-// than `days` ago, EXCEPT any role a user acted on: a `user_roles` row, an
-// `applications` row, a `role_corrections` row, an `outreach` row, or a
-// non-null legacy single-owner column (application_id/saved_at/hidden_at/
-// apply_clicked_at). Shape mirrors lib/gate-sweep.ts: a pure Db interface
-// here, the real SQL in makeRetentionDb (shared by the route and by tests,
-// which run it against the real schema via tests/helpers/test-db.ts's
-// pglite instance).
+// The free-tier retention prune. Deletes `roles` first seen (created_at) more
+// than `days` ago AND not seen by any scanner in SEEN_DAYS (the old age-only
+// predicate deleted still-live roles, which then re-inserted on the next
+// scan as a "new" drop and re-emailed), EXCEPT any
+// role a user acted on: a `user_roles` row, an `applications` row, a
+// `role_corrections` row, an `outreach` row, or a non-null legacy
+// single-owner column (application_id/saved_at/hidden_at/apply_clicked_at).
+// Shape mirrors lib/gate-sweep.ts: a pure Db interface here, the real SQL in
+// makeRetentionDb (shared by the route and by tests, which run it against
+// the real schema via tests/helpers/test-db.ts's pglite instance).
 
 export type RetentionDb = {
   /** Age-filtered, NOT acted-on: the count that WOULD be deleted and the oldest created_at in that set (null if empty). */
@@ -29,11 +30,14 @@ const DAYS_DEFAULT = 45;
 const DAYS_MIN = 30;
 export const BATCH_SIZE = 500;
 export const MAX_BATCHES = 10;
+// D16: a role a scanner is still finding (last_seen_at, lib/upsert-role.ts's
+// isStaleReFind - re-stamped on EVERY re-find, insert or repost) must never
+// be pruned just because it is old. 14 days of scanner silence, not the
+// 45-day age window, is what makes a role eligible for deletion.
+export const SEEN_DAYS = 14;
 
 // Dry run is the DEFAULT for this destructive route (unlike gate-sweep's
-// dry_run=1-to-opt-in): only an explicit dry_run=0 asks for a real delete,
-// matching the sibling repo's retention route (handoff-B2.md) so a caller
-// sees identical behavior on both.
+// dry_run=1-to-opt-in): only an explicit dry_run=0 asks for a real delete.
 export function parseParams(url: URL): { days: number; dryRun: boolean } {
   const dryRun = url.searchParams.get("dry_run") !== "0";
   const raw = Number.parseInt(url.searchParams.get("days") ?? "", 10);
@@ -41,7 +45,7 @@ export function parseParams(url: URL): { days: number; dryRun: boolean } {
   return { days, dryRun };
 }
 
-// D3/D11 + handoff-R4.md's recommended mechanism: the kill switch
+// D3/D11: the kill switch
 // (Vercel env RETENTION_PRUNE_ENABLED) is enforced HERE, server-side, not
 // only by the caller's dry_run param - a caller with the watcher secret but
 // no kill switch set can never trigger a real delete, matching "the route
@@ -70,7 +74,7 @@ export async function runRetentionSweep(opts: RetentionOpts, db: RetentionDb): P
 // outreach.role_id is a user action, tracked outside user_roles), or a
 // non-null legacy single-owner column (db/lakebase/001-schema.sql). Never
 // deleted, per D3/D11 and the CASCADE on user_roles.role_id and
-// role_corrections.role_id (handoff-R4.md).
+// role_corrections.role_id.
 const NOT_ACTED_ON = `
     not exists (select 1 from user_roles ur where ur.role_id = r.id)
     and not exists (select 1 from applications a where a.role_id = r.id)
@@ -83,6 +87,11 @@ const NOT_ACTED_ON = `
 `;
 const ACTED_ON = `not (${NOT_ACTED_ON})`; // De Morgan: one predicate, never two hand-kept lists to drift apart
 
+// D16: "last seen" falls back the same way isStaleReFind does (lib/upsert-role.ts) -
+// a pre-migration row with no last_seen_at yet is judged by updated_at, then created_at,
+// never treated as stale just because the column is null.
+const NOT_SEEN_RECENTLY = `coalesce(r.last_seen_at, r.updated_at, r.created_at) < now() - interval '${SEEN_DAYS} days'`;
+
 /** The real Lakebase queries, parameterized, built on the injected QueryFn (production `query`, or a test's pglite `q`). */
 export function makeRetentionDb(q: QueryFn): RetentionDb {
   return {
@@ -91,6 +100,7 @@ export function makeRetentionDb(q: QueryFn): RetentionDb {
         `select count(*)::int as would_delete, min(r.created_at) as oldest_created_at
          from roles r
          where r.created_at < now() - make_interval(days => $1::int)
+           and ${NOT_SEEN_RECENTLY}
            and ${NOT_ACTED_ON}`,
         [days],
         "roles",
@@ -114,6 +124,7 @@ export function makeRetentionDb(q: QueryFn): RetentionDb {
            select r.id
            from roles r
            where r.created_at < now() - make_interval(days => $1::int)
+             and ${NOT_SEEN_RECENTLY}
              and ${NOT_ACTED_ON}
            order by r.created_at asc
            limit $2

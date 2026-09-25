@@ -144,7 +144,7 @@ test("toInsertedRoleEcho passes through all six fields when provided", () => {
   });
 });
 
-// Parity lock (MISSION v7 D8): ingestSeason/ingestFamily are duplicated (not
+// Parity lock: ingestSeason/ingestFamily are duplicated (not
 // imported — see the module-resolution comment above their definitions) from
 // lib/season.ts/lib/family.ts. Rather than cross-import the canonical modules
 // here too (which would cost another tsc-baseline TS5097 line beyond the two
@@ -197,8 +197,8 @@ for (const [title, expected] of FAMILY_PARITY) {
   });
 }
 
-// Task 3 T2/T3 (lane L1, 2026-09-16): liveness (last_seen_at, repost_count)
-// and identity (canonical_key) on the upsert write path. MISSION V2.
+// Task 3 T2/T3 (2026-09-16): liveness (last_seen_at, repost_count)
+// and identity (canonical_key) on the upsert write path.
 
 test("insert stamps last_seen_at and canonical_key, computed server-side", async () => {
   const nowIso = "2026-09-16T00:00:00.000Z";
@@ -411,7 +411,7 @@ test("a tombstone whose canonical_key matches (same Workday id, different title)
   assert.equal(await rolesCount(), 0, "a canonical-key-matched tombstone must never let the posting re-insert");
 });
 
-// Fold 2026-09-16 (orchestrator review, MAJOR): the ATS-id half of
+// Fold 2026-09-16 (code review, MAJOR): the ATS-id half of
 // canonical_key is TENANT-scoped for Workday/SuccessFactors — two different
 // companies can each legitimately carry "wd:R01171049" on their own Workday
 // tenant. The canonical_key lookup must be scoped by company_id or it would

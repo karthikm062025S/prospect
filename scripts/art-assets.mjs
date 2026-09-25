@@ -2,7 +2,7 @@
 // v7 D20 — builds the landing's art series from the four CC0 originals in
 // C:\My_WorkSpace\design\art\scout\raw\ into public/art/.
 //
-// ponytail: sharp is not a declared dependency — it ships transitively with
+// note: sharp is not a declared dependency — it ships transitively with
 // next (next/image uses it) and this script is a build-time asset step run by
 // hand, never at request time. Upgrade path: if next ever drops sharp, add it
 // as a devDependency; nothing in the app graph imports this file.

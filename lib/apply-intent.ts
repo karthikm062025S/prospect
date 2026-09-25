@@ -7,8 +7,8 @@ export type ApplyControl = "idle" | "confirming";
 // has been stamped. No expiry — it survives tab-switch, reload, and app
 // close/reopen. It is cleared ONLY by clearApplyClicked(): the "not_yet" action
 // (slice 5) and the RB-014 application-delete restore path (slice 7) must both
-// call it, or a restored role re-shows a stale confirmation (MISSION A7).
-// ponytail: no expiry by design (RB-013)
+// call it, or a restored role re-shows a stale confirmation.
+// note: no expiry by design (RB-013)
 export function applyControlState(role: { apply_clicked_at: string | null; lifecycle: Role["lifecycle"] }): ApplyControl {
   return role.lifecycle === "open" && role.apply_clicked_at !== null ? "confirming" : "idle";
 }

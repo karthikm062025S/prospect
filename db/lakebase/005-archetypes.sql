@@ -45,7 +45,7 @@ create index if not exists role_archetypes_archetype_idx on role_archetypes (arc
 
 -- Every duty statement Gemini extracted from one posting, mapped to its
 -- nearest O*NET task and labeled ONLY from the published exposure table
--- (MISSION invariant 2 -- a task with no exposure row is 'unscored', never
+-- (a task with no exposure row is 'unscored', never
 -- guessed). Replaced wholesale per role on every re-run (delete then insert).
 create table if not exists role_tasks (
   role_id uuid not null,

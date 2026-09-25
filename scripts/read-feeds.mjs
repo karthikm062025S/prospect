@@ -61,7 +61,7 @@ const FETCH_TIMEOUT_MS = 30000;
 // SimplifyJobs renders an HTML <table>; vanshb03 + speedyapply render a
 // pipe-delimited markdown table — parseFeed auto-detects which.
 //
-// MISSION L2 (coverage lane, 2026-09-19), each verified live during this build
+// Coverage lane (2026-09-19), each verified live during this build
 // (see the build handoff's VERIFIED SOURCES TABLE for URL/status/row-count):
 // - simplify: Summer2026-Internships repo redirected (301) to
 //   SimplifyJobs/Summer2027-Internships (dev branch, same HTML-table format,
@@ -84,7 +84,7 @@ const FEEDS = [
   { name: "vanshb03", url: "https://raw.githubusercontent.com/vanshb03/Summer2027-Internships/main/README.md" },
   { name: "newgrad", url: "https://raw.githubusercontent.com/SimplifyJobs/New-Grad-Positions/dev/README.md" },
   { name: "vanshb03-newgrad", url: "https://raw.githubusercontent.com/vanshb03/New-Grad-2027/main/README.md" },
-  // ponytail: a dedicated quant list (northwesternfintech/2027QuantInternships,
+  // note: a dedicated quant list (northwesternfintech/2027QuantInternships,
   // live-verified 200, main branch) was evaluated and NOT added — its README is
   // organized as one `## <Company>` heading per firm followed by a 2-column
   // (Role|Links) table, a fundamentally different shape from the 5-column
@@ -95,7 +95,7 @@ const FEEDS = [
   // quant + PM postings by name (their own repo descriptions say so) so quant/PM
   // coverage isn't zero without it. Upgrade path: a dedicated
   // parseCompanyHeadingFeed() + a passing extraction test, then add it here.
-  // ponytail: speedyapply is DISABLED. Its real README (verified 2026-07-13) is a
+  // note: speedyapply is DISABLED. Its real README (verified 2026-07-13) is a
   // 6-column pipe table — `| Company | Position | Location | Salary | Posting | Age |`
   // — where the apply <a href> lives in the Posting column (index 4) and index 3 is a
   // Salary cell the generic 5-column parser (companyCell,roleCell,locCell,appCell,ageCell)
@@ -286,7 +286,7 @@ export function withinFeedWindow(age, sinceDays = SINCE_DAYS) {
 // ---------------------------------------------------------------------------
 export function buildFeedRole(cand, listName, ctx) {
   const title = cand.title;
-  // MISSION L2 (2026-09-19): isEligiblePosting (wide: every function/level,
+  // isEligiblePosting (wide: every function/level,
   // still drops explicit stale-year noise) replaces the old CS-intern-only
   // isTargetTitle — the new-grad lists (New-Grad-Positions, New-Grad-2027) have
   // titles like "New Grad: Software Engineer" with NO intern/co-op wording,
@@ -308,7 +308,7 @@ export function buildFeedRole(cand, listName, ctx) {
     posted_at: null, // dedup on (company,title) across hourly runs / repeated lists
     link: cand.link || null,
     source: `${tag}:${listName}`,
-    location: cand.location || null, // D34 (MISSION v5): the aggregator's parsed location text
+    location: cand.location || null, // the aggregator's parsed location text
   };
 }
 
@@ -353,7 +353,7 @@ const SEEN_PATH = join(__dirname, ".feed-seen.json");
 // Cross-run idempotency store: the role keys we've already POSTed + notified,
 // persisted as a JSON array that .github/workflows/read-feeds.yml caches (actions/cache
 // rolling key) between hourly runs. A missing/corrupt file → empty set (never throws).
-// ponytail: a plain JSON array on the Actions cache, not a DB or KV store. If the cache
+// note: a plain JSON array on the Actions cache, not a DB or KV store. If the cache
 // is evicted/empty, the set resets and this run's roles re-notify ONCE — acceptable,
 // because the webhook's (company,title) dedup still prevents a duplicate ROW; only the
 // GitHub email repeats, not the data.

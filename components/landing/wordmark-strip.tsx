@@ -13,8 +13,8 @@ import { listMockShots } from "@/components/landing/mocks";
 // pauses on pointer and on focus, and renders ONE static wrapped row under
 // Settled / prefers-reduced-motion. Nothing new was written for it.
 //
-// MISSION D-UI6: the strip reads public/mocks/*.png. Until the orchestrator
-// drops real captures in, it renders a named empty state and no placeholder art.
+// The strip reads public/mocks/*.png. Until real captures are dropped in,
+// it renders a named empty state and no placeholder art.
 
 // 320x176 per shot: the reference's image band reads as wide cards, and an app
 // screenshot is still legible at that size on a 390 phone.

@@ -5,10 +5,10 @@ import type { QueryFn } from "./db";
 // loaded by scripts/load-lakebase-catalog.mjs -- D-S4). Parameterized SQL,
 // `ilike` over the pg_trgm GIN indexes. Every read still checks the table has
 // rows before trusting it: a missing or still-empty table is a loud, named
-// error (CONTEXT 13:25 "datasets arrive later"; MISSION invariant 0), never a
+// error, never a
 // silent empty roadmap. The Delta copies stay for Vector Search / Genie.
 //
-// ponytail: "./db" is reached only through the optional `q` param (default: a
+// note: "./db" is reached only through the optional `q` param (default: a
 // deferred `await import("./db")`), the same dependency-injection shape
 // lib/student-profile.ts uses -- a static extensionless VALUE import between
 // two lib/*.ts files breaks node --experimental-strip-types --test the moment

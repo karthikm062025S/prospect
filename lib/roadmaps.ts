@@ -1,6 +1,6 @@
 import type { query } from "./db";
 
-// ponytail: "./db" and "./catalog" are reached only through `import type` or a
+// note: "./db" and "./catalog" are reached only through `import type` or a
 // deferred `await import(...)` below, never a static value import -- the same
 // pattern lib/student-profile.ts documents: a static extensionless VALUE
 // import between two lib/*.ts files throws ERR_MODULE_NOT_FOUND the moment

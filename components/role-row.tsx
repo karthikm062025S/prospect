@@ -54,7 +54,7 @@ export type HomeRow = {
   source: string | null;
   season: Season;
   family: Family;
-  // Task 2 / D2-D4 (lane L1, fold 2026-09-15): every family the title (or a
+  // Task 2 / D2-D4 (fold 2026-09-15): every family the title (or a
   // stored classification) matches; app/(app)/page.tsx is the only producer
   // and always sets it (families ?? familySignals(title)).
   families: Family[];
@@ -66,13 +66,13 @@ export type HomeRow = {
   company_tier: string | null;
   company_url: string | null;
   company_visa_note: string | null;
-  // Task 3 T2/T3 (lane L2): derived at read time (lib/liveness.ts) / carried
+  // Task 3 T2/T3: derived at read time (lib/liveness.ts) / carried
   // from the row's ingest columns. No JSX reads these yet — L5 renders the
   // chips.
   liveness: string;
   repost_count: number;
   canonical_key: string | null;
-  // Task 3 T5 (lane L4): which fields the CALLER has personally corrected on
+  // Task 3 T5: which fields the CALLER has personally corrected on
   // this row (lib/corrections.ts overlayCorrections). No JSX reads this yet —
   // L5 renders the correction control.
   corrected: CorrectionField[];
@@ -504,7 +504,7 @@ function RoleRowBase({
         </p>
 
         {row.visa_class ? (
-          // FR-007 (lane L5): the plain-words flag, never hiding the row or
+          // FR-007: the plain-words flag, never hiding the row or
           // disabling Apply (K2) — this paragraph is purely informational,
           // text-dim, and sits below the row's main line.
           <p className="pb-3 pl-4 text-[13px] text-text-dim">

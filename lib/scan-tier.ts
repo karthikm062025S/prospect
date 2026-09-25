@@ -1,7 +1,7 @@
 // Tier split for the fast discovery lane (RB-082 v2, slice 6c). Pure so the
 // route and tests/scan-tier.test.ts share it with zero I/O.
 //
-// ponytail: normName is a deliberate copy of scripts/read-alerts.mjs#normName
+// note: normName is a deliberate copy of scripts/read-alerts.mjs#normName
 // (D6: a helper needed by both the app graph and the test runner is INLINED —
 // importing the .mjs would drag the whole alerts parser into the route bundle).
 // tests/scan-tier.test.ts locks the behaviour so drift surfaces as a red test.

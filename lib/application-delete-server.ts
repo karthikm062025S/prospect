@@ -7,7 +7,7 @@ import type { QueryFn } from "./db";
 // whose ownership the caller has already verified, inside the caller's delete
 // transaction. Service tier: `roles` has no user column (tests/user-scoping.test.ts
 // allowlist).
-// ponytail: remove once the legacy column is dropped.
+// note: remove once the legacy column is dropped.
 export async function unlinkLegacyRolePointer(q: QueryFn, applicationId: string): Promise<void> {
   await q("update roles set application_id = null where application_id = $1", [applicationId], "roles");
 }

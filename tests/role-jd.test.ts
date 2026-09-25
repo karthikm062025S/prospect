@@ -6,14 +6,14 @@ import { makeTestDb, insertRow, truncateAll, uuid, type TestDb } from "./helpers
 
 // lib/role-jd.ts's ensureRoleJd is the ONE function both ingest lanes and the
 // Home detail pane's lazy-open action call. Every case here injects
-// `opts.capture` (a test-only DI hook — see the ponytail comment on
+// `opts.capture` (a test-only DI hook — see the note on
 // defaultCapture in lib/role-jd.ts) instead of exercising the real
 // captureJobDescription/captureJobPosting path: a STATIC lib-to-lib import of
 // lib/jd-snapshot.ts would throw ERR_MODULE_NOT_FOUND the moment this file is
 // loaded directly by `node --experimental-strip-types --test` (the D6 gotcha,
 // the module-resolution rule), so role-jd.ts resolves the real module lazily via a
 // dynamic import that these tests never reach. The real path is proven by the
-// live proof against the dev server (MISSION validation item 7) and by
+// live proof against the dev server and by
 // jd-snapshot's own certified test suite (tests/jd-snapshot.test.ts).
 // The rows live in the real schema (pglite), so column types are the real ones.
 

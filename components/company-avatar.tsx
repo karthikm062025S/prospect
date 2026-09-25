@@ -8,7 +8,7 @@ import { brandMarkSrc } from "@/lib/brand-mark";
 // v5: round company mark so rows are distinguishable at a glance. Favicon from the
 // company's domain (careers_url / link) with an initials fallback; the hue is a
 // stable hash of the name so the same company always gets the same circle.
-// ponytail: plain <img> + DuckDuckGo icon service (no next/image remotePatterns);
+// note: plain <img> + DuckDuckGo icon service (no next/image remotePatterns);
 // upgrade to a stored logo column if the icon service ever becomes a problem.
 //
 // v7 S4 (OD2) puts a real brand mark first when lib/brand-mark.ts matches the

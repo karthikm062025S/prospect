@@ -1,7 +1,6 @@
 #!/usr/bin/env node
-// Bulk archetype assignment for the backlog of open postings that have none
-// (D-S1, build/MISSION-speed-2026-09-20.md): vector top-1 against
-// scout.core.archetypes_index, concurrency 2, sequential chunks, looping
+// Bulk archetype assignment for the backlog of open postings that have none:
+// vector top-1 against scout.core.archetypes_index, concurrency 2, sequential chunks, looping
 // until nothing is left. Survives 429s through lib/vector-search.ts's retry.
 // Never runs on a user path -- the Match agent scores unassigned postings by
 // title until this (or the hourly watcher top-up) reaches them.

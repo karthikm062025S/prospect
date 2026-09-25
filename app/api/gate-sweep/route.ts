@@ -4,7 +4,7 @@ import { isCorrectPassword } from "@/lib/gate";
 import { gateFromText } from "@/lib/gate-rules";
 import { gateSweepRequest, type Db, type GateRow } from "@/lib/gate-sweep";
 
-// Task 3 (MISSION T4, 2026-09-16): the rules-only sponsorship / citizenship /
+// Task 3: the rules-only sponsorship / citizenship /
 // clearance sweep. .github/workflows/gate-sweep.yml curls this every 3 h with
 // the watcher secret until `remaining` is 0; the first run over the backlog IS
 // the backfill. All logic lives in lib/gate-sweep.ts (rules from

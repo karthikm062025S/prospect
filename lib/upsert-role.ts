@@ -5,7 +5,7 @@ import type { Season } from "./season";
 // (INTERN + INCLUDE/EXCLUDE/STRONG_TECH, a copy of scripts/scan.mjs); addendum 2
 // of the VTHacks build widened it to "every major, every level", so only the
 // stale-year / wrong-term marker below still drops a posting.
-// Widened 2026-09-02 (MISSION v7 D8): fall/spring/winter/autumn and co-op are no
+// Widened 2026-09-02: fall/spring/winter/autumn and co-op are no
 // longer automatic rejections — lib/season.ts now classifies the term (and a
 // title with no supported term still ingests as season:"unspecified", filtered
 // by the Home season dropdown instead of dropped at the gate). Still reject any
@@ -26,14 +26,13 @@ export function isTargetTitle(title: string | null | undefined): boolean {
 export const ROLE_LEVELS = ["internship", "coop", "new_grad", "full_time", "research"] as const;
 export type RoleLevel = (typeof ROLE_LEVELS)[number];
 
-// Season/family derivation at ingest (MISSION v7 D8). Duplicated (not
+// Season/family derivation at ingest. Duplicated (not
 // imported) from lib/season.ts / lib/family.ts: those two stay dependency-free
 // pure modules (season.ts especially — "no imports" is part of their spec, for
 // direct reuse by the Home filter UI and as SQL-backfill reference), but this
 // file is imported DIRECTLY by tests/upsert-role.test.ts under
 // `node --experimental-strip-types`, which cannot resolve an extensionless
-// runtime *value* import between two lib/*.ts files (see CLAUDE.md's
-// the module-resolution rule) — the same reason isTargetTitle
+// runtime *value* import between two lib/*.ts files -- the same reason isTargetTitle
 // above is a standalone copy rather than a cross-import of scan-core.mjs.
 // tests/season.test.ts and tests/family.test.ts lock the canonical
 // lib/season.ts + lib/family.ts behavior this copy must track — keep both in
@@ -78,7 +77,7 @@ export function ingestSeason(title: string, text?: string | null): Season {
 // all-majors taxonomy; this ingest-time duplicate still writes the OLD
 // 9-bucket taxonomy strings (untouched below) because the read side
 // (app/(app)/page.tsx, app/(app)/journey/page.tsx) now ALWAYS derives family
-// from the title and never trusts this stored column (MISSION D7) — so the
+// from the title and never trusts this stored column — so the
 // return type is a plain string, not the app's Family union, rather than
 // rewriting the scanner's classifier in this same lane.
 export function ingestFamily(title: string): string {
@@ -116,7 +115,7 @@ export function ingestFamily(title: string): string {
   return "other";
 }
 
-// T3 (MISSION Task 3): identity across a repost. The ATS job id parsed from
+// Identity across a repost. The ATS job id parsed from
 // the link is the strongest signal (same posting survives a title/location
 // drift); falls back to company + normalized title + normalized location.
 // Inlined here (not imported from a shared lib/*.ts module) for the same
@@ -230,7 +229,7 @@ export type UpsertRoleInput = {
   priority?: string | null;
   notes?: string | null;
   location?: string | null;
-  // MISSION v7 D8: posting text, when the caller has it, sharpens season
+  // posting text, when the caller has it, sharpens season
   // derivation beyond the title alone (lib/season.ts's `text` param).
   jd_text?: string | null;
   // 2026-09-19 addendum (drop latency): the board's own publish timestamp
@@ -425,7 +424,7 @@ export async function upsertRole(
   // T3: identity lookup order — canonical_key first (oldest row by created_at
   // wins when more than one shares a key), then the legacy exact triple
   // (company_id, title, posted_at) for a row that predates the key.
-  // Scoped by company_id (fold 2026-09-16, orchestrator review): the ATS-id
+  // Scoped by company_id (fold 2026-09-16, code review): the ATS-id
   // half of canonical_key is TENANT-scoped for Workday (wd:R.../wd:JR...) and
   // SuccessFactors (sf:...) — two different companies can both legitimately
   // carry "wd:R01171049" on their own Workday tenant, so an unscoped lookup
@@ -480,7 +479,7 @@ export async function upsertRole(
     for (const key of ROLE_FIELDS) {
       if (input[key] !== undefined) row[key] = input[key];
     }
-    // D34 (MISSION v5): location from the ATS, set on insert like any other field.
+    // location from the ATS, set on insert like any other field.
     if (input.location !== undefined) row.location = input.location;
     // Drop-latency addendum: the board's own publish time rides in on insert.
     if (input.source_posted_at != null) row.source_posted_at = input.source_posted_at;

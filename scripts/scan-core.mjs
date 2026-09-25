@@ -29,8 +29,8 @@ export const epKey = (ep) =>
 // Word-boundary \bintern... (NOT "Internal"/"International"). Covers "Intern",
 // "Interns", "Internship", "Internships" (the plural program titles quant firms
 // use — "Software Engineering Internships").
-// The INTERNSHIP-TERM gate. Widened 2026-09-03 (v7/feed lane): MISSION v7 D8 and
-// Karthik's ingest decision admit co-op terms, but the gate still required the
+// The INTERNSHIP-TERM gate. Widened 2026-09-03 (v7/feed lane):
+// Karthik's ingest decision admits co-op terms, but the gate still required the
 // literal word "intern", so "Software Engineering Co-op 2027" and
 // "2027 Summer Technology Analyst" were dropped at ingest (verified against the
 // live feed: not one co-op-titled row without "intern" had ever been ingested).
@@ -69,7 +69,7 @@ const INCLUDE =
 const EXCLUDE =
   /\b(marketing|human resources|\bhr\b|people ops|talent acquisition|recruit(ing|er|ment)?|sales development|sales representative|sales rep\b|account executive|account manager|business development|\bsdr\b|\bbdr\b|sales strategy|market research|financial analyst|finance analyst|finance intern|accounting|investment banking|financial reporting|legal|counsel|paralegal|public relations|social media|content marketing|customer success|customer support|customer experience|graphic design|visual design|product marketing|product operations|business operations|sales operations|marketing operations|people operations|management analyst|mechanical engineer(ing)?|civil engineer(ing)?|chemical engineer(ing)?|biomedical engineer(ing)?|industrial engineer(ing)?|environmental engineer(ing)?|aerospace engineer(ing)?|materials engineer(ing)?|manufacturing engineer(ing)?|structural engineer(ing)?|pharmac(y|ist|eutical|ists|ies)|nursing|clinical|phlebotom)\b/i;
 
-// Widened 2026-09-02 (MISSION v7 D8): fall/spring/winter/autumn/co-op are no
+// Widened 2026-09-02: fall/spring/winter/autumn/co-op are no
 // longer automatic rejections — the app derives lib/season.ts's season enum
 // from the title instead (an unrecognized term ingests as "unspecified", never
 // dropped here). Still drop any explicit year ≤2026 and a near-term
@@ -102,7 +102,7 @@ export function isTargetTitle(title) {
 // (opt-in, default off, so every existing caller/test is unaffected).
 //
 // isEligiblePosting: "replace exclusion-by-function with inclusion of
-// everything that is a job posting" (MISSION L2 fence) — every function AND
+// everything that is a job posting" — every function AND
 // every level, dropping only the one check that is function/level-agnostic
 // (an explicitly stale posting year). The ATS itself is the trust boundary for
 // "is this a real posting"; nothing else here second-guesses it.
@@ -240,7 +240,7 @@ const isoInstant = (iso) => {
 // recency window still uses the reconstructed date; only the payload date is
 // nulled. Sources with real absolute dates (Greenhouse/Ashby/Lever/SR/Amazon/
 // Oracle/Phenom) keep their date.
-// location (D34, MISSION v5): every per-ATS normalizer above already computes
+// location: every per-ATS normalizer above already computes
 // `job.location` (greenhouse location.name / lever categories.location /
 // ashby location / smartrecruiters joined city+region / workday
 // locationsText / etc.) — pass it through when non-empty so roles.location
@@ -273,7 +273,7 @@ export function buildCandidate(company, job, opts = {}) {
 // APIs: we page through the "intern" search, map postedOn→an approximate date,
 // and let the shared title/US/window filters cut the rest. The weekly manual
 // sweep stays the backstop for these tenants (§8).
-// ponytail: 12 pages (240 postings) per tenant — a role posted today that sits
+// note: 12 pages (240 postings) per tenant — a role posted today that sits
 // deeper than that is missed this run (caught next run or by the manual sweep).
 const WD_LIMIT = 20;
 const WD_MAX_PAGES = 12;
@@ -354,7 +354,7 @@ function fetchUrl(ats, token) {
     case "lever":
       return `https://api.lever.co/v0/postings/${token}?mode=json`;
     case "smartrecruiters":
-      // ponytail: first 100 postings only; SR returns newest-first, so a few-day
+      // note: first 100 postings only; SR returns newest-first, so a few-day
       // recency window is safe. Add an offset loop if a board exceeds 100 recent.
       return `https://api.smartrecruiters.com/v1/companies/${token}/postings?limit=100`;
     default:
@@ -427,7 +427,7 @@ async function fetchJson(url, headers, fetchFn) {
 // ---- Amazon (amazon.jobs search.json) ----
 // Real absolute dates ("May 13, 2026" — Date.parse handles it). country[] is not
 // reliably honored, so the shared looksUS filter does the US cut.
-// ponytail: 100 most-recent postings per run; add an offset loop only if Amazon
+// note: 100 most-recent postings per run; add an offset loop only if Amazon
 // ever posts >100 matching interns inside the recency window (it doesn't today).
 async function fetchAmazon(_ep, fetchFn, wide) {
   const data = await fetchJson(
@@ -605,7 +605,7 @@ async function pool(items, limit, worker) {
 }
 
 // wide (default false — every existing caller/test omits it and gets the
-// EXACT prior behavior/output): the MISSION L2 coverage widening, opt-in only.
+// EXACT prior behavior/output): the L2 coverage widening, opt-in only.
 // scripts/scan.mjs's CLI passes wide:true by default (--strict opts back out).
 export async function scanEndpoints(
   endpoints,

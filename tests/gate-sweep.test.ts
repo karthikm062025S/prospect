@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { gateSweepRequest, parseParams, runGateSweep, type Db, type GateRow } from "../lib/gate-sweep.ts";
 import { gateFromText } from "../lib/gate-rules.ts";
 
-// Task 3 L3 (MISSION T4): the rules-only sweep behind POST /api/gate-sweep.
+// Task 3 L3: the rules-only sweep behind POST /api/gate-sweep.
 // lib/gate-sweep.ts holds no static lib-to-lib VALUE import (the strip-types
 // runner cannot follow one, the module-resolution rule), so the rules arrive
 // injected and the Db is an in-memory stub shaped like the route's.

@@ -1,4 +1,4 @@
-// Workday tenant source (MISSION L2, VTHacks 14, 2026-09-19).
+// Workday tenant source.
 //
 // Public Workday CXS API, no key required. Fetches every VERIFIED tenant in
 // workday-tenants.json (each one live-fetched, 200 + jobPostings, during this
@@ -21,7 +21,7 @@ import { isEligiblePosting, looksUS, bucketWide } from "../scan-core.mjs";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const FETCH_TIMEOUT_MS = 20000;
 const PAGE_SIZE = 20;
-const MAX_PAGES_PER_TENANT = 3; // ponytail: enough to prove coverage per run without a slow full crawl
+const MAX_PAGES_PER_TENANT = 3; // note: enough to prove coverage per run without a slow full crawl
 
 const WD_RELATIVE = /today|yesterday|\d+\s*\+?\s*days?\s*ago/i;
 function wdIsRealDate(postedOn) {

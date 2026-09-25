@@ -275,8 +275,8 @@ export function DetailPane({
 
       <Section icon={<FileTextIcon />} title="Resume used" meta={resumeFile.trim() || "Empty"}>
         <div className="flex flex-col gap-1">
-          {/* ponytail: free text, not a file. The app stores WHICH resume went
-              out, never the PDF — uploads stay cut (MISSION.md D20). Add a
+          {/* note: free text, not a file. The app stores WHICH resume went
+              out, never the PDF — uploads stay cut. Add a
               picker only if a stored-file library ever lands. */}
           <input
             type="text"

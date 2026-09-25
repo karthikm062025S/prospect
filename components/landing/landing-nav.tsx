@@ -209,7 +209,7 @@ export function LandingNav({ signedIn = false }: { signedIn?: boolean }) {
         </nav>
 
         {/* Mobile sheet: native <dialog>, so Escape, focus trapping and the
-          backdrop are the platform's job, not ours (km-ui rung 1). */}
+            backdrop are the platform's job, not ours. */}
         <dialog
           ref={dialogRef}
           role="dialog"

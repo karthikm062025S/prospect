@@ -86,10 +86,10 @@ export type Role = {
   location: string | null;
   season: Season;
   family: Family;
-  // Task 2 / D2/D4 (lane L1, fold 2026-09-15): optional so existing Role
+  // Task 2 / D2/D4 (fold 2026-09-15): optional so existing Role
   // fixtures/literals elsewhere stay valid; the DB column is nullable too.
   families?: Family[] | null;
-  // Task 3 T2/T3 (lane L1, 2026-09-16): optional for the same reason as
+  // Task 3 T2/T3 (2026-09-16): optional for the same reason as
   // `families` above — last_seen_at/canonical_key/gate_checked_at are
   // nullable columns, repost_count defaults to 0; existing Role literals
   // elsewhere in the app stay valid without listing all four.

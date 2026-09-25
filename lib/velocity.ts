@@ -8,7 +8,7 @@
 // null means the user has not set one.
 
 // ONE fixed zone for every day boundary in the app.
-// ponytail: the ~6 lines below are duplicated from lib/sort.ts (same helper as
+// note: the ~6 lines below are duplicated from lib/sort.ts (same helper as
 // lib/mcp-helpers.ts nyTodayStartIso) rather than imported — an extensionless
 // lib↔lib VALUE import breaks `node --experimental-strip-types --test`
 // (see lib/role-jd.ts's note on that gotcha).

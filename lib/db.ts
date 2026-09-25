@@ -37,7 +37,7 @@ let pool: Pool | undefined;
 export function db(): Pool {
   const url = process.env.LAKEBASE_URL;
   if (!url) throw new Error("DATABASE_NOT_CONFIGURED: LAKEBASE_URL is not set");
-  // ponytail: one process-wide pool, max 5 (Lakebase scale-to-zero; serverless functions are short-lived).
+  // note: one process-wide pool, max 5 (Lakebase scale-to-zero; serverless functions are short-lived).
   // A hung connect or a runaway statement fails loudly instead of holding a serverless invocation open.
   pool ??= new Pool({
     connectionString: url,

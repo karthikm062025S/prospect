@@ -9,7 +9,7 @@
 // still hold old-taxonomy keys (swe, ai_ml, ...) for every row until a future
 // scan rewrites them — app/(app)/page.tsx and app/(app)/journey/page.tsx
 // therefore ALWAYS derive families from the title at read time now, never
-// trusting the stored column (MISSION D7, VTHacks speed pass).
+// trusting the stored column.
 
 export type Family =
   | "engineering"

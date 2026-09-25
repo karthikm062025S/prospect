@@ -1,4 +1,4 @@
-// Agent timing table (MISSION C4). Run from the worktree root:
+// Agent timing table. Run from the worktree root:
 //   node --experimental-strip-types --env-file=../scout/.env.local scripts/profile-smoke.ts
 //     [--n 3] [--thinking off|on|minimal|low] [--parse-model gemini-3.8-flash] [--legs transcript,roadmap.plan]
 //
@@ -20,7 +20,7 @@ import { readdirSync } from "node:fs";
 import { join } from "node:path";
 import pg from "pg";
 
-// ponytail: variable specifiers keep tsc (moduleResolution bundler, no
+// note: variable specifiers keep tsc (moduleResolution bundler, no
 // allowImportingTsExtensions) from rejecting the ".ts" that plain node needs.
 const load = <T>(p: string) => import(p) as Promise<T>;
 const harness = await load<typeof import("../lib/agents/harness")>("../lib/agents/harness.ts");

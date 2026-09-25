@@ -1,6 +1,6 @@
 name: retention
 
-# D3/D11 (docs/plans/cron-mission-2026-09-24/MISSION.md): the free-tier
+# The free-tier
 # retention prune. Once daily, POSTs /api/retention-sweep on the deployed
 # app; the route always computes would-delete + excluded-acted-on counts.
 # Fix round 1: the Vercel env RETENTION_PRUNE_ENABLED is the ONLY gate for a
@@ -17,7 +17,7 @@ name: retention
 # (no default prod URL - this repo's convention since 2026-09-19: fail loudly
 # if unset, never point at the wrong deployment).
 #
-# Fix round 2 (MISSION.md PHASE 2 D13): no outage alert here. Prospect may
+# no outage alert here. Prospect may
 # alert Karthik only when something is very dangerous or he must act; the one
 # remaining Prospect alert is heartbeat's feed-dead-26h+ signal, owned by
 # another lane. A failed retention run is not dangerous - the route fails

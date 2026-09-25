@@ -1,7 +1,7 @@
 // Conditional-request wrapper for the fast discovery lane (RB-082 v2, slice
 // 6c-finish; TRD §13 spike-5 "ETag branch"). scripts/scan-core.mjs already
 // threads a `fetchFn` through every vendor fetch; this wraps it so the moved
-// body stays untouched (MISSION D4):
+// body stays untouched:
 //   - GET with a stored validator → If-None-Match (or If-Modified-Since when
 //     only last_modified is known);
 //   - 304 from a vendor whose empty payload we know → a synthetic 200 carrying
@@ -15,7 +15,7 @@
 // Pure and injectable: no I/O of its own, the route supplies the base fetch
 // and the watch_state rows; tests/etag-fetch.test.ts locks the behaviour.
 //
-// ponytail: state is keyed by the FULL URL string (endpoint_key = url). Upgrade
+// note: state is keyed by the FULL URL string (endpoint_key = url). Upgrade
 // to a per-vendor key (ats:token) only if a vendor URL ever grows volatile
 // query params — today's URLs are stable per endpoints.json row.
 

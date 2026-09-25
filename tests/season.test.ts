@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { deriveSeason, SEASON_LABEL, SEASON_ORDER, seasonChipItems } from "../lib/season.ts";
 import type { Season } from "../lib/season.ts";
 
-// MISSION v7 D8 / contract V4: pure title (+ optional posting text) -> Season
+// Pure title (+ optional posting text) -> Season
 // classifier. Cases below cover every rule branch, in the order the function
 // applies them (explicit season+supported-year, explicit season+unsupported-
 // year, winter, co-op, bare season word, bare year, text fallback).

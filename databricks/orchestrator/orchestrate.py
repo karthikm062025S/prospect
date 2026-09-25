@@ -30,7 +30,7 @@
 # MAGIC %pip install pg8000 -q
 dbutils.library.restartPython()
 # Same dependency path as databricks/sync/sync_lakebase_to_delta.py (proved
-# live on this workspace, sync run 398285688594045). ponytail: the kit's
+# live on this workspace, sync run 398285688594045). note: the kit's
 # `environments` block on the job is the declarative alternative; kept the
 # proven %pip path tonight, upgrade path = move pg8000 into job.json
 # `environments[].spec.dependencies` and drop this cell.

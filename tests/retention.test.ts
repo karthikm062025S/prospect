@@ -7,11 +7,12 @@ import {
   makeRetentionDb,
   BATCH_SIZE,
   MAX_BATCHES,
+  SEEN_DAYS,
   type RetentionDb,
 } from "../lib/retention.ts";
 import { makeTestDb, insertRow, truncateAll, uuid, type TestDb } from "./helpers/test-db.ts";
 
-// D11 (docs/plans/cron-mission-2026-09-24/MISSION.md): the free-tier
+// The free-tier
 // retention prune behind POST /api/retention-sweep. makeRetentionDb's SQL
 // runs against the REAL schema (pglite, tests/helpers/test-db.ts) so the
 // NOT EXISTS / legacy-column predicate is proven against real Postgres
@@ -33,8 +34,10 @@ beforeEach(async () => {
 
 // roles_dedup_uidx is unique on (company_id, title, posted_at) with nulls not
 // distinct: every seeded role needs its own title so rows in the same test don't collide.
+// last_seen_at defaults to created_at (a role's own insert stamps both the same way,
+// lib/upsert-role.ts): pass last_seen_at in `extra` to test the D16 recency gate independently of age.
 async function role(id: string, created_at: string, extra: Record<string, unknown> = {}) {
-  await insertRow(db.q, "roles", { id, company_id: COMPANY, title: `SWE Intern ${id}`, created_at, ...extra });
+  await insertRow(db.q, "roles", { id, company_id: COMPANY, title: `SWE Intern ${id}`, created_at, last_seen_at: created_at, ...extra });
 }
 
 const rolesCount = async () => {
@@ -103,6 +106,48 @@ test("a role with only an outreach row is never deleted", async () => {
   assert.equal(await rolesCount(), 1); // survives
 });
 
+// a role old enough by created_at but still being
+// FOUND by a scanner (last_seen_at inside SEEN_DAYS) must never be pruned -
+// the old age-only predicate deleted it anyway, it re-inserted on the next
+// scan as a "new" drop, and Karthik got a repeat email.
+test("a role old by created_at but seen within SEEN_DAYS is never deleted, even with no acted-on signal", async () => {
+  const STILL_LIVE = uuid(21);
+  const recentlySeen = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(); // 2 days ago
+  await role(STILL_LIVE, OLD, { last_seen_at: recentlySeen });
+  const retentionDb = makeRetentionDb(db.q);
+
+  assert.equal((await retentionDb.wouldDelete(45)).would_delete, 0);
+  assert.deepEqual(await retentionDb.deleteBatch(45, BATCH_SIZE), []);
+  assert.equal(await rolesCount(), 1); // survives
+});
+
+test("a role old by created_at AND not seen for more than SEEN_DAYS is prune-eligible", async () => {
+  const STALE = uuid(22);
+  const staleSeen = new Date(Date.now() - (SEEN_DAYS + 1) * 24 * 60 * 60 * 1000).toISOString();
+  await role(STALE, OLD, { last_seen_at: staleSeen });
+  const retentionDb = makeRetentionDb(db.q);
+
+  assert.equal((await retentionDb.wouldDelete(45)).would_delete, 1);
+  assert.deepEqual(await retentionDb.deleteBatch(45, BATCH_SIZE), [STALE]);
+});
+
+// A pre-migration row with no last_seen_at yet is judged by updated_at, then
+// created_at (same fallback as lib/upsert-role.ts's isStaleReFind) - never
+// treated as "unseen" just because the column happens to be null.
+test("null last_seen_at falls back to updated_at, then created_at, for the recency gate", async () => {
+  const NULL_SEEN_RECENT_UPDATE = uuid(23);
+  await role(NULL_SEEN_RECENT_UPDATE, OLD, { last_seen_at: null, updated_at: RECENT });
+  const NULL_SEEN_STALE_UPDATE = uuid(24);
+  const staleUpdate = new Date(Date.now() - (SEEN_DAYS + 1) * 24 * 60 * 60 * 1000).toISOString();
+  await role(NULL_SEEN_STALE_UPDATE, OLD, { last_seen_at: null, updated_at: staleUpdate });
+  const retentionDb = makeRetentionDb(db.q);
+
+  const would = await retentionDb.wouldDelete(45);
+  assert.equal(would.would_delete, 1);
+  assert.deepEqual(await retentionDb.deleteBatch(45, BATCH_SIZE), [NULL_SEEN_STALE_UPDATE]);
+  assert.equal(await rolesCount(), 1); // NULL_SEEN_RECENT_UPDATE survives
+});
+
 test("makeRetentionDb wouldDelete reports no rows and a null oldest_created_at when nothing is prune-eligible", async () => {
   await role(uuid(20), RECENT);
   const retentionDb = makeRetentionDb(db.q);
@@ -141,7 +186,7 @@ test("runRetentionSweep honours a wider days window (30-day floor) without touch
   }
 });
 
-// D3/D11 + handoff-R4.md: the kill switch is enforced server-side. A caller
+// D3/D11: the kill switch is enforced server-side. A caller
 // that has the watcher secret but no RETENTION_PRUNE_ENABLED='1' can request
 // dry_run=0 and still never get a real delete.
 test("runRetentionSweep forces dry-run when the kill switch (pruneEnabled) is off, even if dryRun=false was requested", async () => {

@@ -1,8 +1,8 @@
 import { z } from "zod";
 
 // Pure feedback-input validation (D10). Framework-free so it loads in the
-// node:test runner without pulling in Next/Supabase — see the CLAUDE.md
-// module-resolution gotcha on shared lib helpers.
+// node:test runner without pulling in Next/Supabase -- node --experimental-strip-types
+// cannot resolve an extensionless runtime *value* import between two lib/*.ts files.
 const feedbackSchema = z.object({
   message: z.string().trim().min(1, "say something before sending").max(2000, "keep it under 2000 characters"),
   email: z.string().trim().max(320).optional(),

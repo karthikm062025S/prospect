@@ -1,6 +1,6 @@
 import registry from "../ans/registry.json" with { type: "json" };
 
-// Server-only. The verified-agent gate (build/MISSION.md L5 D21, refined):
+// Server-only. The verified-agent gate:
 // startAgentRun (lib/student-profile.ts) calls assertVerifiedAgent as its
 // FIRST statement, before the agent_runs insert. No LLM on this path; the
 // registry is a committed, non-secret JSON map, never fetched or generated.
@@ -16,7 +16,7 @@ const TIMEOUT_MS = 3000;
 const CACHE_TTL_MS = 60_000;
 
 // Module-level cache: agent name -> the ms timestamp its ACTIVE verdict expires.
-// ponytail: an in-memory Map is fine for a single hackathon demo process; a
+// note: an in-memory Map is fine for a single hackathon demo process; a
 // multi-instance deploy would need a shared cache (Redis/Lakebase) instead.
 const verifiedUntil = new Map<string, number>();
 
@@ -30,7 +30,7 @@ export async function assertVerifiedAgent(
   agent: string,
   opts: { fetchImpl?: typeof fetch; now?: () => number; registry?: AnsRegistry } = {},
 ): Promise<void> {
-  // ponytail: enforcement is OFF by default because production on Vercel
+  // note: enforcement is OFF by default because production on Vercel
   // cannot reach a laptop-local Transparency Log. Upgrade path: a tunnel
   // (cloudflared/ngrok) to the local TL, or a hosted TL, before turning this
   // on in production.

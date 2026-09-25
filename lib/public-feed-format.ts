@@ -42,6 +42,22 @@ export function relativeAdded(iso: string, nowMs: number): string {
   return `${Math.floor(days / 7)}w ago`;
 }
 
+/** The cached shape: a raw timestamp instead of a pre-rendered "2h ago"
+ *  string. unstable_cache (lib/public-feed.ts) freezes whatever a cached
+ *  function returns for the whole revalidate window, longer still if
+ *  revalidation keeps failing - so a string baked in at cache-write time
+ *  goes stale and can end up shown as if it were live. `added` is computed
+ *  fresh on every call instead, by withFreshAdded below, OUTSIDE the cache
+ *  boundary. */
+export type FeedRowRaw = Omit<FeedRow, "added"> & { createdAt: string };
+
+/** Turns cached rows back into FeedRows, computing `added` from `createdAt`
+ *  at call time so it always reflects the real elapsed time, never the
+ *  moment the cache was last written. Pure: no cache, no DB, unit-testable. */
+export function withFreshAdded(rows: FeedRowRaw[], nowMs: number = Date.now()): FeedRow[] {
+  return rows.map(({ createdAt, ...rest }) => ({ ...rest, added: relativeAdded(createdAt, nowMs) }));
+}
+
 // ---------------------------------------------------------------------------
 // v8 D12: company drops. Karthik's finding — when one company posts 25 roles in
 // a morning, a flat "24 newest" list is 24 rows of that ONE company and the

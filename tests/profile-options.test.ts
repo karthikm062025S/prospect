@@ -12,7 +12,7 @@ import {
 } from "../lib/profile-options.ts";
 import { ProfileFormSchema } from "../lib/agents/profile.ts";
 
-// UI/UX mission C3 (MISSION D-UI5, CONTEXT 20:30 "Profile form"): every
+// UI/UX mission C3: every
 // validation constant lives in lib/profile-options.ts and ProfileFormSchema
 // reads them, so the /setup form and the /api/profile 400 check never drift.
 

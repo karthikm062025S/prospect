@@ -23,7 +23,7 @@ const EMPTY_PROFILE: Profile = {
 // Server wrapper: computes the Applications-tab badge (RB-007 week count) and
 // reads the D9 user_metadata profile, so the client TabBar never needs its own
 // Supabase round trip. A failed applications read throws, named, into the
-// (app) error boundary (build/MISSION.md 13:25 lock: nothing catches and
+// (app) error boundary (nothing catches and
 // continues); auth stays on Supabase.
 export async function TabBarServer() {
   const uid = await requireUser();

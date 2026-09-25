@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 // D27.5: /welcome?error=auth means an auth server action (app/auth/actions.ts)
 // or the /auth/callback exchange failed and bounced the visitor back here.
 // useSearchParams needs a Suspense boundary; it lives INSIDE this default
-// export so the orchestrator's mount under the hero CTA stays one line.
+// export so its mount under the hero CTA stays one line.
 function AuthNoticeInner() {
   const searchParams = useSearchParams();
   const router = useRouter();

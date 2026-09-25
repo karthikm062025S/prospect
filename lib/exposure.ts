@@ -1,5 +1,4 @@
-// Labels come only from published task-exposure evidence, never an LLM guess
-// (CONTEXT.md Locked 2026-09-19 12:50 "Labels"; MISSION invariant 2).
+// Labels come only from published task-exposure evidence, never an LLM guess.
 //
 // Source: Anthropic Economic Index, release_2025_03_27
 // (https://huggingface.co/datasets/Anthropic/EconomicIndex). Its

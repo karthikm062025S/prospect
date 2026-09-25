@@ -17,8 +17,8 @@
 // list card, 40px avatar + 12px/16px row padding, status dot, a real header
 // (eyebrow + serif h1 + a this-week/this-month/follow-ups-due stat trio, all
 // derived from props already on the page, no new data call), a proper
-// bordered empty-state panel for the pane. See build/MISSION.md "Lane
-// handoffs" 2026-09-20 (L7) for the exact sizes and the pill-height CONFLICT
+// bordered empty-state panel for the pane. See the 2026-09-20 redesign notes
+// (L7) for the exact sizes and the pill-height CONFLICT
 // logged there. Every server action, its name and its arguments are
 // untouched.
 import { useCallback, useEffect, useMemo, useOptimistic, useRef, useState, useTransition } from "react";

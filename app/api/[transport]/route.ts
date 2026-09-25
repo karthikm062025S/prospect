@@ -385,7 +385,7 @@ const handler = createMcpHandler(
       ({ id, lifecycle }, extra) =>
         tool(async () => {
           requireOwnerScope(extra, "set_role_lifecycle");
-          // MISSION A7: a role moved back to "open" must come back idle — never re-show a stale "Applied?" confirm.
+          // a role moved back to "open" must come back idle — never re-show a stale "Applied?" confirm.
           const [row] = await query(
             `update roles
                 set lifecycle = $2, updated_at = $3,
@@ -562,7 +562,7 @@ const handler = createMcpHandler(
     );
   },
   {
-    serverInfo: { name: "scout", version: "0.4.0" },
+    serverInfo: { name: "prospect", version: "0.4.0" },
     capabilities: { tools: {} },
   },
   { basePath: "/api", maxDuration: 60 },

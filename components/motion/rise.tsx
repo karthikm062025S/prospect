@@ -8,7 +8,7 @@
 // Reduced motion: `useSettled()` covers BOTH prefers-reduced-motion and the
 // in-app Settled setting, and the settled branch renders the plain element in
 // its final state — no observer, no motion value, no slowed-down version of
-// the same animation (km-ui accessibility floor).
+// the same animation (a11y floor).
 //
 // The stagger is capped at CAP siblings: Home renders up to 144 rows, and an
 // uncapped 0.05s/row would leave the tail of the list blank for seven seconds.

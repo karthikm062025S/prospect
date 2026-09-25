@@ -21,7 +21,7 @@ import { useEffect } from "react";
 // handler in layout-router.tsx and wins. A visitor who asked for a section by
 // name keeps it.
 //
-// ponytail: forces the hero on every hashless mount of the landing, so a soft
+// note: forces the hero on every hashless mount of the landing, so a soft
 // browser Back from /privacy gives up its restored scroll position. Guard on the
 // navigation type if that ever matters more than this does.
 export function OpenOnHero() {

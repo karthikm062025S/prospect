@@ -1,6 +1,6 @@
 import { sanitizeJobHtml } from "@/lib/jd-snapshot";
 
-// The ONE renderer for a captured posting (MISSION v5 D25/D31). Both detail
+// The ONE renderer for a captured posting. Both detail
 // panes use it, so the posting reads the same everywhere.
 //
 // Server-safe: no hooks, no "use client" — it only escapes and prints.
@@ -10,7 +10,7 @@ import { sanitizeJobHtml } from "@/lib/jd-snapshot";
 // re-sanitized here (defense in depth). sanitizeJobHtml is idempotent, so a
 // second pass costs one linear scan and changes nothing.
 //
-// ponytail: Tailwind arbitrary variants on one wrapper instead of a stylesheet —
+// note: Tailwind arbitrary variants on one wrapper instead of a stylesheet —
 // the sanitizer's allowlist is 11 tags, so there is nothing else to style. No
 // max-height, no border, no background: the CALLER decides the container.
 

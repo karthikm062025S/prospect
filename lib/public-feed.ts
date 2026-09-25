@@ -4,7 +4,14 @@ import { deriveFamily, type Family } from "./family";
 import { decodeEntities } from "./decode-entities";
 import { SEASON_ORDER, deriveSeason, type Season } from "./season";
 import { safeHttpUrl } from "./types";
-import { groupDrops, relativeAdded, type CompanyDrop, type FeedRow } from "./public-feed-format";
+import {
+  groupDrops,
+  relativeAdded,
+  withFreshAdded,
+  type CompanyDrop,
+  type FeedRow,
+  type FeedRowRaw,
+} from "./public-feed-format";
 import { guardedRead } from "./cache-guard";
 
 // Server-only. Same standing as lib/public-stats.ts: the landing lives at
@@ -22,7 +29,7 @@ type RawRow = {
   link: string | null;
   season?: string | null;
   family?: string | null;
-  // Task 2 / D4 (lane L1, 2026-09-15): `families` (roles.families text[],
+  // Task 2 / D4 (2026-09-15): `families` (roles.families text[],
   // nullable) added alongside `family` so the read-time rule below can prefer a
   // stored multi-family classification over re-deriving from the title alone.
   families?: Family[] | null;
@@ -32,7 +39,7 @@ type RawRow = {
 const isSeason = (v: unknown): v is Season =>
   typeof v === "string" && (SEASON_ORDER as string[]).includes(v);
 
-async function readPublicFeed(season?: Season): Promise<FeedRow[]> {
+async function readPublicFeed(season?: Season): Promise<FeedRowRaw[]> {
   // No hidden_at filter (fixed 2026-09-03, v7/feed lane): `roles.hidden_at`
   // is the OWNER's legacy per-user hide, superseded by `user_roles`
   // (D3/D4 — "one user must not starve the shared feed"). Filtering on it
@@ -52,7 +59,6 @@ async function readPublicFeed(season?: Season): Promise<FeedRow[]> {
     "roles",
   );
 
-  const now = Date.now();
   return data.map((row) => ({
     id: row.id,
     company: row.company_name ?? "Unknown company",
@@ -71,7 +77,7 @@ async function readPublicFeed(season?: Season): Promise<FeedRow[]> {
     // Sanitized server-side so the trust boundary never moves to the client
     // (the same call app/(app)/page.tsx makes before shipping a posting URL).
     href: safeHttpUrl(row.link) ?? null,
-    added: relativeAdded(row.created_at, now),
+    createdAt: row.created_at,
   }));
 }
 
@@ -83,9 +89,11 @@ const cachedPublicFeed = unstable_cache(readPublicFeed, ["public-feed"], {
 /**
  * Cached for 10 minutes. Tag: public-feed. The landing must never 500 (or
  * serve a cached failure) because the DB blinked — the band renders its
- * empty state instead, computed fresh on every failed call.
+ * empty state instead, computed fresh on every failed call. `added` is
+ * computed fresh on every call too, outside the cache (withFreshAdded).
  */
-export const getPublicFeed = guardedRead(cachedPublicFeed, [], "public-feed");
+const guardedPublicFeed = guardedRead(cachedPublicFeed, [] as FeedRowRaw[], "public-feed");
+export const getPublicFeed = async (): Promise<FeedRow[]> => withFreshAdded(await guardedPublicFeed());
 
 // ---------------------------------------------------------------------------
 // v7 S4 LANDING-FLOW: the season pills.
@@ -144,12 +152,12 @@ export async function getPublicSeasonSets(): Promise<SeasonSets> {
   const present = SEASON_ORDER.filter((season) => (counts[season] ?? 0) > 0);
   const lists = await Promise.all(
     present.map((season) =>
-      guardedRead(() => cachedSeasonFeed(season), [] as FeedRow[], `public-feed:${season}`)(),
+      guardedRead(() => cachedSeasonFeed(season), [] as FeedRowRaw[], `public-feed:${season}`)(),
     ),
   );
   return {
     counts,
-    rows: Object.fromEntries(present.map((season, index) => [season, lists[index]])),
+    rows: Object.fromEntries(present.map((season, index) => [season, withFreshAdded(lists[index])])),
   };
 }
 
@@ -193,5 +201,12 @@ const cachedCompanyDrops = unstable_cache(readCompanyDrops, ["public-company-dro
 });
 
 /** Cached for 10 minutes, same window and tag as the feed so the strip and the
- *  list below it are never read from two different snapshots. */
-export const getPublicCompanyDrops = guardedRead(cachedCompanyDrops, [], "public-company-drops");
+ *  list below it are never read from two different snapshots. `added` is
+ *  recomputed here from the cached `newestAt`, so it is never frozen at
+ *  cache-write time (same reason as withFreshAdded above). */
+const guardedCompanyDrops = guardedRead(cachedCompanyDrops, [] as CompanyDrop[], "public-company-drops");
+export const getPublicCompanyDrops = async (): Promise<CompanyDrop[]> => {
+  const now = Date.now();
+  const drops = await guardedCompanyDrops();
+  return drops.map((drop) => ({ ...drop, added: relativeAdded(drop.newestAt, now) }));
+};

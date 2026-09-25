@@ -1,7 +1,7 @@
 // Deterministic job-alert email ingestion (Scout — ADDITIVE to scan.mjs).
 //
 // Reads a dedicated Gmail label via IMAP + app-password, parses job-alert emails
-// IN CODE (zero LLM tokens, $0, no Claude-session burn — same discipline as
+// IN CODE (zero LLM tokens, $0, no per-run AI cost — same discipline as
 // scan.mjs), reuses scan.mjs's title/US/wrong-term filters, tags giants/unicorns
 // from targets.json so the mandatory-tailoring rule fires downstream, and POSTs
 // survivors to the existing /api/watcher webhook (server-side dedup + applied-lock
@@ -151,7 +151,7 @@ function splitCompanyLocation(text) {
 // title/company are best-effort from the card text — a card missing a title is
 // skipped (malformed-skip), never fetched (zero-network rule). A fixture per
 // source guards the shape; forward a real sample to harden.
-// ponytail: regex/token extraction, not a full HTML parser dep. If a template
+// note: regex/token extraction, not a full HTML parser dep. If a template
 // drifts, its fixture test fails loudly — upgrade that one extractor then.
 // ---------------------------------------------------------------------------
 function extractByAnchor(html, hrefRe, mkLink) {
@@ -307,9 +307,9 @@ export async function loadContext() {
 // giants/unicorns tag rides in `source` (watcher-owned, safe to overwrite),
 // keeping the payload minimal while still firing mandatory tailoring downstream.
 // The AUTHORITATIVE mandatory-tailoring signal is targets.json membership checked
-// at apply time (km-resume) — it covers every target regardless of source; the
+// at apply time — it covers every target regardless of source; the
 // `alert-target:` source prefix is a convenience marker for the notify + no-API
-// alert roles. ponytail: an alert re-ingest of an LLM-advanced (non-applied) role
+// alert roles. note: an alert re-ingest of an LLM-advanced (non-applied) role
 // still takes the webhook UPDATE path (skip_refresh is scanner-only) and can churn
 // role_type/link/posted_at — verification (lifecycle/eligible/notes) is never
 // demoted. Extending skip_refresh to `alert*` sources would fully stop the churn
@@ -334,7 +334,7 @@ export function buildAlertRole(cand, source, ctx) {
     posted_at: null, // dedup on (company,title) across repeated digests
     link: cand.link || null,
     source: `${tag}:${source}`,
-    location: cand.location || null, // D34 (MISSION v5): the parsed location text, when present
+    location: cand.location || null, // the parsed location text, when present
   };
 }
 

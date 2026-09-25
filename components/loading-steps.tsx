@@ -13,7 +13,7 @@ const PENDING_LABEL: Record<StepKey, string> = {
 };
 
 // Pending / running / done-with-count / error, per the agent's real NDJSON
-// steps (MISSION D-UI3: exactly these five, in this order). A step with no
+// steps. A step with no
 // number is a bug, so "done" always renders its count; progress is visible
 // throughout (Law 11, 20) and an error names the step it landed on (Law 15).
 export function LoadingSteps({ states }: { states: StepStates }) {

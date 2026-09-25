@@ -4,7 +4,7 @@ import { useRef } from "react";
 import { motion, useScroll, useTransform } from "motion/react";
 import { useSettled } from "@/components/motion/settled";
 
-// Depth for the two product bands (lane L3, item 3). The screenshot column
+// Depth for the two product bands (item 3). The screenshot column
 // travels SLOWER than the copy column beside it, so the band reads as two
 // planes instead of one flat row, and the shot settles out of a small
 // perspective tilt as it enters.

@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { fetchRows } from "../scripts/sources/usajobs.mjs";
 
-// MISSION L2 (VTHacks 14, 2026-09-19). USAJOBS_API_KEY/USAJOBS_USER_AGENT are
+// VTHacks 14, 2026-09-19. USAJOBS_API_KEY/USAJOBS_USER_AGENT are
 // NOT provisioned in this environment (Done Means B) — proven live during
 // this build: a real request with no Authorization-Key returns a real 401
 // (see tests/fixtures/sources/MANIFEST.md), confirming the host/path are

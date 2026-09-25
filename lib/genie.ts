@@ -49,7 +49,7 @@ export type GenieMessage = {
 };
 
 const POLL_INTERVAL_MS = 2000;
-// ponytail: the kit quotes ~30 s simple / 60-120 s joins; 3 min ceiling fails loud instead of hanging.
+// note: the kit quotes ~30 s simple / 60-120 s joins; 3 min ceiling fails loud instead of hanging.
 const MAX_WAIT_MS = 3 * 60 * 1000;
 const TERMINAL = new Set(["COMPLETED", "FAILED", "CANCELLED"]);
 

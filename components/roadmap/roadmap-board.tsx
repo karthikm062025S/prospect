@@ -30,7 +30,7 @@ function pendingStates(doneSteps: RoadmapStep[], runningIndex: number): Record<R
   return states;
 }
 
-// ponytail: no userId prop -- every server action here calls requireUser()
+// note: no userId prop -- every server action here calls requireUser()
 // itself and re-derives the server-side identity, so the client never needs
 // to carry or forward one.
 export function RoadmapBoard({

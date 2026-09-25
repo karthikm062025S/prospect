@@ -3,13 +3,13 @@ import { fileURLToPath } from "node:url";
 import path from "node:path";
 import sharp from "sharp";
 
-// ponytail: sharp is supplied transitively by Next; do not add it to package.json.
+// note: sharp is supplied transitively by Next; do not add it to package.json.
 
 // Single source of truth: Karthik's real logo (public/brand/prospect-logo.svg,
 // a vendored copy of ../prospect-logo.svg). 8 maroon (#711731) paths spell
 // "prospect" left to right; 1 orange (#D6681D) path is the sparkle above the
 // o, 2 orange paths (#D6681D + #EE8A32) are the gold nugget inside the o.
-// build/MISSION.md D2/D5: letters recolor to VT maroon, orange paths to VT
+// Letters recolor to VT maroon, orange paths to VT
 // orange (a lighter tint on one nugget facet is fine). This script derives
 // app/icon.svg, app/apple-icon.png and public/og.png from that one file each
 // run, so all three (and components/logo.tsx's React copy of the same path

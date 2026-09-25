@@ -4,7 +4,7 @@ import { isInPlay } from "../lib/in-play.ts";
 
 // D23: the fit score is gone; this predicate is the exclusion it used to
 // enforce, and it is what keeps applied / expired roles off Home. Task 3 K2
-// (lane L2) dropped the citizen_required exclusion this predicate used to
+// dropped the citizen_required exclusion this predicate used to
 // carry. Every guard the deleted scoreFit() had gets a test here.
 const NOW = new Date("2026-08-24T12:00:00Z").getTime();
 
@@ -21,8 +21,8 @@ test("a plain open role with no flags is in play", () => {
   assert.equal(isInPlay(role(), NOW), true);
 });
 
-// Task 3 K2 (lane L2): citizen_required no longer excludes the role — it
-// stays in play and shows a flag instead (lib/gate-rules.ts / L5).
+// Task 3 K2: citizen_required no longer excludes the role, it
+// stays in play and shows a flag instead (lib/gate-rules.ts).
 test("citizen_required stays in play (K2: the flag shows, the row is not hidden)", () => {
   assert.equal(isInPlay(role({ visa_class: "citizen_required" }), NOW), true);
 });

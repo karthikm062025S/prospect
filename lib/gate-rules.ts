@@ -1,6 +1,6 @@
 import type { VisaClass } from "./types";
 
-// Task 3 L3 (MISSION T4, PRD FR-006): the abstaining sponsorship / citizenship
+// Task 3 L3: the abstaining sponsorship / citizenship
 // / clearance rules. Pure: posting html in, `visa_class` + a plain-words note
 // out, null when no table matches. Precedence citizen_required > no_sponsors >
 // question. No model, no network, $0. Callers: the JD-capture hook in
@@ -76,7 +76,7 @@ export const NOTE_TAIL: Record<VisaClass, string> = {
   citizen_required: "Check the posting before applying.",
 };
 
-// ponytail: the five named entities plus numeric ones, the same table as
+// note: the five named entities plus numeric ones, the same table as
 // lib/decode-entities.ts (inlined: no lib-to-lib value import).
 const NAMED: Record<string, string> = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " " };
 function decodeEntities(text: string): string {
@@ -123,7 +123,7 @@ function sentenceAround(text: string, start: number, end: number): { sentence: s
   BOUNDARY.lastIndex = 0;
   const right = next ? end + next.index : Math.min(text.length, end + CONTEXT);
   const sentence = text.slice(left, right).trim();
-  // ponytail: a sentence longer than the cap keeps the part from the match onward.
+  // note: a sentence longer than the cap keeps the part from the match onward.
   const quote = (sentence.length > QUOTE_MAX ? text.slice(start, start + QUOTE_MAX).trim() : sentence)
     .replace(/["“”]/g, "'")
     .replace(/[\s.,;:]+$/, "");
@@ -143,7 +143,7 @@ export function gateNote(visa_class: VisaClass, matched: string): string {
 const NEGATED_BEFORE = /(?:\bno|\bnot|\bwithout|\bnever|\bnor|n't)\b\s*(?:\w+\s+){0,2}$/i;
 const NEGATION_WINDOW = 24;
 
-// ponytail: each pattern is checked at its FIRST occurrence only; a text whose
+// note: each pattern is checked at its FIRST occurrence only; a text whose
 // first occurrence is negated or hedged and whose second is a hard requirement
 // reads as the first. Iterate occurrences if a real posting shows that.
 export function gateFromText(html: string): GateResult {

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// ponytail: sharp is read here for the over-scrim sampling only. It ships
+// note: sharp is read here for the over-scrim sampling only. It ships
 // transitively with next (next/image), the same reason scripts/art-assets.mjs
 // uses it; nothing in the app graph imports this file.
 import { readFileSync } from "node:fs";

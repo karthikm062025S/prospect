@@ -1,4 +1,4 @@
-// USAJOBS source (MISSION L2, VTHacks 14, 2026-09-19) — federal government
+// USAJOBS source — federal government
 // roles (a whole function/sector the old CS-intern-only scan never touched).
 //
 // Docs (Context7 had no USAJOBS entry; used the official docs per the

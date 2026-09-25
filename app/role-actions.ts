@@ -35,7 +35,7 @@ export async function getRoleJdAction(roleId: string, opts?: { force?: boolean }
     return { html: null, captured_at: null, error: publicError((err as Error).message), location: null };
   }
   if (!data) return { html: null, captured_at: null, error: "role not found", location: null };
-  // ponytail: any signed-in user can trigger a capture; force is honoured only when the
+  // note: any signed-in user can trigger a capture; force is honoured only when the
   // cached snapshot is older than a day so one client cannot hammer employer pages (audit M1).
   const staleMs = 24 * 60 * 60 * 1000;
   const fresh =

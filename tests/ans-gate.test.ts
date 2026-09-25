@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { assertVerifiedAgent, type AnsRegistry } from "../lib/ans-verify.ts";
 import { startAgentRun } from "../lib/student-profile.ts";
 
-// L5.2: the verified-agent gate (build/MISSION.md L5 D21, refined). No network
+// L5.2: the verified-agent gate. No network
 // in this file -- every fetch is a scripted fake, and no LLM is anywhere on
 // this path. Each scenario below uses its own agent name so the module-level
 // 60 s verified-cache (lib/ans-verify.ts) never leaks a verdict from one test

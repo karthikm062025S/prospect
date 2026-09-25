@@ -29,7 +29,7 @@ export interface StatementResult {
 }
 
 const POLL_INTERVAL_MS = 1000;
-// ponytail: 5 min ceiling so a stuck warehouse fails loud instead of hanging forever.
+// note: 5 min ceiling so a stuck warehouse fails loud instead of hanging forever.
 const MAX_WAIT_MS = 5 * 60 * 1000;
 
 function requiredEnv(name: string): string {

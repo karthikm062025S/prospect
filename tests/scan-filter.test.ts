@@ -60,7 +60,7 @@ const KEEP = [
   "Hardware Engineer Intern",
   "Solutions Architect Intern",
   // --- v7/feed lane, 2026-09-03 (PARITY with tests/title-filter.test.ts): the
-  // term gate widened past the literal word "intern" (MISSION v7 D8).
+  // term gate widened past the literal word "intern".
   "Software Engineering Co-op 2027",
   "Software Engineer Co-Op (Spring 2028)",
   "Data Science Coop - Fall 2027",

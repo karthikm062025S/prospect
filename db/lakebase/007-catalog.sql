@@ -1,4 +1,4 @@
--- Speed lane (D-S4, build/MISSION-speed-2026-09-20.md), 2026-09-20. Additive, idempotent, one paste.
+-- Speed lane, 2026-09-20. Additive, idempotent, one paste.
 -- Apply: node --env-file=.env.local scripts/apply-schema.mjs   (or psql "$LAKEBASE_URL" -f db/lakebase/007-catalog.sql)
 -- Then load: node --env-file=.env.local scripts/load-lakebase-catalog.mjs
 -- Down: drop table task_exposure; drop table vt_clubs; drop table vt_courses;
@@ -27,7 +27,7 @@ create table if not exists vt_clubs (
   url         text
 );
 
--- Labels come ONLY from this table (MISSION invariant 2): a task with no row is 'unscored'.
+-- Labels come ONLY from this table: a task with no row is 'unscored'.
 create table if not exists task_exposure (
   task_id            text primary key,
   automation_share   numeric not null,

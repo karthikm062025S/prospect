@@ -6,7 +6,7 @@ import type { ModelCaller } from "./harness";
 // explicit .ts suffix is D24: Node tests load this file directly.
 import { GOAL_MAX, WORK_AUTH_VALUES, normaliseSkill } from "../profile-options.ts";
 
-// ponytail: "../gemini" and "../student-profile" are imported DYNAMICALLY inside
+// note: "../gemini" and "../student-profile" are imported DYNAMICALLY inside
 // runProfileAgent, never as a static top-level import. A static extensionless
 // value import between two lib/*.ts files throws ERR_MODULE_NOT_FOUND the
 // moment `node --experimental-strip-types --test` loads a test that imports

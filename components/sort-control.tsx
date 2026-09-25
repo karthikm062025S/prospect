@@ -61,7 +61,7 @@ export function useHomeSort(fallback: HomeSort = "recent"): [HomeSort, (sort: Ho
 export function SortControl({ value, onChange }: { value: HomeSort; onChange: (sort: HomeSort) => void }) {
   return (
     // Lane handoffs 2026-09-20 (L9 logged first; adopted here): interactive
-    // pills stay min-h-11 (44px, the km-ui accessibility floor + this app's
+    // pills stay min-h-11 (44px, the accessibility floor + this app's
     // existing pervasive convention), not D10's literal 36px -- same
     // shape/height as Season/Field/Tier and the Select toggle.
     <label className="inline-flex min-h-11 items-center gap-1.5 rounded-pill border border-hairline bg-raised px-3 text-text-dim hover:border-sage">

@@ -127,7 +127,7 @@ test("filterCounts.tier counts each row once per tag it carries, measured under 
   assert.deepEqual(counts.tier, { all: 4, big4: 1, mbb_consulting: 1, big_tech: 1 });
 });
 
-// --- Task 2 / D3-D4 (lane L1, 2026-09-15): a role can be two families at
+// --- Task 2 / D3-D4 (2026-09-15): a role can be two families at
 // once (e.g. "SDE Intern, Alexa AI" is both ai_ml and swe). A row with
 // families ["ai_ml","swe"] must show under EITHER pill, and count once per
 // family it carries, while the "all" bucket still counts the row once.

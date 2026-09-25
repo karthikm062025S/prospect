@@ -7,7 +7,7 @@ import { measureDropLatency } from "../scripts/drop-latency.mjs";
 // `.query()`) proves the percentile math without a real LAKEBASE_URL —
 // the REAL boundary (the deployed Lakebase database) is Karthik's to run
 // (`node scripts/drop-latency.mjs` against the deployed build, per the
-// MISSION rule that this number is the only one allowed on stage).
+// rule that this number is the only one allowed on stage).
 
 function fakeClient(latencyMinutes: number[]) {
   return {

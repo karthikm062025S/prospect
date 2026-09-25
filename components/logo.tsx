@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Wordmark as RawWordmark, Mark as RawMark } from "@/components/brand/wordmark";
 
 // Thin nav wrapper around L2's components/brand/wordmark.tsx (the one place
-// Karthik's real logo SVG is traced into paths -- build/MISSION.md's
+// Karthik's real logo SVG is traced into paths -- the redesign's
 // dependency note: L4 imports it instead of converting the SVG a second
 // time). Its exports already give a static Wordmark/Mark; this file only
 // adds the nav-specific crop and the signed-in-aware Link.

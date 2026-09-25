@@ -4,7 +4,7 @@ import { existsSync } from "node:fs";
 import { importBaseline, baselineDir } from "../scripts/import-baseline.mjs";
 import { makeTestDb, type TestDb } from "./helpers/test-db.ts";
 
-// D3 (build/MISSION.md): Lakebase is seeded from the REAL 2026-09-04 export,
+// Lakebase is seeded from the REAL 2026-09-04 export,
 // never from invented rows. This runs the same importer the CLI runs, against
 // the real schema in pglite, and asserts the export's own counts
 // (db/baseline-2026-09/counts.json: companies 627, roles 1295, tombstones 412,

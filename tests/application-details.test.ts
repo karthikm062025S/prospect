@@ -85,8 +85,8 @@ test("detail updates cannot touch another user's application", async () => {
   assert.equal((await readApp()).notes, "private");
 });
 
-// The detail pane's Resume used field is free text (no upload, MISSION.md
-// D20): typing saves it, and blanking it must CLEAR the column rather than
+// The detail pane's Resume used field is free text (no upload): typing
+// saves it, and blanking it must CLEAR the column rather than
 // be rejected as an empty patch.
 test("resume_file round-trips and an emptied field clears the column", async () => {
   await seed({ user_id: UID, resume_file: null });

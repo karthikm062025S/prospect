@@ -1,4 +1,4 @@
-// New-source runner (MISSION L2, VTHacks 14, 2026-09-19): runs the three new
+// New-source runner: runs the three new
 // sources (Workday tenants, USAJOBS, Adzuna) and POSTs their combined rows to
 // the SAME /api/watcher webhook as scripts/scan.mjs, one named summary line
 // per source. A separate file (not folded into scan.mjs) because these are a

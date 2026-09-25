@@ -226,7 +226,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 // the browser re-renders in ET, so a role added at 21:30 ET reads "today" on
 // the client and "yesterday" on the server — a hydration text mismatch every
 // evening. lib/mcp-helpers.ts nyTodayStartIso made this same call.
-// ponytail: the ~6 lines below are duplicated in lib/velocity.ts rather than
+// note: the ~6 lines below are duplicated in lib/velocity.ts rather than
 // imported — an extensionless lib↔lib VALUE import breaks
 // `node --experimental-strip-types --test` (see lib/role-jd.ts's note).
 const NY_DAY = new Intl.DateTimeFormat("en-CA", {
