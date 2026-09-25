@@ -9,9 +9,11 @@ import { scanEndpoints } from "@/scripts/scan-core.mjs";
 import endpoints from "@/scripts/endpoints.json";
 import targets from "@/scripts/targets.json";
 
-// Fast discovery lane (RB-082 v2, slice 6c). .github/workflows/heartbeat.yml
-// POSTs here every 3 hours (tier=hot) with the watcher secret; we answer 202 at once (the caller's
-// timeout is short) and do the scan + upsert in after(). Same core as the Actions CLI
+// Fast discovery lane (RB-082 v2, slice 6c). Manual-only now: no workflow calls
+// this route on a schedule (the heartbeat.yml hot-scan job that used to POST here
+// every 3h was removed 2026-09-25, a duplicate of scan.yml's own cadence). A manual
+// call (workflow_dispatch or curl) with the watcher secret still gets a 202 at once
+// (the caller's timeout is short) and the scan + upsert in after(). Same core as the Actions CLI
 // (scripts/scan-core.mjs), same ingest path (lib/upsert-role.ts), so the two
 // lanes dedup against each other server-side. Same args as scan.yml passes:
 // --since-days 3 --concurrency 16.

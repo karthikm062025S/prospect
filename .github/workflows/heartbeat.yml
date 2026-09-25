@@ -1,11 +1,11 @@
 name: heartbeat
 
-# Dead-man's-switch (ADDITIVE — scan.yml, read-feeds.yml, read-alerts.yml all
-# untouched by this file). GitHub Actions cron schedules can silently drift or
-# get skipped under platform load, so a healthy-looking workflow file is not
-# proof the ATS scanner actually ran. This job checks scan.yml's most recent
-# SUCCESSFUL run and alerts if it has gone stale — proof the cron ran, not
-# just that it exists.
+# Dead-man's-switch: checks scan.yml's most recent SUCCESSFUL run and alerts if
+# it has gone stale. GitHub Actions cron schedules can silently drift or get
+# skipped under platform load, so a healthy-looking workflow file is not proof
+# the ATS scanner actually ran. This is all heartbeat.yml does now: it never
+# scans or notifies of new roles itself (scan.yml, read-feeds.yml and
+# read-alerts.yml are untouched by this file).
 #
 # No repo secrets required beyond the default GITHUB_TOKEN for the heartbeat.
 #

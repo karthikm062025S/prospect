@@ -29,7 +29,7 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { dirname, join } from "node:path";
-import { scanEndpoints, epKey, deriveLevel } from "./scan-core.mjs";
+import { scanEndpoints, epKey, deriveLevel, isDeadBatch } from "./scan-core.mjs";
 
 // Re-exported so tests/scan-filter.test.ts keeps importing the pure filters
 // from here, unchanged.
@@ -232,12 +232,9 @@ async function main() {
     // row errors server-side). Stop posting further batches once that happens,
     // there is no point spending 40+ more batches and ~8 minutes of Actions time
     // against a dead endpoint, and fail the run so the heartbeat is the alert.
-    const batchHandled =
-      (part.inserted || 0) + (part.updated || 0) + (part.skipped_applied || 0) + (part.skipped_tombstoned || 0) + (part.skipped_filtered || 0);
-    const batchErrors = (part.errors || []).length;
-    if (batchHandled === 0 && batchErrors > 0 && batchErrors === batch.length) {
+    if (isDeadBatch(part)) {
       console.error(
-        `\nbatch ${i / BATCH + 1} came back fully errored with no insert/update/skip (${batchErrors}/${batch.length}) - the DB looks down, stopping here instead of posting the remaining batches`,
+        `\nbatch ${i / BATCH + 1} came back fully errored with no insert/update/skip (${(part.errors || []).length}/${batch.length}) - the DB looks down, stopping here instead of posting the remaining batches`,
       );
       process.exitCode = 1;
       break;

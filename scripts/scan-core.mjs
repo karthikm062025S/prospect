@@ -657,3 +657,15 @@ export async function scanEndpoints(
 
   return { roles, okCount, failed, rawCounts };
 }
+
+// A batch is "dead" when /api/watcher answered 200 but every row in it errored
+// server-side (no insert/update/skip at all) — the DB is down. The response's
+// `errors` array is capped at 10 entries per POST (app/api/watcher/route.ts), so
+// comparing the error count to the batch length only ever matches a trailing
+// batch of <= 10 rows; a full 150-row dead batch never trips that comparison.
+// This predicate does not need the batch length at all.
+export function isDeadBatch(part) {
+  const handled =
+    (part.inserted || 0) + (part.updated || 0) + (part.skipped_applied || 0) + (part.skipped_tombstoned || 0) + (part.skipped_filtered || 0);
+  return handled === 0 && (part.errors || []).length > 0;
+}

@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { scanEndpoints } from "../scripts/scan-core.mjs";
+import { scanEndpoints, isDeadBatch } from "../scripts/scan-core.mjs";
 
 // scanEndpoints is the fetch + filter body of scripts/scan.mjs moved verbatim
 // (RB-082 v2, slice 6c) so the CLI and app/api/scan/route.ts run the SAME code.
@@ -60,4 +60,20 @@ test("scanEndpoints gives the same role set under concurrency", async () => {
 test("sinceDays is honored per call, not read from process.argv", async () => {
   const { roles } = await scanEndpoints(endpoints, { sinceDays: 60, concurrency: 1, fetch: fakeFetch });
   assert.ok(roles.some((r) => r.title === "Data Scientist Intern"));
+});
+
+// scripts/scan.mjs:239 used to also require errors.length === batch.length,
+// which the watcher's 10-entry error cap (app/api/watcher/route.ts) makes
+// impossible on any real batch bigger than 10 — a full 150-row dead batch never
+// tripped the fail-fast. isDeadBatch drops that comparison entirely.
+test("isDeadBatch fires on a full batch capped to 10 errors, not just a small one", () => {
+  assert.equal(isDeadBatch({ inserted: 0, updated: 0, errors: new Array(10).fill("x") }), true);
+});
+
+test("isDeadBatch is false when the batch was partially handled", () => {
+  assert.equal(isDeadBatch({ inserted: 3, updated: 0, errors: new Array(10).fill("x") }), false);
+});
+
+test("isDeadBatch is false when nothing errored", () => {
+  assert.equal(isDeadBatch({ inserted: 150, updated: 0, errors: [] }), false);
 });
