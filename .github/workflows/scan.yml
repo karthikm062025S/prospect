@@ -13,13 +13,10 @@ name: scan
 
 on:
   schedule:
-    # Karthik 15:05 addendum (2026-09-19): every 30 min (was every 3h) so
-    # drop-latency can be measured against a real cadence, off-minute (:07/:37)
-    # to avoid the hot :00/:30 slot. A single WIDE run of the 999 endpoints
-    # measured ~120s locally during this build (half of the 237.5s --dry-run,
-    # which runs the filter twice for its before/after report) — well inside
-    # the 30-min window even with GitHub Actions queue variance.
-    - cron: "7,37 * * * *"
+    # every 3h (was every 30 min), off-minute :07.
+    # Staggered with read-feeds :23, classify :37, read-alerts :41,
+    # gate-sweep :53 and heartbeat's freshness check :47.
+    - cron: "7 */3 * * *"
   workflow_dispatch:
     inputs:
       since_days:
@@ -28,10 +25,9 @@ on:
 
 permissions:
   contents: read
-  issues: write   # notify step opens/updates a daily "new drops" issue
 
 # Serialize runs so a manual dispatch overlapping the cron can't race the baseline
-# cache or double-open the canary issue.
+# cache.
 concurrency:
   group: scan
   cancel-in-progress: false
@@ -63,8 +59,8 @@ jobs:
           SINCE_DAYS: ${{ github.event.inputs.since_days || '3' }}
         run: node scripts/scan.mjs --since-days "$SINCE_DAYS" --concurrency 16
 
-      # MISSION L2 (2026-09-19): the three new named sources (Workday tenants,
-      # USAJOBS, Adzuna), same webhook, own named ok/FAILED lines per rule 2 —
+      # The three new named sources (Workday tenants, USAJOBS, Adzuna), same
+      # webhook, own named ok/FAILED lines per rule 2 —
       # a missing key never fails the whole job silently, but the step itself
       # exits non-zero so it shows red in the Actions run until the key lands.
       - name: run new sources (workday / usajobs / adzuna)
@@ -77,64 +73,3 @@ jobs:
           ADZUNA_APP_ID: ${{ secrets.ADZUNA_APP_ID }}
           ADZUNA_APP_KEY: ${{ secrets.ADZUNA_APP_KEY }}
         run: node scripts/scan-sources.mjs --limit 100
-
-      # Notify layer: the scanner wrote scripts/last-drops.json (roles posted
-      # within the last day). If any, mention Karthik on a per-day issue so
-      # GitHub emails him — zero extra creds, always-on, ToS-clean.
-      # ponytail: GitHub issue notifications, not a custom email pipeline. Swap
-      # for an SMTP/Gmail digest if a richer inbox format is wanted.
-      - name: notify on new drops
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SCOUT_WEBHOOK: ${{ vars.SCOUT_WEBHOOK }}
-        run: |
-          file=scripts/last-drops.json
-          if [ ! -s "$file" ]; then echo "no drops file"; exit 0; fi
-          count=$(node -e "console.log(JSON.parse(require('fs').readFileSync('$file','utf8')).length)")
-          if [ "$count" -eq 0 ]; then echo "no fresh drops"; exit 0; fi
-          day=$(TZ=America/New_York date +%F)
-          title="Scout: new drops — $day"
-          # Body goes through a file, capped at 100 lines: a wide scan listed
-          # 2,269 drops and `--body "$body"` overflowed the OS argument limit
-          # (run 35467140285, "Argument list too long", exit 126).
-          node -e "
-            const d=JSON.parse(require('fs').readFileSync('scripts/last-drops.json','utf8'));
-            const CAP=100;
-            const lines=d.slice(0,CAP).map(r=>'- **'+r.company+'** — '+r.title+' ['+r.role_type+'] '+(r.posted_at||'')+(r.link?' — '+r.link:'')).join('\n');
-            const more=d.length>CAP?'\n\n… and '+(d.length-CAP)+' more in the app.':'';
-            require('fs').writeFileSync('/tmp/drops-body.md','@karthikm062025S — '+d.length+' fresh role(s) found:\n\n'+lines+more+'\n\n→ '+new URL(process.env.SCOUT_WEBHOOK).origin+'');
-          "
-          num=$(gh issue list --repo "$GITHUB_REPOSITORY" --state open --limit 200 --json number,title --jq ".[] | select(.title==\"$title\") | .number" | head -1)
-          if [ -n "$num" ]; then
-            gh issue comment "$num" --repo "$GITHUB_REPOSITORY" --body-file /tmp/drops-body.md
-            echo "commented on #$num"
-          else
-            gh issue create --repo "$GITHUB_REPOSITORY" --title "$title" --body-file /tmp/drops-body.md
-            echo "created issue"
-          fi
-
-      # Canary: the scanner wrote scripts/canary.json listing endpoints that
-      # reliably had postings but silently returned 0 this run (broken token /
-      # schema drift — a blind spot a 404-only check misses). Fire ONCE per
-      # episode: open a standing issue; stay quiet while it's still open so a
-      # persistent regression doesn't comment every 3h. Karthik closes it when fixed.
-      - name: notify on canary regressions
-        if: always()
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SCOUT_WEBHOOK: ${{ vars.SCOUT_WEBHOOK }}
-        run: |
-          file=scripts/canary.json
-          if [ ! -s "$file" ]; then echo "no canary file"; exit 0; fi
-          count=$(node -e "console.log(JSON.parse(require('fs').readFileSync('$file','utf8')).length)")
-          if [ "$count" -eq 0 ]; then echo "no regressions"; exit 0; fi
-          title="Scout canary: endpoints silently returning 0"
-          num=$(gh issue list --repo "$GITHUB_REPOSITORY" --state open --limit 200 --json number,title --jq ".[] | select(.title==\"$title\") | .number" | head -1)
-          if [ -n "$num" ]; then echo "canary issue #$num already open — staying quiet"; exit 0; fi
-          body=$(node -e "
-            const d=JSON.parse(require('fs').readFileSync('scripts/canary.json','utf8'));
-            const lines=d.map(r=>'- \`'+r.company+'\` ['+r.ats+'] baseline '+r.baseline+' → 0').join('\n');
-            console.log('@karthikm062025S — '+d.length+' endpoint(s) that reliably had postings now return 0 (likely a broken token / schema drift — a silent blind spot):\n\n'+lines+'\n\nInvestigate + re-validate, then close this issue.');
-          ")
-          gh issue create --repo "$GITHUB_REPOSITORY" --title "$title" --body "$body"
-          echo "opened canary issue"

@@ -3,8 +3,8 @@ name: classify
 # Task 2 residue sweep (ADDITIVE to scan.yml, read-alerts.yml, read-feeds.yml,
 # all untouched). Every 3 h, curls POST /api/classify on the deployed app in a
 # loop: each call re-runs the season and family rules over up to 20 stored job
-# descriptions and asks the model only where the rules cannot decide (MISSION
-# Task 2 D5-D8). Stops when the route reports `remaining` 0 or after 10 calls.
+# descriptions and asks the model only where the rules cannot decide. Stops
+# when the route reports `remaining` 0 or after 10 calls.
 # The first run over the backlog IS the backfill; the same code path serves both.
 #
 # Requires repo secret WATCHER_SECRET. Optional repo variable SCOUT_CLASSIFY_URL
@@ -14,7 +14,7 @@ name: classify
 
 on:
   schedule:
-    # every 3 h, off-minute :37 (offset from scan.yml's :17, read-feeds.yml's :23, read-alerts.yml's :41)
+    # every 3 h, off-minute :37 (offset from scan.yml's :07, read-feeds.yml's :23, read-alerts.yml's :41)
     - cron: "37 */3 * * *"
   workflow_dispatch:
     inputs:

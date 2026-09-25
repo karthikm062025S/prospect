@@ -27,7 +27,7 @@ Editable sources for each picture are in [`docs/diagrams/`](docs/diagrams/). Ope
 
 ## What you get
 
-- **A live feed, ranked for you.** GitHub Actions scan about a thousand public company job boards every 30 minutes. Every role says in plain words why it fits, which requirements you meet, and which ones the posting never states. Apply opens the employer's real page and only logs it after you confirm.
+- **A live feed, ranked for you.** GitHub Actions scan about a thousand public company job boards every 3 hours. Every role says in plain words why it fits, which requirements you meet, and which ones the posting never states. Apply opens the employer's real page and only logs it after you confirm.
 - **Human Edge labels.** Your top postings are split into duties, each duty is matched to its nearest O*NET task, and each task is labeled Human-led, AI-assisted or Automatable from the Anthropic Economic Index. Unmeasured tasks say "not measured".
 - **A semester roadmap.** Real VT courses and clubs from the catalog, projects marked "suggested", certifications with a source link. Mark steps done, add notes, re-plan later terms.
 

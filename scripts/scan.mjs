@@ -17,8 +17,8 @@
 // NO default; this is a hackathon repo and must never silently fall back to the
 // old Scout production URL, 2026-09-19 16:45 fix). Flags: --dry-run (no POST),
 // --since-days N (recency window, default 3),
-// --concurrency N (default 8), --strict (MISSION L2, 2026-09-19: opt back into
-// the old CS-intern-only filter; the coverage-widened filter — every function,
+// --concurrency N (default 8), --strict (opt back into the old CS-intern-only
+// filter; the coverage-widened filter — every function,
 // every level — is the DEFAULT now). --dry-run without --strict also prints a
 // before/after comparison against the old filter (Done Means D).
 //
@@ -29,7 +29,7 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { dirname, join } from "node:path";
-import { scanEndpoints, epKey, deriveLevel } from "./scan-core.mjs";
+import { scanEndpoints, epKey, deriveLevel, isDeadBatch } from "./scan-core.mjs";
 
 // Re-exported so tests/scan-filter.test.ts keeps importing the pure filters
 // from here, unchanged.
@@ -176,7 +176,6 @@ async function main() {
     baseline[k] = b;
   }
   await writeFile(join(__dirname, "endpoint-baseline.json"), JSON.stringify(baseline, null, 2));
-  await writeFile(join(__dirname, "canary.json"), JSON.stringify(regressions, null, 2));
   if (regressions.length) {
     console.log(`\n⚠ canary: ${regressions.length} endpoint(s) silently returning 0 for ≥${CANARY_MISS_STREAK} runs (baseline ≥${CANARY_MIN_BASELINE}):`);
     for (const r of regressions) console.log(`  · ${r.company} [${r.ats}] was ${r.baseline} → 0 (${r.misses} misses)`);
@@ -228,10 +227,31 @@ async function main() {
     r.errors.push(...(part.errors || []));
     if (Array.isArray(part.inserted_roles)) r.inserted_roles.push(...part.inserted_roles);
     console.log(`POST batch ${i / BATCH + 1}/${Math.ceil(uniq.length / BATCH)} ok: +${part.inserted || 0} inserted`);
+
+    // The DB can be fully down while the webhook itself still answers 200 (every
+    // row errors server-side). Stop posting further batches once that happens,
+    // there is no point spending 40+ more batches and ~8 minutes of Actions time
+    // against a dead endpoint, and fail the run so the heartbeat is the alert.
+    if (isDeadBatch(part)) {
+      console.error(
+        `\nbatch ${i / BATCH + 1} came back fully errored with no insert/update/skip (${(part.errors || []).length}/${batch.length}) - the DB looks down, stopping here instead of posting the remaining batches`,
+      );
+      process.exitCode = 1;
+      break;
+    }
   }
   const out = { roles: r };
   console.log(`\nPOST ok: inserted ${r.inserted} · updated ${r.updated} · skipped_applied ${r.skipped_applied} · errors ${r.errors.length}`);
   if (r.errors.length) console.log(r.errors.join("\n"));
+  // /api/watcher answers 200 even when every row fails (run
+  // 36020225011: inserted 0, updated 0, errors 450), so fail the run instead of
+  // reporting a false green. Any insert/update/skip means the DB answered.
+  // exitCode, not exit(), so the duration line prints.
+  const handled = r.inserted + r.updated + r.skipped_applied + r.skipped_tombstoned + r.skipped_filtered;
+  if (r.errors.length > 0 && handled === 0) {
+    console.error("every posted row errored server-side: failing the run");
+    process.exitCode = 1;
+  }
 
   // Notify layer: source last-drops.json from the webhook's true "genuinely new"
   // set (inserted_roles) so an `updated` re-find never re-notifies and a
@@ -262,8 +282,8 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
       process.exitCode = 1;
     })
     .finally(() => {
-      // Karthik 15:05 addendum: how long one full run takes today, so the
-      // scan.yml cadence bump (every 3h -> every 30m) is a measured decision.
+      // How long one full run takes, so the scan.yml cadence (every 3 hours)
+      // stays a measured decision.
       console.log(`\nrun duration: ${((Date.now() - runStarted) / 1000).toFixed(1)}s`);
     });
 }

@@ -43,7 +43,7 @@ export function FeedPreview({
   if (rows.length === 0) {
     return (
       <p className="mt-8 max-w-[46ch] text-text-dim">
-        Nothing in the last few hours. The feed refreshes every 30 minutes.
+        Nothing in the last few hours. The feed refreshes every 3 hours.
       </p>
     );
   }

@@ -3,8 +3,8 @@ import Link from "next/link";
 
 export const metadata: Metadata = { title: "Help & FAQ · Prospect" };
 
-// Native <details>/<summary> per km-ui rung 1: no JS, no state, keyboard and
-// screen-reader correct for free. One entry open by default (the first) so a
+// Native <details>/<summary>: no JS, no state, keyboard and screen-reader
+// correct for free. One entry open by default (the first) so a
 // visitor sees an answer's shape immediately; every other entry stays closed.
 type Faq = { q: string; a: string };
 type FaqGroup = { label: string; items: Faq[] };
@@ -32,7 +32,7 @@ const FAQ_GROUPS: FaqGroup[] = [
       },
       {
         q: "How fresh is the feed?",
-        a: "New postings are scanned every 30 minutes.",
+        a: "New postings are scanned every 3 hours.",
       },
       {
         q: "Is Prospect an official Virginia Tech service?",

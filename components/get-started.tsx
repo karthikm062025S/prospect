@@ -330,7 +330,7 @@ export function GetStarted({
           {allDone ? (
             <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
               <p role="status" className="max-w-[44ch] text-pretty text-[13px] text-text">
-                You&apos;re set. New postings land every 30 minutes; the saved ones are yours to track.
+                You&apos;re set. New postings land every 3 hours; the saved ones are yours to track.
               </p>
               <button
                 type="button"

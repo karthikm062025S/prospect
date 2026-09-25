@@ -13,7 +13,8 @@
 --   * no RLS: Lakebase has one role; every per-user query carries `user_id = $n` in code
 --     (tests/user-scoping.test.ts is the static guard);
 --   * roles_public / companies_public are plain views (the column allowlist the app reads);
---   * no pg_cron: the hot scan tier is scheduled from .github/workflows/heartbeat.yml.
+--   * no pg_cron: app/api/scan/route.ts is manual-only (the heartbeat.yml hot-scan
+--     job that used to schedule it was removed 2026-09-25 as a duplicate of scan.yml).
 -- Addendum 2026-09-19 15:05: roles.source_posted_at (the board's own publish timestamp) for
 -- the drop-latency measurement (created_at - source_posted_at).
 -- Addendum 2026-09-19 16:45: roles.level (internship|coop|new_grad|full_time|research, nullable)

@@ -17,7 +17,7 @@ Prospect is the career journey for every Virginia Tech student, all majors. A st
 | Retrieval | Databricks Vector Search endpoint `scout-vs` | `archetypes_index` (93 archetypes, ready), `onet_tasks_index` (18,838 tasks, online), `vt_courses_index` (5,956 courses, online), `vt_clubs_index` (765 clubs, online) |
 | Jobs | Databricks Jobs, serverless, secret scope `scout` | `scout-sync-lakebase-to-delta` hourly (job 473951197133128); Orchestrator job (see status) |
 | LLM | Gemini via `@google/genai`: `gemini-3.8-flash` for the four agents and for PDF parsing (D-UI11; pro re-compare pending a real PDF), `gemini-3.1-flash-lite` reserved for labelling | prepaid key; every call uses a JSON response schema and job text is fenced as data, never instructions |
-| Ingestion | GitHub Actions crons: `scan.yml` every 30 min (about 1,000 public ATS boards + 12 Workday tenants), `read-feeds.yml` hourly, `heartbeat.yml` hot tier, `gate-sweep.yml` every 3 h | free, auditable, posts to `/api/watcher` with a shared secret |
+| Ingestion | GitHub Actions crons: `scan.yml` every 3 h (about 1,000 public ATS boards + 12 Workday tenants), `read-feeds.yml` every 3 h, `heartbeat.yml` hot tier every 3 h, `gate-sweep.yml` every 3 h | free, auditable, posts to `/api/watcher` with a shared secret |
 | Datasets | O*NET task statements (18,838), Anthropic Economic Index task exposure (2,450 tasks = 13% coverage), catalog.vt.edu 2026-27 (5,956 courses across 142 departments, 214 majors, 4,830 checksheet rows) | all loaded into Delta with sources cited in `datasets/SOURCES.md`; 765 clubs from GobblerConnect public listings |
 
 ## Data flow (what happens when)
@@ -35,7 +35,7 @@ Prospect is the career journey for every Virginia Tech student, all majors. A st
 | Piece | Status | Proof |
 | --- | --- | --- |
 | Lakebase as the only app database | real | 22 tables live, schema files 001-006 byte-identical to the live catalog |
-| 30-minute ingestion | real | Actions run ids in the repo's Actions tab; 7,590 roles and growing |
+| 3-hour ingestion | real | Actions run ids in the repo's Actions tab; 7,590 roles and growing |
 | Bronze/silver Delta mirror | real | job 473951197133128, hourly, success runs |
 | Gold tables | not built | say bronze/silver only |
 | Archetype registry + Vector Search | real | 93 archetypes, `archetypes_index` ready and queried by Match |
@@ -65,7 +65,7 @@ Prospect is the career journey for every Virginia Tech student, all majors. A st
 3. **How do you avoid hallucinated courses?** The roadmap can only place nodes whose course code or club name exists in the catalog tables; the validator rejects the rest. Certifications must come with a source link from grounded search.
 4. **Where do the Human Edge labels come from?** Published task-level exposure data joined on O*NET task ids. Coverage is 2,450 of 18,838 tasks (13%); everything else says "not measured". We never guess a label.
 5. **Is the ranking a black box?** No. The score is a pure function with fixed weights; the card shows the reasons, the requirements met vs unknown, and the archetype it matched.
-6. **What runs on a schedule?** GitHub Actions every 30 minutes for ingestion; Databricks Jobs hourly for the Delta mirror and the Orchestrator.
+6. **What runs on a schedule?** GitHub Actions every 3 hours for ingestion; Databricks Jobs hourly for the Delta mirror and the Orchestrator.
 7. **What is Supabase doing?** Only the login. No tables, no storage, no service-role key in use.
 8. **How would this scale?** Ingestion is already batched and idempotent; Lakebase and serverless Jobs scale independently; the classifier (Gemini labels once, a small model trains on Databricks, evaluated on a human-labeled holdout) is specified and not built. Model Serving would host it.
 9. **Deployment roadmap?** Week 1: clubs catalog, Genie in-app, classifier holdout. Month 1: managed MCP so any student's own agent can call Prospect. Term 1: department pilots with advisors editing roadmaps.

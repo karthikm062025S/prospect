@@ -63,7 +63,7 @@ export const metadata: Metadata = {
 const INNER = "mx-auto w-full max-w-page";
 
 const FEED_POINTS = [
-  "Every watched board is re-read every 30 minutes, so a posting reaches you while it is still open.",
+  "Every watched board is re-read every 3 hours, so a posting reaches you while it is still open.",
   "Each row says in words why it fits your goal, instead of handing you a bare score.",
   "Requirements are split into met and unknown, so you can see what a posting does not tell you.",
 ] as const;
@@ -107,7 +107,7 @@ export default async function WelcomePage({
   const newest = feed[0]?.added ?? null;
   const liveLine =
     stats.openRoles === null
-      ? "The feed refreshes every 30 minutes."
+      ? "The feed refreshes every 3 hours."
       : `${formatStat(stats.openRoles)} open postings, newest ${newest ?? "in the last few hours"}`;
 
   return (
